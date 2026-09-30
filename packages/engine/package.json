@@ -1,0 +1,25 @@
+{
+  "name": "@power-tycoon/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "simulate": "tsx scripts/simulate.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

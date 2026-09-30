@@ -9,11 +9,11 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 
 ## Phase 0 – Repo setup
 
-- [ ] pnpm workspace: `packages/engine`, `apps/api`, `apps/web`; root `tsconfig.base.json` (strict)
-- [ ] vitest, prettier, `.gitignore` (node_modules, dist, `*.db`, `k8s/secret.yaml`), `.nvmrc` (22)
-- [ ] Root scripts: `dev`, `build`, `test`, `typecheck`
-- [ ] GitHub Actions: install, typecheck, test on push/PR
-- [ ] README (German or English? → English, short: what it is, how to run, how to deploy)
+- [x] pnpm workspace: `packages/engine`, `apps/api`, `apps/web`; root `tsconfig.base.json` (strict)
+- [x] vitest, prettier, `.gitignore` (node_modules, dist, `*.db`, `k8s/secret.yaml`), `.nvmrc` (22)
+- [x] Root scripts: `dev`, `build`, `test`, `typecheck`
+- [x] GitHub Actions: install, typecheck, test on push/PR
+- [x] README (German or English? → English, short: what it is, how to run, how to deploy)
 
 ## Phase 1 – Engine (largest phase)
 

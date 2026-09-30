@@ -8,3 +8,6 @@ data/
 k8s/secret.yaml
 *.tar
 .DS_Store
+*.tsbuildinfo
+coverage/
+test-results/

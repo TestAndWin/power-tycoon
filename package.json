@@ -1,0 +1,25 @@
+{
+  "name": "power-tycoon",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @power-tycoon/engine build && concurrently -k -n api,web \"pnpm --filter @power-tycoon/api dev\" \"pnpm --filter @power-tycoon/web dev\"",
+    "build": "pnpm --filter @power-tycoon/engine build && pnpm --filter @power-tycoon/web build && pnpm --filter @power-tycoon/api build",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "typecheck": "pnpm -r typecheck",
+    "simulate": "pnpm --filter @power-tycoon/engine simulate",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "concurrently": "^10.0.5",
+    "prettier": "^3.9.9",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
