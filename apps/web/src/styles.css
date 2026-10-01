@@ -844,7 +844,8 @@ select {
 .field-grid-info .muted {
   font-size: 12px;
 }
-.field-grid label {
+.field-grid label,
+label.field {
   display: flex;
   flex-direction: column;
   gap: 6px;

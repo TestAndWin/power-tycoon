@@ -130,7 +130,8 @@ export interface GameState {
   news: NewsItem[];
   nextId: number;
   over: GameOver;
-  settings: { autoMinigames: boolean };
+  /** `difficulty` is missing in games created before phase 6; they keep the legacy rivals. */
+  settings: { autoMinigames: boolean; difficulty?: Difficulty };
   challenge: OpenChallenge | null;
 }
 
@@ -368,7 +369,7 @@ export interface PlayerView {
   endYear: number;
   quartersLeft: number;
   over: GameOver;
-  settings: { autoMinigames: boolean };
+  settings: { autoMinigames: boolean; difficulty?: Difficulty };
   me: {
     id: PlayerId;
     name: string;

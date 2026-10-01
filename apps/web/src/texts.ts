@@ -3,6 +3,7 @@
  * error messages and report lines. The engine only emits structured events and codes.
  */
 import type {
+  Difficulty,
   GameEvent,
   PlantType,
   PlayerView,
@@ -35,6 +36,12 @@ export const PLANT_NAME: Record<PlantType, string> = {
 };
 /** Name with indefinite article in the accusative ("einen Windpark"). */
 export const plantAcc = (t: PlantType): string => (t === 'hydro' || t === 'pump' ? 'ein ' : 'einen ') + PLANT_NAME[t];
+
+export const DIFFICULTY_TEXT: Record<Difficulty, string> = {
+  easy: 'Leicht – wie im Original',
+  normal: 'Normal – rechnende Konkurrenz',
+  hard: 'Schwer – aggressiv und gut finanziert',
+};
 
 export const TRICK_TEXT: Record<TrickType, { name: string; desc: string }> = {
   klage: {

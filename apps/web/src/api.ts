@@ -1,4 +1,12 @@
-import type { Action, Challenge, GameEvent, PlayerView, QuarterReport, RivalActionLog } from '@power-tycoon/engine';
+import type {
+  Action,
+  Challenge,
+  Difficulty,
+  GameEvent,
+  PlayerView,
+  QuarterReport,
+  RivalActionLog,
+} from '@power-tycoon/engine';
 import { errorText } from './texts.js';
 
 const STORE_KEY = 'wattmogul-game';
@@ -67,8 +75,8 @@ export interface QuarterResponse {
 }
 
 export const api = {
-  create: (companyName: string, autoMinigames: boolean) =>
-    call<StoredGame & { view: PlayerView }>('POST', '/games', null, { companyName, autoMinigames }),
+  create: (companyName: string, autoMinigames: boolean, difficulty: Difficulty) =>
+    call<StoredGame & { view: PlayerView }>('POST', '/games', null, { companyName, autoMinigames, difficulty }),
   load: (g: StoredGame) => call<{ view: PlayerView }>('GET', '/games/' + encodeURIComponent(g.gameId), g.token),
   action: (g: StoredGame, action: Action) =>
     call<ActionResponse>('POST', '/games/' + encodeURIComponent(g.gameId) + '/actions', g.token, { action }),

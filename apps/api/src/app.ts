@@ -12,7 +12,7 @@ import {
   endQuarter,
   eventsForViewer,
   playerView,
-  RuleBasedOpponent,
+  opponentsFor,
   type Action,
   type ErrorCode,
   type GameState,
@@ -29,7 +29,7 @@ export interface AppOptions {
   /** Directory with the built web app; served under "/" if it exists. */
   webRoot?: string;
   logger?: boolean;
-  /** Rivals for a game (default: three rule-based rivals). */
+  /** Rivals for a game (default: by the game's difficulty). */
   opponents?: (state: GameState) => OpponentStrategy[];
   /** Max new games per IP per hour. */
   createLimit?: number;
@@ -52,17 +52,15 @@ class HttpError extends Error {
   }
 }
 
-const defaultOpponents = (): OpponentStrategy[] => [
-  new RuleBasedOpponent(),
-  new RuleBasedOpponent(),
-  new RuleBasedOpponent(),
-];
+const defaultOpponents = (state: GameState): OpponentStrategy[] => opponentsFor(state.settings.difficulty);
 
 export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db: Db }> {
   const app = Fastify({
     logger: opts.logger ? { redact: ['req.headers.authorization'] } : false,
     trustProxy: opts.trustProxy ?? true,
     bodyLimit: 16 * 1024,
+    // no type coercion: it would turn boolean minigame outcomes into 0/1 (number | boolean union)
+    ajv: { customOptions: { coerceTypes: false } },
   }).withTypeProvider<TypeBoxTypeProvider>();
   const db = openDb(opts.dbFile);
   const repo = new GameRepo(db);
@@ -131,6 +129,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
       const state = createGame({
         companyName: req.body.companyName,
         autoMinigames: req.body.autoMinigames,
+        difficulty: req.body.difficulty ?? 'normal',
         seed: randomInt(0, 2 ** 31),
       });
       const gameId = newGameId();

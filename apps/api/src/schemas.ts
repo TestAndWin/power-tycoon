@@ -32,6 +32,7 @@ export const ActionSchema = Type.Union([
 export const CreateGameBody = Type.Object({
   companyName: Type.String({ maxLength: 40 }),
   autoMinigames: Type.Boolean(),
+  difficulty: Type.Optional(Type.Union([Type.Literal('easy'), Type.Literal('normal'), Type.Literal('hard')])),
 });
 
 export const ActionBody = Type.Object({ action: ActionSchema });

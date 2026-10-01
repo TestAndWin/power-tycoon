@@ -10,12 +10,14 @@ import {
 } from './data.js';
 import { rand, randomOf, type Random } from './rng.js';
 import { emit, genOffers, updateSpread, worth } from './rules.js';
-import type { GameState, Player, PlayerId, RegionKey, Site } from './types.js';
+import type { Difficulty, GameState, Player, PlayerId, RegionKey, Site } from './types.js';
 
 export interface CreateGameOptions {
   companyName: string;
   autoMinigames: boolean;
   seed: number;
+  /** Strength of the rivals, default `normal`. */
+  difficulty?: Difficulty;
 }
 
 function makeSite(r: Random, k: RegionKey, i: number): Site {
@@ -101,7 +103,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     news: [],
     nextId: 1,
     over: false,
-    settings: { autoMinigames: !!opts.autoMinigames },
+    settings: { autoMinigames: !!opts.autoMinigames, difficulty: opts.difficulty ?? 'normal' },
     challenge: null,
   };
   const r = randomOf(g);

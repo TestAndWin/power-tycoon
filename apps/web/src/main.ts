@@ -1,7 +1,7 @@
 /** Boot, event delegation and action handlers (legacy `A`), now calling the API. */
 import './fonts.css';
 import './styles.css';
-import type { Action, Challenge, GameEvent, PlantType, RegionKey, TrickType } from '@power-tycoon/engine';
+import type { Action, Challenge, Difficulty, GameEvent, PlantType, RegionKey, TrickType } from '@power-tycoon/engine';
 import { api, ApiError, loadStored, saveStored } from './api.js';
 import { money } from './format.js';
 import { playChallenge } from './minigames.js';
@@ -135,8 +135,9 @@ async function endQuarter(): Promise<void> {
 async function startGame(): Promise<void> {
   const name = ($<HTMLInputElement>('#sName')?.value.trim() || 'Deichwatt AG').slice(0, 24);
   const auto = !!$<HTMLInputElement>('#sAuto')?.checked;
+  const diff = ($<HTMLSelectElement>('#sDiff')?.value || 'normal') as Difficulty;
   try {
-    const res = await api.create(name, auto);
+    const res = await api.create(name, auto, diff);
     S.game = { gameId: res.gameId, token: res.token };
     saveStored(S.game);
     S.view = res.view;
@@ -191,7 +192,7 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
     if (S.view?.over) showEnd();
   },
   closeModal: () => closeModal(),
-  newGameDlg: () => showStart(false),
+  newGameDlg: () => showStart(false, S.view?.me.name, S.view?.settings.difficulty),
   start: () => void startGame(),
   continue: () => {
     closeModal();
@@ -299,7 +300,8 @@ async function boot(): Promise<void> {
     render();
     if (S.view.over) showEnd();
     else if (S.view.challenge) void resolveChallenge(S.view.challenge);
-    else if (!(location.search === '?continue' && S.view.turn > 0)) showStart(true, S.view.me.name);
+    else if (!(location.search === '?continue' && S.view.turn > 0))
+      showStart(true, S.view.me.name, S.view.settings.difficulty);
   } catch (e) {
     if (e instanceof ApiError && (e.status === 401 || e.status === 404)) saveStored(null);
     showStart(false);

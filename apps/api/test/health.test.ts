@@ -54,6 +54,17 @@ describe('POST /api/games', () => {
     expect(JSON.stringify(row)).not.toContain(g.token);
     expect(row).toMatchObject({ version: 1, status: 'running' });
   });
+  it('stores the difficulty (default normal) and rejects unknown ones', async () => {
+    const d = (g: { view: unknown }) => (g.view as { settings: { difficulty: string } }).settings.difficulty;
+    expect(d(await newGame())).toBe('normal');
+    expect(d(await newGame({ companyName: 'X', autoMinigames: true, difficulty: 'hard' }))).toBe('hard');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/games',
+      payload: { companyName: 'X', autoMinigames: true, difficulty: 'insane' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
   it('validates the body', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/games', payload: { companyName: 5 } });
     expect(res.statusCode).toBe(400);
@@ -167,6 +178,17 @@ describe('actions', () => {
     const done = await act(g.gameId, g.token, { type: 'minigameResult', challengeId: ch.id, outcome: 1.02 });
     expect(done.statusCode).toBe(200);
     expect(done.json().events.map((e: { type: string }) => e.type)).toEqual(['layoutRated', 'plantBuilt']);
+    // boolean outcome (cable) must arrive as boolean, not coerced to 0/1
+    const connect = await act(g.gameId, g.token, { type: 'connectGrid', siteId: solar });
+    const cable = connect.json().challenge;
+    expect(cable).toMatchObject({ kind: 'cable' });
+    const failed = await act(g.gameId, g.token, { type: 'minigameResult', challengeId: cable.id, outcome: false });
+    expect(failed.statusCode).toBe(200);
+    expect(failed.json().events.map((e: { type: string }) => e.type)).toEqual(['gridConnectFailed']);
+    const again = (await act(g.gameId, g.token, { type: 'connectGrid', siteId: solar })).json().challenge;
+    const ok = await act(g.gameId, g.token, { type: 'minigameResult', challengeId: again.id, outcome: true });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().events.map((e: { type: string }) => e.type)).toEqual(['gridConnected']);
   });
 });
 
