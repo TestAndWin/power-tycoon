@@ -34,8 +34,7 @@ export const PLANT_NAME: Record<PlantType, string> = {
   pump: 'Pumpspeicherwerk',
 };
 /** Name with indefinite article in the accusative ("einen Windpark"). */
-export const plantAcc = (t: PlantType): string =>
-  (t === 'hydro' || t === 'pump' ? 'ein ' : 'einen ') + PLANT_NAME[t];
+export const plantAcc = (t: PlantType): string => (t === 'hydro' || t === 'pump' ? 'ein ' : 'einen ') + PLANT_NAME[t];
 
 export const TRICK_TEXT: Record<TrickType, { name: string; desc: string }> = {
   klage: {
@@ -173,16 +172,17 @@ export function newsTexts(view: PlayerView, e: GameEvent): { kind: NewsKind; tex
   const me = view.playerId;
   switch (e.type) {
     case 'gameStarted':
+      // newest first, as in the legacy feed: the tip was added after the welcome
       return [
-        {
-          kind: 'info',
-          text: `Willkommen! ${nameOf(c, e.playerId)} startet mit ${money(e.cash)} Eigenkapital. Drei Konkurrenten wollen dieselben Flächen.`,
-        },
         {
           kind: 'info',
           text: 'Tipp: Ein Ertragsgutachten vor der Pacht verrät Windgeschwindigkeit oder Sonnenstunden.',
         },
-      ].reverse();
+        {
+          kind: 'info',
+          text: `Willkommen! ${nameOf(c, e.playerId)} startet mit ${money(e.cash)} Eigenkapital. Drei Konkurrenten wollen dieselben Flächen.`,
+        },
+      ];
     case 'siteLeased':
       return e.playerId === me
         ? [
@@ -235,7 +235,9 @@ export function newsTexts(view: PlayerView, e: GameEvent): { kind: NewsKind; tex
     case 'worldEvent':
       return [{ kind: 'world', text: worldText(e.key, e.region) }];
     case 'playerBankrupt':
-      return [{ kind: 'comp', text: `${nameOf(c, e.playerId)} ist insolvent. Alle Flächen gehen zurück an den Markt.` }];
+      return [
+        { kind: 'comp', text: `${nameOf(c, e.playerId)} ist insolvent. Alle Flächen gehen zurück an den Markt.` },
+      ];
     default:
       return [];
   }

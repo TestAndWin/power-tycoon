@@ -80,9 +80,27 @@ export const SEAS: Season[] = [
     snow: true,
     cloud: 6,
   },
-  { name: SEASON_NAME[1]!, sky: ['#4f9ede', '#d7eefb'], fields: ['#79b94c', '#93c955', '#e3cf37'], tree: '#2f7a34', cloud: 4 },
-  { name: SEASON_NAME[2]!, sky: ['#2f8bd8', '#cde9fa'], fields: ['#c9b54c', '#9dbb4a', '#d9a943'], tree: '#3f7428', cloud: 2 },
-  { name: SEASON_NAME[3]!, sky: ['#7f98b3', '#efd7b8'], fields: ['#9b7a4c', '#7f8a44', '#b58b52'], tree: '#b9652a', cloud: 5 },
+  {
+    name: SEASON_NAME[1]!,
+    sky: ['#4f9ede', '#d7eefb'],
+    fields: ['#79b94c', '#93c955', '#e3cf37'],
+    tree: '#2f7a34',
+    cloud: 4,
+  },
+  {
+    name: SEASON_NAME[2]!,
+    sky: ['#2f8bd8', '#cde9fa'],
+    fields: ['#c9b54c', '#9dbb4a', '#d9a943'],
+    tree: '#3f7428',
+    cloud: 2,
+  },
+  {
+    name: SEASON_NAME[3]!,
+    sky: ['#7f98b3', '#efd7b8'],
+    fields: ['#9b7a4c', '#7f8a44', '#b58b52'],
+    tree: '#b9652a',
+    cloud: 5,
+  },
 ];
 const FIELDS: Partial<Record<RegionKey, string[][]>> = {
   ib: [
@@ -949,7 +967,16 @@ function flag(ctx: Ctx, x: number, y: number, u: number, col: string, letter: st
     ctx.textBaseline = 'alphabetic';
   }
 }
-function turbine(ctx: Ctx, x: number, y: number, h: number, ang: number, d: number, off: boolean, lights: Light[]): void {
+function turbine(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  h: number,
+  ang: number,
+  d: number,
+  off: boolean,
+  lights: Light[],
+): void {
   ctx.fillStyle = 'rgba(0,0,0,.18)';
   ctx.beginPath();
   ctx.ellipse(x + h * 0.08, y, h * 0.12, h * 0.03, 0, 0, 7);

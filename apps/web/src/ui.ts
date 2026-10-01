@@ -130,9 +130,7 @@ function renderView(): void {
   registerScenes();
 }
 export function redrawCharts(): void {
-  $('#view')
-    ?.querySelectorAll<HTMLElement>('[data-chart]')
-    .forEach(drawChart);
+  $('#view')?.querySelectorAll<HTMLElement>('[data-chart]').forEach(drawChart);
 }
 
 /* ---------- overview ---------- */
@@ -242,7 +240,13 @@ function hits(r: RegionKey): string {
     })
     .join('');
 }
-function btn(act: string, v: string, label: string, price: number, o: { dis?: boolean; cls?: string; confirm?: boolean } = {}): string {
+function btn(
+  act: string,
+  v: string,
+  label: string,
+  price: number,
+  o: { dis?: boolean; cls?: string; confirm?: boolean } = {},
+): string {
   const dis = o.dis || (price > 0 && meP().cash < price) || S.busy,
     key = act + ':' + v;
   if (o.confirm && UI.confirm === key)
@@ -331,7 +335,9 @@ function vMarket(): string {
     contracts = v.me.contracts;
   const offers = v.offers
     .map(
-      (o) => `<div class="offer"><div class="top"><b>${esc(o.buyer)}</b><span class="chip acc">${eur(o.price)}</span></div>
+      (
+        o,
+      ) => `<div class="offer"><div class="top"><b>${esc(o.buyer)}</b><span class="chip acc">${eur(o.price)}</span></div>
     <div class="kv"><span>Menge <b>${mwh(o.vol)}</b>/Quartal</span><span>Laufzeit <b>${o.quarters} Q</b></span><span>Volumen <b>${money(o.vol * o.quarters * o.price, true)}</b></span></div>
     <div class="row" style="justify-content:space-between"><span class="muted" style="font-size:12px">Fehlmengen kaufst du zum Börsenpreis +15 % zu · gültig ${o.expires - v.turn} Q</span><button class="btn primary" data-act="accept" data-v="${o.id}" ${contracts.length >= v.constants.maxContracts || S.busy ? 'disabled' : ''}>Abschließen</button></div></div>`,
     )
@@ -405,7 +411,9 @@ function vRivals(): string {
     .slice()
     .sort(byRank)
     .map(
-      (p) => `<tr><td><span class="row" style="flex-wrap:nowrap"><i class="dot" style="--oc:${pc(p.id)}"></i>${esc(p.name)}${p.human ? ' <span class="chip acc">Du</span>' : ''}${p.out ? ' <span class="chip bad">Insolvent</span>' : ''}</span></td>
+      (
+        p,
+      ) => `<tr><td><span class="row" style="flex-wrap:nowrap"><i class="dot" style="--oc:${pc(p.id)}"></i>${esc(p.name)}${p.human ? ' <span class="chip acc">Du</span>' : ''}${p.out ? ' <span class="chip bad">Insolvent</span>' : ''}</span></td>
     <td class="r num">${p.out ? '–' : money(p.worth, true)}</td><td class="r num">${money(p.cash, true)}</td><td class="r num">${money(p.loan, true)}</td><td class="r num">${p.sites}</td><td class="r num">${p.mw} MW</td><td class="r num">${mwh(p.genLast)}</td><td class="r num">${tons(p.co2)}</td></tr>`,
     )
     .join('');
@@ -602,9 +610,11 @@ function animateRivals(): void {
 export function showEnd(): void {
   const v = V();
   const reason =
-    { time: 'Die Zeit ist um.', monopoly: 'Alle Konkurrenten sind insolvent!', bankrupt: 'Dein Konzern ist insolvent.' }[
-      v.over as string
-    ] ?? '';
+    {
+      time: 'Die Zeit ist um.',
+      monopoly: 'Alle Konkurrenten sind insolvent!',
+      bankrupt: 'Dein Konzern ist insolvent.',
+    }[v.over as string] ?? '';
   const rank = v.players.slice().sort(byRank);
   const won = v.over !== 'bankrupt' && rank[0]!.human;
   openModal(`<h2>${won ? 'Du führst die Energiewende an!' : 'Spielende'}</h2><p class="muted" style="margin:0">${reason} Du hast ${tons(v.me.co2)} CO₂ vermieden.</p>

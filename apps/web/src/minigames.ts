@@ -2,7 +2,17 @@
  * Skill minigames, ported from legacy/src/mini.js. The playing field is generated from the
  * challenge seed; the result (efficiency or success) is sent back to the server.
  */
-import { createRng, gauss, pick, rand, randint, shuffle, type Challenge, type Random, type SiteView } from '@power-tycoon/engine';
+import {
+  createRng,
+  gauss,
+  pick,
+  rand,
+  randint,
+  shuffle,
+  type Challenge,
+  type Random,
+  type SiteView,
+} from '@power-tycoon/engine';
 import { clamp } from './format.js';
 import { closeModal, openModal } from './modal.js';
 import { SND } from './sound.js';
@@ -533,7 +543,12 @@ function miniCable(x: SiteView, R: Random): Promise<boolean> {
     const svg = (m: number, on: boolean) => {
       const col = on ? '#FFD23F' : '#8b949e';
       let s = '<svg viewBox="0 0 60 60" aria-hidden="true" class="' + (on ? 'live' : '') + '">';
-      const seg: Record<number, string> = { [N_]: '30,30 30,0', [E_]: '30,30 60,30', [S_]: '30,30 30,60', [W_]: '30,30 0,30' };
+      const seg: Record<number, string> = {
+        [N_]: '30,30 30,0',
+        [E_]: '30,30 60,30',
+        [S_]: '30,30 30,60',
+        [W_]: '30,30 0,30',
+      };
       for (const b of [N_, E_, S_, W_])
         if (m & b)
           s += `<polyline points="${seg[b]}" stroke="#2b3430" stroke-width="12" fill="none"/><polyline points="${seg[b]}" stroke="${col}" stroke-width="5" fill="none"/>${on ? `<polyline class="pulse" points="${seg[b]}" stroke="#fff" stroke-width="2.5" fill="none" stroke-dasharray="4 10"/>` : ''}`;
