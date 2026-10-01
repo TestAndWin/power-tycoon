@@ -2,7 +2,7 @@ export const ENGINE_VERSION = 1;
 
 export * from './types.js';
 export * from './data.js';
-export { createRng, type Random } from './rng.js';
+export { createRng, rand, randint, pick, shuffle, gauss, clamp, type Random } from './rng.js';
 export { createGame, type CreateGameOptions } from './game.js';
 export { applyAction, validateAction } from './actions.js';
 export { legalActions } from './legal.js';
