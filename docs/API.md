@@ -18,11 +18,12 @@ player may know about the rivals. Add `GET /api/games/:id/rivals` only if the vi
 
 ```json
 // request
-{ "companyName": "Deichwatt AG", "autoMinigames": false }
+{ "companyName": "Deichwatt AG", "autoMinigames": false, "difficulty": "normal" }
 // 201 response
 { "gameId": "q3Jb0…", "token": "x9F…(43 chars)", "view": { … } }
 ```
 
+`difficulty` (`easy` | `normal` | `hard`) is optional, default `normal`; `easy` are the legacy rivals.
 The token is returned **only here**. The client stores `{ gameId, token }` in `localStorage`.
 Rate limit: 10 new games per IP per hour.
 

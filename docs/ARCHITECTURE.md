@@ -60,7 +60,7 @@ legalActions(state: GameState, playerId: PlayerId): Action[]   // used by AI and
   advance quarter → offers → history → game-over check.
 - Lobby tricks: max 2 per player per quarter (legacy only limited the human; apply it to all).
 - PPA contracts: legacy stores `G.contracts` globally for the human only. Store contracts **per player**
-  so LLM rivals can use them later. The rule-based AI does not accept contracts (same as legacy).
+  so rivals can use them. The legacy rival AI (`easy`) does not accept contracts; `SmartOpponent` does.
 
 ### Randomness
 
@@ -175,7 +175,16 @@ interface OpponentStrategy {
 
 - The engine applies the returned actions one by one via `applyAction`; invalid actions are skipped and logged.
 - `RuleBasedOpponent`: port of `aiTurn()` / `aiTrick()` expressed as actions (borrow, survey, lease, applyPermit,
-  build, connectGrid, reserveGrid, repay, lobby). Then improve it (see steps.md, phase 6).
+  build, connectGrid, reserveGrid, repay, lobby). Used for difficulty `easy` and for games created before
+  difficulties existed (`settings.difficulty` missing).
+- `SmartOpponent` (phase 6, difficulties `normal` / `hard`): values every project by its expected
+  contribution to net worth at game end (remaining quarters × margin + book value − investment), surveys
+  before leasing, finances with debt up to a share of the credit limit, accepts PPA contracts covered by
+  its own generation, values storage by the spread, reserves grid capacity (`hard`) and aims lobby tricks
+  at the leader, preferably the human (`humanBias`). Difficulty = a parameter set (`SMART_PARAMS`).
+- `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
+- `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds.
+  Reference (200 games, mixed rivals, seat 0 = legacy bot): easy ≈ 115 M€, normal ≈ 220 M€, hard ≈ 260 M€.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `RuleBasedOpponent` on timeout/error. Details are decided when step 2 starts.
 
