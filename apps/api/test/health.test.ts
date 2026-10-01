@@ -79,6 +79,18 @@ describe('POST /api/games', () => {
     expect(codes).toEqual([201, 201, 429]);
     await limited.close();
   });
+  it('cannot bypass the rate limit with a spoofed X-Forwarded-For', async () => {
+    const limited = await buildApp({ dbFile: join(dir, 'rl2.db'), createLimit: 2 });
+    const body = { companyName: 'X', autoMinigames: true };
+    const codes: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      // client-supplied entry first, the proxy appends the real client address
+      const headers = { 'x-forwarded-for': `10.0.0.${i}, 203.0.113.7` };
+      codes.push((await limited.inject({ method: 'POST', url: '/api/games', payload: body, headers })).statusCode);
+    }
+    expect(codes).toEqual([201, 201, 429]);
+    await limited.close();
+  });
 });
 
 describe('auth', () => {

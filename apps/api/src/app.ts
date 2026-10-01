@@ -35,7 +35,11 @@ export interface AppOptions {
   createLimit?: number;
   /** Max requests per IP per minute (all routes). */
   globalLimit?: number;
-  trustProxy?: boolean;
+  /**
+   * Number of proxies in front of the app (default 1, the ingress; 0 = none). Trusting all
+   * proxies would take the left-most, client-controlled X-Forwarded-For entry as the IP.
+   */
+  trustProxy?: number;
   /** Delete games not updated for this many days. */
   retentionDays?: number;
 }
@@ -57,7 +61,7 @@ const defaultOpponents = (state: GameState): OpponentStrategy[] => opponentsFor(
 export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db: Db }> {
   const app = Fastify({
     logger: opts.logger ? { redact: ['req.headers.authorization'] } : false,
-    trustProxy: opts.trustProxy ?? true,
+    trustProxy: (_addr: string, hop: number) => hop < (opts.trustProxy ?? 1),
     bodyLimit: 16 * 1024,
     // no type coercion: it would turn boolean minigame outcomes into 0/1 (number | boolean union)
     ajv: { customOptions: { coerceTypes: false } },
