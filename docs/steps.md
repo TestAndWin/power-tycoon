@@ -17,18 +17,18 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 
 ## Phase 1 – Engine (largest phase)
 
-- [ ] Types: `GameState`, `Site`, `Player`, `Action`, `GameEvent`, `Challenge`, `PlayerView`, `ErrorCode`
-- [ ] Data tables from legacy `core.js` (1:1 values)
-- [ ] Seeded RNG in state
-- [ ] `createGame`
-- [ ] `applyAction` for every action in API.md, incl. minigame challenge flow
-- [ ] `endQuarter` with the legacy order of steps, per-player contracts
-- [ ] `playerView` with hidden information
-- [ ] `RuleBasedOpponent` as port of `aiTurn`/`aiTrick`, using actions only
-- [ ] Tests: each action (happy path + rule violations), determinism (same seed ⇒ same result),
+- [x] Types: `GameState`, `Site`, `Player`, `Action`, `GameEvent`, `Challenge`, `PlayerView`, `ErrorCode`
+- [x] Data tables from legacy `core.js` (1:1 values)
+- [x] Seeded RNG in state
+- [x] `createGame`
+- [x] `applyAction` for every action in API.md, incl. minigame challenge flow
+- [x] `endQuarter` with the legacy order of steps, per-player contracts
+- [x] `playerView` with hidden information
+- [x] `RuleBasedOpponent` as port of `aiTurn`/`aiTrick`, using actions only
+- [x] Tests: each action (happy path + rule violations), determinism (same seed ⇒ same result),
       invariants (grid capacity never exceeded, cash bookkeeping), a full 40-quarter bot-vs-bot
       smoke game that ends without exceptions
-- [ ] Compare balance roughly with legacy (rival net worth after 10 years in the same range)
+- [x] Compare balance roughly with legacy (rival net worth after 10 years in the same range)
 
 ## Phase 2 – API
 
