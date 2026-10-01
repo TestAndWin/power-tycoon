@@ -5,6 +5,7 @@ import {
   REGION_KEYS,
   REGIONS,
   TRICK_KEYS,
+  type Difficulty,
   type PlayerSummary,
   type PlayerView,
   type QuarterReport,
@@ -26,6 +27,7 @@ import {
   rivalActionText,
   siteName,
   siteQuality,
+  DIFFICULTY_TEXT,
   TRICK_TEXT,
   type NewsKind,
 } from './texts.js';
@@ -96,7 +98,7 @@ export function renderTop(): void {
       <div class="stat"><span class="label">Rang</span><span class="v">${v.me.rank} von ${v.players.filter((p) => !p.out).length}</span></div>
     </div>
     <div class="row" style="flex-wrap:nowrap"><button class="btn icon" data-act="sound" aria-label="Ton ${SND.on ? 'aus' : 'an'}schalten" title="Ton ${SND.on ? 'aus' : 'an'}">${SND.on ? SPK_ON : SPK_OFF}</button>
-    <button class="btn primary big endq" data-act="endQuarter" ${v.over || S.busy ? 'disabled' : ''}>Quartal beenden →</button></div>`;
+    ${v.over ? '<button class="btn primary big endq" data-act="newGameDlg">Neues Spiel</button>' : `<button class="btn primary big endq" data-act="endQuarter" ${S.busy ? 'disabled' : ''}>Quartal beenden →</button>`}</div>`;
 }
 const TABS = [
   ['overview', 'Übersicht'],
@@ -622,13 +624,14 @@ export function showEnd(): void {
     ${rank.map((p, i) => `<tr><td class="num">${i + 1}</td><td><span class="row" style="flex-wrap:nowrap"><i class="dot" style="--oc:${pc(p.id)}"></i>${esc(p.name)}</span></td><td class="r num">${p.out ? 'insolvent' : money(p.worth, true)}</td><td class="r num">${tons(p.co2)}</td></tr>`).join('')}</tbody></table></div>
     <div class="foot"><button class="btn" data-act="closeModal">Endstand ansehen</button><button class="btn primary" data-act="newGameDlg">Neues Spiel</button></div>`);
 }
-export function showStart(canContinue: boolean, name = 'Deichwatt AG'): void {
+export function showStart(canContinue: boolean, name = 'Deichwatt AG', difficulty: Difficulty = 'normal'): void {
   openModal(`<div class="banner tall"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">2026 – 2035</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
     <p style="margin:0">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
     <div class="field-grid">
       <label for="sName">Konzernname<input type="text" id="sName" value="${esc(name)}" maxlength="24"></label>
       <div class="field-grid-info"><span class="label">Spieldauer</span><b>${GAME_YEARS} Jahre · ${GAME_YEARS * 4} Quartale</b><span class="muted">2026 bis Ende 2035</span></div>
     </div>
+    <label class="field" for="sDiff">Konkurrenz<select id="sDiff">${(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => `<option value="${d}" ${d === difficulty ? 'selected' : ''}>${DIFFICULTY_TEXT[d]}</option>`).join('')}</select></label>
     <label class="check"><input type="checkbox" id="sAuto"> Minispiele überspringen (Ergebnis wird ausgewürfelt)</label>
     <p class="muted" style="margin:0;font-size:12px">Alle Firmen und Personen im Spiel sind frei erfunden. Ereignisse nach 2026 sind fiktive Szenarien. Dein Spielstand liegt auf dem Server; nur dieser Browser kennt den Zugangsschlüssel.</p>
     <div class="foot">${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>`);
