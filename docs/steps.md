@@ -32,14 +32,14 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 
 ## Phase 2 – API
 
-- [ ] Fastify app, JSON schemas for all bodies (TypeBox), `/api/health`
-- [ ] SQLite (`better-sqlite3`, WAL), migrations via `PRAGMA user_version`
-- [ ] Game id + token creation, sha256 hash, timing-safe compare (ADR-003)
-- [ ] Per-game lock, load → engine → save in one transaction
-- [ ] Endpoints from API.md, error mapping
-- [ ] `@fastify/rate-limit`, `@fastify/static` for the web build
-- [ ] Cleanup of games older than 180 days
-- [ ] Tests with `fastify.inject` against a temp DB (auth, happy paths, errors, token of game A cannot access game B)
+- [x] Fastify app, JSON schemas for all bodies (TypeBox), `/api/health`
+- [x] SQLite (`better-sqlite3`, WAL), migrations via `PRAGMA user_version`
+- [x] Game id + token creation, sha256 hash, timing-safe compare (ADR-003)
+- [x] Per-game lock, load → engine → save in one transaction
+- [x] Endpoints from API.md, error mapping
+- [x] `@fastify/rate-limit`, `@fastify/static` for the web build
+- [x] Cleanup of games older than 180 days
+- [x] Tests with `fastify.inject` against a temp DB (auth, happy paths, errors, token of game A cannot access game B)
 
 ## Phase 3 – Web app
 

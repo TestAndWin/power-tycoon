@@ -29,7 +29,8 @@ Rate limit: 10 new games per IP per hour.
 ## `GET /api/games/:id`
 
 `200 { "view": PlayerView }` · `401` wrong/missing token · `404` unknown game.
-Unknown game and wrong token may both return `404` to avoid probing – decide in implementation.
+Decision: wrong token returns `401` (as in the error table); game ids are 128-bit random, so `404` for
+unknown ids does not help probing.
 
 ## `POST /api/games/:id/actions`
 
@@ -70,10 +71,17 @@ The confirmation step of `sellSite` is pure UI and stays in the client.
 // 200 response
 {
   "view": { … },
-  "report": { "lines": [["Börsenverkauf", 1234567]], "events": [ … ], "startCash": 0, "endCash": 0, "price": 0 },
+  "report": {
+    "year": 2026, "q": 0,
+    "lines": [{ "kind": "spot", "amount": 1234567, "mwh": 15000 }, { "kind": "opex", "amount": -120000 }],
+    "events": [ … ], "gen": 15000, "startCash": 0, "endCash": 0, "price": 0
+  },
   "rivalActions": [ { "playerId": 1, "events": [ … ] } ]
 }
 ```
+
+Report lines are structured (`kind`: `ppa` | `spot` | `storage` | `opex` | `lease` | `interest`) because the
+engine never produces German text; the web app labels them.
 
 `409 { "error": "challengeOpen" }` while a minigame challenge is pending, `409 { "error": "gameOver" }` after the end.
 The client animates `rivalActions` one after the other (replaces the legacy "Konkurrenz" log in the report).
@@ -91,6 +99,6 @@ only the transport changes.
 | `404` | unknown game |
 | `409` | state conflict (challenge open, game over) |
 | `422` | action violates a rule (`insufficientFunds`, `siteTaken`, `noGridCapacity`, `trickLimit`, …) |
-| `429` | rate limit |
+| `429` | rate limit (`{ "error": "rateLimited" }`) |
 
 Error codes are English identifiers; the web app maps them to German messages.
