@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+data
+*.db*
+.git
+.github
+.claude
+legacy
+docs
+k8s
+coverage
+test-results
+**/*.tsbuildinfo
