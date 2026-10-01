@@ -182,6 +182,20 @@ describe('rival turns', () => {
     expect(ev.some((e) => e.type === 'actionRejected')).toBe(false);
   });
 
+  it('rival logs never reveal anonymous tricks', async () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const g = newGame(seed);
+      setupSite(g, 'nd0', 0, 'operating', 'wind');
+      const hacker: OpponentStrategy = { decide: async () => [{ type: 'lobby', trick: 'hack', siteId: 'nd0' }] };
+      const { rivalActions, report } = await endQuarter(g, [hacker, idle, idle]);
+      for (const e of rivalActions[0]!.events) {
+        if (e.type === 'trickSucceeded') expect(e.actorId).toBe(1);
+      }
+      const hit = report.events.find((e) => e.type === 'trickSucceeded');
+      if (hit && hit.type === 'trickSucceeded') expect(hit.actorId === null || hit.suspected).toBe(true);
+    }
+  });
+
   it('a throwing strategy does nothing', async () => {
     const bad: OpponentStrategy = {
       decide: async () => {

@@ -267,7 +267,9 @@ export async function endQuarter(
     if (!strategy) continue;
     const ev = await runTurnInPlace(g, p.id, strategy);
     rivalEvents.push(...ev);
-    rivalActions.push({ playerId: p.id, events: eventsForViewer(ev, human) });
+    // the log is attributed to the rival, so tricks only appear if the actor is known anyway
+    const visible = eventsForViewer(ev, human).filter((e) => !(e.type === 'trickSucceeded' && e.actorId === null));
+    rivalActions.push({ playerId: p.id, events: visible });
   }
 
   // generation
