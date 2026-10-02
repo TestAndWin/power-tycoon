@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: power-tycoon
+  namespace: power-tycoon
+  labels:
+    app.kubernetes.io/name: power-tycoon
+  annotations:
+    cert-manager.io/cluster-issuer: 'letsencrypt-prod'
+    nginx.ingress.kubernetes.io/proxy-body-size: '64k'
+spec:
+  ingressClassName: public
+  rules:
+    - host: powertycoon.testandwin.de
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: power-tycoon
+                port:
+                  name: http
+  tls:
+    - hosts:
+        - powertycoon.testandwin.de
+      secretName: power-tycoon-tls

@@ -4,7 +4,8 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 
 ## Open questions (ask Michael before the phase that needs them)
 
-- [ ] Domain / host name for the Ingress (needed in phase 5)
+- [x] Domain / host name for the Ingress: `powertycoon.testandwin.de` (DNS in Route 53, testandwin.net
+      stays at Strato)
 - [ ] Should testandwin.net/power-tycoon link to or redirect to the new host once it is live? (phase 5)
 
 ## Phase 0 – Repo setup
@@ -63,10 +64,11 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 
 ## Phase 5 – Deployment on the eServer
 
-- [ ] `k8s/` manifests following `eat-hike-art` (see ARCHITECTURE.md → Deployment)
-- [ ] `deploy.sh` following `eat-hike-art/deploy.sh` (namespace/deployment name `power-tycoon`)
-- [ ] DNS for the chosen domain, TLS via cert-manager
-- [ ] Backup cron for the SQLite file (host side), documented in README
+- [x] `k8s/` manifests following `eat-hike-art` (see ARCHITECTURE.md → Deployment)
+- [x] `deploy.sh` following `eat-hike-art/deploy.sh` (namespace/deployment name `power-tycoon`)
+- [ ] DNS for `powertycoon.testandwin.de` (A record in Route 53), TLS via cert-manager – Michael
+- [x] Backup cron for the SQLite file (host side), documented in README
+- [ ] First deployment on the server and a played test game – Michael
 - [ ] Only after the new game is live and tested: update testandwin.net (repo `testandwin-net`) to point
       to the new game and retire the old single-file version there. Until then, leave it untouched.
 

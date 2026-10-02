@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: power-tycoon-config
+  namespace: power-tycoon
+  labels:
+    app.kubernetes.io/name: power-tycoon
+data:
+  NODE_ENV: 'production'
+  HOST: '0.0.0.0'
+  PORT: '3000'
+  DATA_DIR: '/data'
+  # one proxy (the ingress) in front of the app, see apps/api/src/app.ts
+  TRUST_PROXY: '1'

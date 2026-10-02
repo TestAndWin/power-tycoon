@@ -195,10 +195,13 @@ Same pattern as `eat-hike-art` (MicroK8s on the eServer):
 - `Dockerfile`: multi-stage, `node:22-alpine`, build tools for `better-sqlite3`, non-root user `1001`.
 - `deploy.sh`: `docker build` → `docker save` → `microk8s ctr image import` → `kubectl apply` → rollout restart.
 - `k8s/`: `namespace.yaml`, `configmap.yaml`, `deployment.yaml`, `service.yaml`, `ingress.yaml`
-  (+ `secret.yaml.example` for step 2's `ANTHROPIC_API_KEY`).
+  (step 2 adds `secret.yaml.example` for the `ANTHROPIC_API_KEY`).
 - Namespace `power-tycoon`, `replicas: 1`, `strategy: Recreate` (SQLite must never have two writers).
 - Data: hostPath `/srv/power-tycoon/data` → `/data`.
 - Service type **ClusterIP** (eat-hike-art already uses NodePort 30080; the Ingress does not need a NodePort).
 - Ingress class `public`, cert-manager `letsencrypt-prod` (the cluster issuer already exists).
 - Probes on `GET /api/health`.
-- Domain: **TBD** (see steps.md, open questions).
+- Domain: `powertycoon.testandwin.de` (A record in Route 53). testandwin.net stays at Strato and
+  later only links to the new host, no iframe.
+- The API trusts exactly one proxy hop (`TRUST_PROXY=1`, the ingress) for the client IP used by the
+  rate limits.
