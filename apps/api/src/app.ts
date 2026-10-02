@@ -107,13 +107,19 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
     return reply.status(status).send({ error: status >= 500 ? 'internalError' : 'badRequest' });
   });
 
-  /** Looks up the game and checks the bearer token (401 missing/invalid, 404 unknown game). */
-  function authorize(req: FastifyRequest, id: string): GameRow {
+  /** Checks the bearer token for the game (401 missing/invalid, 404 unknown game). */
+  function authorize(req: FastifyRequest, id: string): void {
     const token = bearerToken(req.headers.authorization);
     if (!token) throw new HttpError(401, 'unauthorized');
+    const hash = repo.tokenHash(id);
+    if (!hash) throw new HttpError(404, 'notFound');
+    if (!tokenMatches(token, hash)) throw new HttpError(401, 'unauthorized');
+  }
+
+  /** Loads an authorized game (it may have been deleted in between). */
+  function load(id: string): GameRow {
     const row = repo.get(id);
     if (!row) throw new HttpError(404, 'notFound');
-    if (!tokenMatches(token, row.tokenHash)) throw new HttpError(401, 'unauthorized');
     return row;
   }
 
@@ -144,15 +150,15 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
   );
 
   app.get('/api/games/:id', { schema: { params: GameParams } }, async (req) => {
-    const row = authorize(req, req.params.id);
-    return { view: playerView(row.state, HUMAN) };
+    authorize(req, req.params.id);
+    return { view: playerView(load(req.params.id).state, HUMAN) };
   });
 
   app.post('/api/games/:id/actions', { schema: { params: GameParams, body: ActionBody } }, async (req) => {
     const id = req.params.id;
     authorize(req, id);
     return lock.run(id, () => {
-      const row = authorize(req, id);
+      const row = load(id);
       const res = applyAction(row.state, HUMAN, req.body.action as Action);
       if (!res.ok) throw new HttpError(CONFLICT_ERRORS.has(res.error) ? 409 : 422, res.error);
       save(row, res.state);
@@ -168,7 +174,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
     const id = req.params.id;
     authorize(req, id);
     return lock.run(id, async () => {
-      const row = authorize(req, id);
+      const row = load(id);
       const blocked = canEndQuarter(row.state);
       if (blocked) throw new HttpError(409, blocked);
       const result = await endQuarter(row.state, opponents(row.state));

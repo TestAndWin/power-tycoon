@@ -63,6 +63,13 @@ export class GameRepo {
     return { id: row.id, tokenHash: row.token_hash, state: JSON.parse(row.state) as GameState, version: row.version };
   }
 
+  /** Only the token hash, for the access check without loading the state. */
+  tokenHash(id: string): string | null {
+    const row = this.db.prepare('SELECT token_hash FROM games WHERE id = ?').get(id) as
+      { token_hash: string } | undefined;
+    return row?.token_hash ?? null;
+  }
+
   /** Saves a new state if nobody else wrote in between (optimistic check on `version`). */
   save(id: string, expectedVersion: number, state: GameState, now: Date = new Date()): boolean {
     const res = this.db

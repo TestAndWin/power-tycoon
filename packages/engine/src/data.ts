@@ -2,7 +2,7 @@
  * Data tables ported 1:1 from legacy/src/core.js. Only numbers and identifiers live here;
  * German names and descriptions are in apps/web/src/texts.ts.
  */
-import type { PlantClass, PlantType, RegionKey, TrickType } from './types.js';
+import type { Difficulty, PlantClass, PlantType, RegionKey, TrickType } from './types.js';
 
 export interface RegionDef {
   code: string;
@@ -199,6 +199,8 @@ export const BUYERS: readonly string[] = [
   'Papierfabrik Knitterfeld',
   'Batteriewerk Akkuwitz',
 ];
+
+export const DIFFICULTY_KEYS: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 
 export interface RivalDef {
   name: string;
