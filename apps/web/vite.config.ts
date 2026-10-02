@@ -9,5 +9,7 @@ export default defineConfig({
     proxy: { '/api': `http://127.0.0.1:${apiPort}` },
   },
   build: { outDir: 'dist', emptyOutDir: true },
+  // Tests run in Node (SSR resolution): resolve the engine from its TypeScript sources, no build needed.
+  ssr: { resolve: { conditions: ['source', 'import', 'module', 'node', 'default'] } },
   test: { environment: 'node' },
 });
