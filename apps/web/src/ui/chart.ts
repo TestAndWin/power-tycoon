@@ -69,9 +69,12 @@ export function drawChart(el: HTMLElement): void {
     .filter((e): e is { se: Series; i: number; v: number } => e.v != null);
   const ly = ends.map((e) => ({ e, y: Y(e.v) })).sort((a, b) => a.y - b.y);
   for (let k = 1; k < ly.length; k++) if (ly[k]!.y - ly[k - 1]!.y < 13) ly[k]!.y = ly[k - 1]!.y + 13;
-  ly.forEach(({ e, y }) => {
-    s += `<circle cx="${X(e.i)}" cy="${Y(e.v)}" r="4" fill="${e.se.color}" stroke="var(--surface)" stroke-width="2"/><text x="${X(e.i) + 8}" y="${y + 4}" font-size="11" fill="var(--muted)" font-family="var(--sans)">${esc(e.se.name.split(' ')[0])}</text>`;
-  });
+  if (n <= 1)
+    s += `<text class="empty" x="${(ml + Wd - mr) / 2}" y="${(mt + Ht - mb) / 2}" text-anchor="middle">Der Verlauf erscheint ab dem zweiten Quartal</text>`;
+  else
+    ly.forEach(({ e, y }) => {
+      s += `<circle cx="${X(e.i)}" cy="${Y(e.v)}" r="4" fill="${e.se.color}" stroke="var(--surface)" stroke-width="2"/><text x="${X(e.i) + 8}" y="${y + 4}" font-size="11" fill="var(--muted)" font-family="var(--sans)">${esc(e.se.name.split(' ')[0])}</text>`;
+    });
   s += `<line id="xh" x1="0" x2="0" y1="${mt}" y2="${Ht - mb}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/></svg>`;
   const legend = `<div class="legend">${series.map((se) => `<span><i class="dot" style="--oc:${se.color}"></i>${esc(se.name)}</span>`).join('')}</div>`;
   el.innerHTML = legend + s + '<div class="tip" hidden></div>';

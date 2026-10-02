@@ -1554,6 +1554,228 @@ svg.live .pulse {
     opacity: 0.4;
   }
 }
+/* ---- Feinschliff: depth, icons, calmer charts ---- */
+:root {
+  --r: 14px;
+  --shadow: 0 1px 2px rgba(20, 24, 29, 0.05), 0 8px 24px -6px rgba(20, 40, 60, 0.12);
+  --shadow-hi: 0 2px 4px rgba(20, 24, 29, 0.06), 0 16px 36px -10px rgba(20, 40, 60, 0.22);
+}
+body {
+  background:
+    radial-gradient(1200px 520px at 85% -10%, color-mix(in srgb, var(--sun) 22%, transparent), transparent 70%),
+    radial-gradient(1000px 520px at -10% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(900px 600px at 50% 110%, color-mix(in srgb, var(--windc) 12%, transparent), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+.topbar {
+  background: transparent;
+}
+.topbar-in {
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  box-shadow: var(--shadow-hi);
+}
+.stats .stat + .stat {
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+  margin-left: -12px;
+}
+.panel,
+.tile,
+.mini,
+.scene {
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+}
+.panel {
+  transition: box-shadow 0.2s;
+}
+.panel:hover {
+  box-shadow: var(--shadow-hi);
+}
+.phead h2,
+.phead h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel > .phead h3::before,
+.panel > h3:first-child::before {
+  content: '';
+  width: 4px;
+  height: 1em;
+  border-radius: 2px;
+  background: linear-gradient(var(--accent), var(--windc));
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+.panel > .phead h3::before {
+  margin-right: 0;
+}
+
+/* tabs as a segmented bar */
+.tabs {
+  gap: 2px;
+  margin-top: 12px;
+  margin-bottom: 14px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  width: fit-content;
+  max-width: 100%;
+}
+.tab {
+  padding: 8px 14px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.tab .ico {
+  opacity: 0.75;
+  flex: none;
+}
+.tab:hover {
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+.tab[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow:
+    0 1px 2px rgba(20, 24, 29, 0.08),
+    0 4px 12px -4px color-mix(in srgb, var(--accent) 35%, transparent);
+  font-weight: 600;
+}
+.tab[aria-selected='true'] .ico {
+  opacity: 1;
+}
+
+/* tiles with a soft colour wash and an icon */
+.tile {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--tc, var(--accent)) 9%, var(--surface)),
+    var(--surface) 60%
+  );
+}
+.tile:hover {
+  box-shadow: var(--shadow-hi);
+}
+.ticon {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--tc, var(--accent));
+  background: color-mix(in srgb, var(--tc, var(--accent)) 14%, transparent);
+}
+.ticon .ico {
+  width: 18px;
+  height: 18px;
+}
+.tile > .label {
+  padding-right: 42px;
+}
+.tile .big {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+/* buttons */
+.btn {
+  border-radius: 10px;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+.rpill {
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+  box-shadow: 0 1px 2px rgba(20, 24, 29, 0.05);
+}
+.rpill:hover:not([aria-pressed='true']) {
+  border-color: var(--muted);
+}
+.rpill[aria-pressed='true'] {
+  box-shadow: 0 6px 16px -6px rgba(15, 26, 23, 0.5);
+}
+.offer,
+.sabopt {
+  border-radius: 12px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.offer:hover,
+.sabopt:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: var(--shadow);
+}
+
+/* charts */
+.chart .gridl {
+  stroke-dasharray: 2 4;
+}
+.chart .empty {
+  fill: var(--muted);
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 8px;
+  stroke-linejoin: round;
+  font-size: 13px;
+  font-family: var(--sans);
+}
+.legend span {
+  background: var(--surface2);
+  border-radius: 20px;
+  padding: 2px 9px 2px 7px;
+}
+
+/* gentle entrance when switching tabs */
+#view > * {
+  animation: viewIn 0.28s ease-out both;
+}
+@keyframes viewIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@media (max-width: 620px) {
+  .stats .stat + .stat {
+    padding-left: 0;
+    border-left: 0;
+    margin-left: 0;
+  }
+  .tabs {
+    width: auto;
+  }
+  .tab {
+    padding: 8px 10px;
+  }
+  .tile > .label {
+    padding-right: 32px;
+  }
+  .ticon {
+    width: 28px;
+    height: 28px;
+    top: 10px;
+    right: 10px;
+  }
+}
 @media (max-width: 980px) {
   .minis {
     grid-template-columns: repeat(2, minmax(0, 1fr));

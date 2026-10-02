@@ -11,7 +11,7 @@ export interface Season {
 
 /** Q1 winter … Q4 autumn. */
 export const SEASONS: Season[] = [
-  { sky: ['#8fa6bd', '#dde5ec'], fields: ['#e6ecee', '#dce4e4', '#cfdad6'], tree: '#4e6358', snow: true, cloud: 6 },
+  { sky: ['#6693c2', '#dfebf4'], fields: ['#f0f5f8', '#e2ebf0', '#d4e0e6'], tree: '#3f5a4c', snow: true, cloud: 4 },
   { sky: ['#4f9ede', '#d7eefb'], fields: ['#79b94c', '#93c955', '#e3cf37'], tree: '#2f7a34', cloud: 4 },
   { sky: ['#2f8bd8', '#cde9fa'], fields: ['#c9b54c', '#9dbb4a', '#d9a943'], tree: '#3f7428', cloud: 2 },
   { sky: ['#7f98b3', '#efd7b8'], fields: ['#9b7a4c', '#7f8a44', '#b58b52'], tree: '#b9652a', cloud: 5 },
