@@ -4,7 +4,7 @@ import './styles.css';
 import type { Action, Challenge, Difficulty, GameEvent, PlantType, RegionKey, TrickType } from '@power-tycoon/engine';
 import { api, ApiError, loadStored, saveStored } from './api.js';
 import { money } from './format.js';
-import { playChallenge } from './minigames.js';
+import { playChallenge } from './minigames/index.js';
 import { closeModal, modalLocked, openModal, toast } from './modal.js';
 import { readCols, registerScenes, setHover } from './scene/index.js';
 import { SND, toggleSound } from './sound.js';

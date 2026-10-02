@@ -170,7 +170,7 @@ Vite + TypeScript, no framework. Port the legacy files with minimal changes:
 | `head.html` (CSS + markup), `fonts.css` | `index.html`, `src/styles.css` | split markup/CSS |
 | `ui.js` | `src/ui/*.ts` (one module per tab, dialogs, charts) + `src/main.ts` | render from `PlayerView` instead of `G`; action handlers call the API |
 | `scene.js` | `src/scene/*.ts` (sky, landscape, plots, objects, effects) | read from view; drawing functions get a `Frame` |
-| `mini.js` | `src/minigames.ts` | seeded from challenge, returns outcome |
+| `mini.js` | `src/minigames/*.ts` (one module per minigame) | seeded from challenge, returns outcome; game logic (`LayoutField`, `RotorAssembly`, cable puzzle, `FrequencyControl`) separate from drawing and tested |
 | `sound.js` | `src/sound.ts` | unchanged |
 | texts inside `core.js` | `src/texts.ts` | German formatting of events, errors, reports |
 
