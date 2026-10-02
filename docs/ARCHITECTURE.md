@@ -45,7 +45,23 @@ applyAction(state: GameState, playerId: PlayerId, action: Action): ActionResult
 endQuarter(state: GameState, opponents: OpponentStrategy[]): Promise<QuarterResult>
 playerView(state: GameState, playerId: PlayerId): PlayerView
 legalActions(state: GameState, playerId: PlayerId): Action[]   // used by AI and for tests
+actionOptions(state: GameState, playerId: PlayerId): ActionOption[]   // also in the view as `options`
 ```
+
+Modules of `packages/engine/src`:
+
+| Module | Content |
+|---|---|
+| `data.ts` | data tables and constants (1:1 from legacy) |
+| `rules.ts` | pure rule helpers (costs, values, grid, credit, capacity factor, allowed plant types) |
+| `actions.ts` | one handler per action type: rule check, price, effect; `validateAction`, `applyAction` |
+| `challenges.ts` | minigame challenge flow (open, auto-resolve, resolve) |
+| `legal.ts` | candidate actions → `legalActions` and `actionOptions` |
+| `world.ts` | historic and random world events |
+| `quarter.ts` | `endQuarter` as named steps (permits, rival turns, production, settlement, price, solvency, next quarter) |
+| `events.ts` | event recording, news feed, what a viewer may see |
+| `view.ts` | `playerView` (hidden information removed) and helpers on the view |
+| `opponents/` | `RuleBasedOpponent` (easy), `SmartOpponent` (normal/hard) |
 
 - `GameState` is a plain JSON-serializable object (like the legacy `G`), including the RNG state.
 - Functions work on a copy (or mutate a clone made by the caller); a rejected action leaves the state unchanged.
@@ -152,15 +168,16 @@ Vite + TypeScript, no framework. Port the legacy files with minimal changes:
 | Legacy | New | Change |
 |---|---|---|
 | `head.html` (CSS + markup), `fonts.css` | `index.html`, `src/styles.css` | split markup/CSS |
-| `ui.js` | `src/ui/*.ts` | render from `PlayerView` instead of `G`; action handlers call the API |
-| `scene.js` | `src/scene.ts` | read from view |
+| `ui.js` | `src/ui/*.ts` (one module per tab, dialogs, charts) + `src/main.ts` | render from `PlayerView` instead of `G`; action handlers call the API |
+| `scene.js` | `src/scene/*.ts` (sky, landscape, plots, objects, effects) | read from view; drawing functions get a `Frame` |
 | `mini.js` | `src/minigames.ts` | seeded from challenge, returns outcome |
 | `sound.js` | `src/sound.ts` | unchanged |
 | texts inside `core.js` | `src/texts.ts` | German formatting of events, errors, reports |
 
 Cost previews and helper numbers the UI shows (build cost with learning curve, credit limit, grid
 capacity, generation estimate) come either in the view or from pure helpers exported by the engine.
-The web app never decides whether an action is allowed – it may disable buttons for UX, the server decides.
+The web app never decides whether an action is allowed: its buttons come from `view.options`
+(which actions apply, their price and whether they are blocked), and the server validates every request.
 
 `localStorage` stores only `{ gameId, token }` (key `wattmogul-game`). UI state (tab, selected region,
 sound on/off) may also be kept there. "Neues Spiel" creates a new game and replaces the stored id.
@@ -184,7 +201,7 @@ interface OpponentStrategy {
   at the leader, preferably the human (`humanBias`). Difficulty = a parameter set (`SMART_PARAMS`).
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
 - `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds.
-  Reference (200 games, mixed rivals, seat 0 = legacy bot): easy ≈ 115 M€, normal ≈ 220 M€, hard ≈ 260 M€.
+  Reference (200 games, mixed rivals, seat 0 = legacy bot): easy ≈ 112 M€, normal ≈ 221 M€, hard ≈ 266 M€.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `RuleBasedOpponent` on timeout/error. Details are decided when step 2 starts.
 

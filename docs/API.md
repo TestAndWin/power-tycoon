@@ -66,6 +66,20 @@ Action types (TypeScript union exported by the engine):
 
 The confirmation step of `sellSite` is pure UI and stays in the client.
 
+### Action options in the view
+
+`view.options` lists every action that applies to the player's current state, so the client never has
+to re-implement rules to decide which buttons to show:
+
+```json
+{ "action": { "type": "connectGrid", "siteId": "nd4" }, "cost": 1200000, "error": "noGridCapacity" }
+```
+
+`error` is `null` if the action is allowed now, or a code that only blocks it for the moment
+(`insufficientFunds`, `noGridCapacity`, `creditLimit`, `contractLimit`, `trickLimit`). Actions that do not
+apply at all (e.g. `build` on a site without permit) are not listed. The client shows a button for every
+option and disables it while `error` is set; the server still validates every request.
+
 ## `POST /api/games/:id/end-quarter`
 
 ```json
