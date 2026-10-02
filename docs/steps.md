@@ -6,7 +6,7 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 
 - [x] Domain / host name for the Ingress: `powertycoon.testandwin.de` (DNS in Route 53, testandwin.net
       stays at Strato)
-- [ ] Should testandwin.net/power-tycoon link to or redirect to the new host once it is live? (phase 5)
+- [x] testandwin.net/power-tycoon gets a link to the new host (no redirect), once the game is live (phase 5)
 
 ## Phase 0 – Repo setup
 
