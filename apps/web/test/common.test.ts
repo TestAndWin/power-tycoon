@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGame, playerView, type GameState, type Site } from '@power-tycoon/engine';
 import { S } from '../src/state.js';
+import { vBank } from '../src/ui/bank.js';
 import { btn, disabledUnless, optionFor, siteStatus, todo } from '../src/ui/common.js';
 
 function game(setup: (g: GameState, site: (id: string) => Site) => void): void {
@@ -53,5 +54,21 @@ describe('buttons from the engine options', () => {
     expect(disabledUnless({ type: 'borrow', amount: 50e9 })).toBe('disabled');
     S.busy = true;
     expect(disabledUnless({ type: 'repay', amount: 5e6 })).toBe('disabled');
+  });
+});
+
+describe('bank', () => {
+  const repayLabels = () => [...vBank().matchAll(/data-act="repay"[^>]*>([^<]*)/g)].map((m) => m[1]!.trim());
+  it('offers fixed repayments only below the loan and shows the exact rest', () => {
+    game((g) => {
+      g.players[0]!.loan = 12e6;
+    });
+    expect(repayLabels()).toEqual(['5,0 Mio. € tilgen', 'Alles tilgen']);
+    expect(vBank()).toContain('Alles tilgen <small>12,0 Mio. €</small>');
+  });
+  it('keeps all buttons (disabled) without a loan', () => {
+    game(() => {});
+    expect(repayLabels()).toEqual(['5,0 Mio. € tilgen', '20,0 Mio. € tilgen', 'Alles tilgen']);
+    expect(vBank().match(/data-act="repay"[^>]*disabled/g)).toHaveLength(3);
   });
 });
