@@ -6,11 +6,11 @@ import { api, ApiError, loadStored, saveStored } from './api.js';
 import { money } from './format.js';
 import { playChallenge } from './minigames.js';
 import { closeModal, modalLocked, openModal, toast } from './modal.js';
-import { readCols, registerScenes, setHover } from './scene.js';
+import { readCols, registerScenes, setHover } from './scene/index.js';
 import { SND, toggleSound } from './sound.js';
 import { $, S, UI } from './state.js';
 import { errorText, newsTexts, REGION_TEXT, siteName, siteQuality } from './texts.js';
-import { redrawCharts, render, renderTop, showBuilt, showEnd, showReport, showStart } from './ui.js';
+import { redrawCharts, render, renderTop, showBuilt, showEnd, showReport, showStart } from './ui/index.js';
 
 function handleError(e: unknown): void {
   if (e instanceof ApiError) {

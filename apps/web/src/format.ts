@@ -44,5 +44,3 @@ export function quarterLabel(startYear: number, i: number): string {
   const y = startYear + Math.floor(i / 4);
   return QN[i % 4] + ' ' + String(y).slice(2);
 }
-
-export const clamp = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));

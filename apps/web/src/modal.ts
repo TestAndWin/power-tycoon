@@ -1,4 +1,4 @@
-import { registerScenes } from './scene.js';
+import { registerScenes } from './scene/index.js';
 import { countUp } from './sound.js';
 import { $ } from './state.js';
 

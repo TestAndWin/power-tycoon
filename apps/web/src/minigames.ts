@@ -3,6 +3,7 @@
  * challenge seed; the result (efficiency or success) is sent back to the server.
  */
 import {
+  clamp,
   createRng,
   gauss,
   pick,
@@ -13,7 +14,6 @@ import {
   type Random,
   type SiteView,
 } from '@power-tycoon/engine';
-import { clamp } from './format.js';
 import { closeModal, openModal } from './modal.js';
 import { SND } from './sound.js';
 import { $ } from './state.js';

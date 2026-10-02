@@ -122,6 +122,54 @@ export const ERROR_TEXT: Record<string, string> = {
 };
 export const errorText = (code: string): string => ERROR_TEXT[code] ?? 'Unbekannter Fehler (' + code + ').';
 
+/** Stage of a site as the UI shows it (see ui/common.ts `siteStatus`). */
+export type SiteStatusCode =
+  | 'free'
+  | 'leased'
+  | 'permitPending'
+  | 'rejected'
+  | 'assemblyFailed'
+  | 'ready'
+  | 'noGrid'
+  | 'fault'
+  | 'curtailed'
+  | 'operating';
+
+export function siteStatusText(code: SiteStatusCode, x: SiteView): string {
+  switch (code) {
+    case 'free':
+      return 'Frei';
+    case 'leased':
+      return 'Gepachtet';
+    case 'permitPending':
+      return x.own ? 'Genehmigung · ' + Math.max(1, x.own.permitLeft) + ' Q' : 'Genehmigung läuft';
+    case 'rejected':
+      return 'Abgelehnt';
+    case 'assemblyFailed':
+      return 'Montage abgebrochen';
+    case 'ready':
+      return 'Baureif';
+    case 'noGrid':
+      return 'Netzanschluss fehlt';
+    case 'fault':
+      return 'Störung!';
+    case 'curtailed':
+      return 'Auflage −50 %';
+    case 'operating':
+      return 'In Betrieb';
+  }
+}
+
+/** What is to do for an own site in this stage ("Handlungsbedarf"). */
+export const TODO_TEXT: Partial<Record<SiteStatusCode, string>> = {
+  fault: 'Störung beheben',
+  leased: 'Genehmigung beantragen',
+  rejected: 'Genehmigung abgelehnt',
+  ready: 'bauen',
+  assemblyFailed: 'Montage wiederholen',
+  noGrid: 'ans Netz anschließen',
+};
+
 export const siteName = (x: Pick<SiteView, 'r' | 'i'>): string =>
   REGIONS[x.r].code + '-' + String(x.i + 1).padStart(2, '0');
 
@@ -158,7 +206,7 @@ interface Ctx {
   view: PlayerView;
 }
 const nameOf = (c: Ctx, pid: number | null): string => esc(c.view.players[pid ?? -1]?.name ?? '?');
-const siteOf = (c: Ctx, id: string): SiteView => c.view.sites.find((s) => s.id === id)!;
+const siteOf = (c: Ctx, id: string): SiteView | undefined => c.view.sites.find((s) => s.id === id);
 const sn = (c: Ctx, id: string): string => {
   const x = siteOf(c, id);
   return x ? siteName(x) : id;

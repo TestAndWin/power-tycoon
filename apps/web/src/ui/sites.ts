@@ -1,0 +1,192 @@
+/** Sites tab: region selector, landscape with clickable plots and the detail panel of the selected site. */
+import {
+  isStore,
+  operating,
+  PLANTS,
+  REGION_KEYS,
+  REGIONS,
+  SITES_PER_REGION,
+  TRICK_KEYS,
+  type ActionOption,
+  type PlantType,
+  type RegionKey,
+} from '@power-tycoon/engine';
+import { esc, money, mwh, QN } from '../format.js';
+import { playerColor, playerMark } from '../players.js';
+import { geo, quad } from '../scene/index.js';
+import { UI } from '../state.js';
+import { PLANT_NAME, REGION_TEXT, siteName, siteQuality } from '../texts.js';
+import { btn, disabledUnless, shortName, siteOptions, siteStatus, V } from './common.js';
+
+function gridBar(r: RegionKey): string {
+  const g = V().grid[r],
+    cap = g.capacity;
+  const seg = V()
+    .players.map((p) => ({ c: playerColor(p.id), mw: g.usedBy[p.id] ?? 0 }))
+    .filter((s) => s.mw > 0);
+  return `<div class="gridwrap"><div class="row" style="justify-content:space-between"><span class="label">Netzkapazität</span><span class="mono" style="font-size:12px">${g.used} + ${g.reserved} res. / ${cap} MW</span></div>
+    <div class="gridbar" role="img" aria-label="${g.used} MW belegt, ${g.reserved} MW reserviert, ${cap} MW gesamt">${seg.map((s) => `<i style="width:${(s.mw / cap) * 100}%;background:${s.c}"></i>`).join('')}${g.reserved ? `<i class="res" style="width:${(g.reserved / cap) * 100}%"></i>` : ''}</div>
+    <span class="muted" style="font-size:12px">Frei für dich: ${g.free} MW${g.myReserved ? ` (davon ${g.myReserved} MW reserviert)` : ''}</span></div>`;
+}
+export function ownBar(r: RegionKey): string {
+  const Sx = V().sites.filter((x) => x.r === r);
+  return `<span class="obar" aria-hidden="true">${V()
+    .players.map((p) => {
+      const n = Sx.filter((x) => x.owner === p.id).length;
+      return n ? `<i style="width:${(n / Sx.length) * 100}%;background:${playerColor(p.id)}"></i>` : '';
+    })
+    .join('')}</span>`;
+}
+function ownerLegend(r: RegionKey): string {
+  const Sx = V().sites.filter((x) => x.r === r),
+    free = Sx.filter((x) => x.owner < 0).length;
+  return `<div class="olegend" aria-label="Flächen je Konzern">${V()
+    .players.filter((p) => !p.out)
+    .map((p) => {
+      const n = Sx.filter((x) => x.owner === p.id).length;
+      return `<span class="ochip${n ? '' : ' zero'}${p.human ? ' me' : ''}" style="--oc:${playerColor(p.id)}"><i class="mb">${playerMark(p.id)}</i>${esc(p.human ? 'Du · ' + p.name : p.name)}<b>${n}</b></span>`;
+    })
+    .join('')}<span class="ochip free"><i class="mb"></i>Frei<b>${free}</b></span></div>`;
+}
+export function vSites(): string {
+  const v = V(),
+    r = UI.region,
+    R = REGIONS[r];
+  const pills = REGION_KEYS.map(
+    (k) =>
+      `<button class="rpill" aria-pressed="${k === r}" data-act="region" data-v="${k}">${REGION_TEXT[k].name}<span class="n">${v.sites.filter((x) => x.r === k && x.owner === v.playerId).length}/${SITES_PER_REGION}</span>${ownBar(k)}</button>`,
+  ).join('');
+  return `<div class="regions">${pills}</div>
+  <div class="field-layout">
+    <section class="panel">
+      <div class="phead"><h2>${REGION_TEXT[r].name}</h2><span class="muted">${R.types.map((t) => PLANT_NAME[t]).join(' · ')}</span></div>
+      <p class="muted" style="margin:0 0 12px">${REGION_TEXT[r].desc}</p>
+      <div class="region-bar">
+        ${R.wind ? `<div class="stat"><span class="label">Wind</span><span class="v">${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</span></div>` : ''}
+        ${R.sun ? `<div class="stat"><span class="label">Sonne</span><span class="v">${R.sun[0]}–${R.sun[1]} kWh/kWp</span></div>` : ''}
+        ${gridBar(r)}
+        <button class="btn" data-act="reserve" data-v="${r}" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)} · ${v.constants.reserveQuarters} Q</small></button>
+      </div>
+      <div class="scene"><canvas data-scene="${r}" aria-hidden="true"></canvas><div class="hits">${hits(r)}</div></div>
+      ${ownerLegend(r)}
+      <p class="muted" style="font-size:12px;margin:6px 0 0">Tipp auf eine Parzelle. Rahmen, Fahne und Etikett in Konzernfarbe zeigen, wem die Fläche gehört; ★ markiert deine eigenen.</p>
+    </section>
+    <aside class="panel" id="detail">${detail()}</aside>
+  </div>`;
+}
+function hits(r: RegionKey): string {
+  const g = geo(100, 100),
+    v = V();
+  return v.sites
+    .filter((x) => x.r === r)
+    .map((x) => {
+      const qd = quad(g, x.i),
+        l = g.X(qd.u0, qd.cy),
+        w = g.X(qd.u1, qd.cy) - l,
+        s = siteStatus(x),
+        own = x.owner >= 0;
+      const o = own ? v.players[x.owner]! : null,
+        val = !own ? (x.surveyed ? siteQuality(x) : money(x.lease, true)) : o!.human ? s.t : esc(shortName(o!));
+      return `<button class="hit ${UI.sel === x.id ? 'sel' : ''}" style="left:${l}%;top:${qd.y0}%;width:${w}%;height:${qd.y1 - qd.y0}%" data-act="sel" data-v="${x.id}" aria-label="${siteName(x)}: ${own ? (o!.human ? 'deine Fläche' : 'gehört ' + esc(o!.name)) + ', ' + s.t : 'frei, ' + s.t}">
+      <span class="stag${own ? ' own' : ''}${x.owner === v.playerId ? ' me' : ''}"${own ? ` style="--oc:${playerColor(x.owner)}"` : ''}>${own ? `<i class="mb">${playerMark(x.owner)}</i>` : ''}${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}<span class="sval">${val}</span></span></button>`;
+    })
+    .join('');
+}
+/** Facts and actions of the selected site. The actions are exactly the engine's options for it. */
+function detail(): string {
+  const v = V();
+  const x = v.sites.find((s) => s.id === UI.sel);
+  if (!x)
+    return `<h3>Standort wählen</h3><p class="muted">Tipp auf eine Fläche, um Details zu sehen.</p>
+    <dl class="facts"><dt>1. Pachten</dt><dd>Fläche sichern</dd><dt>2. Genehmigung</dt><dd>1–5 Quartale</dd><dt>3. Bauen</dt><dd>Standortsuche & Montage</dd><dt>4. Netz</dt><dd>Anschluss-Puzzle</dd></dl>`;
+  const s = siteStatus(x),
+    own = x.owner >= 0,
+    mine = x.owner === v.playerId;
+  const o = own ? v.players[x.owner]! : null;
+  const band = own
+    ? `<div class="oband" style="--oc:${playerColor(x.owner)}"><i class="mb">${playerMark(x.owner)}</i><span><span class="label">${mine ? 'Deine Fläche' : 'Gepachtet von'}</span><b>${esc(o!.name)}</b></span></div>`
+    : `<div class="oband free"><i class="mb"></i><span><span class="label">Freie Fläche</span><b>Noch nicht verpachtet</b></span></div>`;
+  let f = `<dt>Region</dt><dd>${REGION_TEXT[x.r].name}</dd><dt>Pacht</dt><dd>${money(x.lease)}</dd>`;
+  if (x.known) {
+    if (x.wind != null) f += `<dt>Windgeschwindigkeit</dt><dd>${x.wind.toLocaleString('de-DE')} m/s</dd>`;
+    if (x.sun != null) f += `<dt>Globalstrahlung</dt><dd>${x.sun} kWh/kWp</dd>`;
+    if (x.r === 'al') f += `<dt>Gefälle für Wasserkraft</dt><dd>${x.hydro ? 'ja' : 'nein'}</dd>`;
+  } else f += `<dt>Ertrag</dt><dd>unbekannt</dd>`;
+  if (mine && x.type && x.own) {
+    const P = PLANTS[x.type];
+    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}</dd><dt>Leistung</dt><dd>${P.mw} MW${P.mwh ? ' / ' + P.mwh + ' MWh' : ''}</dd>`;
+    if (x.built) f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.own.eff * 100)} %</dd>`;
+    if (operating(x))
+      f += isStore(x.type)
+        ? `<dt>Arbitrage/Quartal</dt><dd>≈ ${money(x.own.storeRevenue, true)}</dd>`
+        : `<dt>Erzeugung ${QN[v.q]}</dt><dd>≈ ${mwh(x.own.genEstimate)}</dd>`;
+    f += `<dt>Wert</dt><dd>${money(x.own.value, true)}</dd>`;
+  }
+  const regionTypes = REGIONS[x.r].types;
+  const permits: { t: PlantType; opt: ActionOption }[] = [];
+  const a: string[] = [];
+  for (const opt of siteOptions(x.id)) {
+    const act = opt.action;
+    switch (act.type) {
+      case 'survey':
+        a.push(btn('survey', x.id, 'Ertragsgutachten', opt));
+        break;
+      case 'lease':
+        a.push(btn('lease', x.id, 'Fläche pachten', opt, { cls: 'primary' }));
+        break;
+      case 'applyPermit':
+        permits.push({ t: act.plantType, opt });
+        break;
+      case 'changePlantType':
+        a.push(btn('retype', x.id, 'Anderen Anlagentyp wählen', opt));
+        break;
+      case 'build':
+        a.push(
+          btn('build', x.id, x.fail ? 'Montage wiederholen' : 'Bauen: ' + PLANT_NAME[x.type!], opt, { cls: 'primary' }),
+        );
+        break;
+      case 'connectGrid':
+        a.push(btn('connect', x.id, 'Ans Netz anschließen', opt, { cls: 'primary' }));
+        if (opt.error === 'noGridCapacity')
+          a.push(
+            `<p class="muted" style="font-size:12px;margin:0">Nicht genug freie Netzkapazität (${PLANTS[x.type!].mw} MW nötig). Warte auf Netzausbau oder reserviere rechtzeitig.</p>`,
+          );
+        break;
+      case 'repairSelf':
+        a.push(btn('fixSelf', x.id, 'Netz selbst stabilisieren', opt, { cls: 'primary' }));
+        break;
+      case 'repairService':
+        a.push(btn('fixPro', x.id, 'Servicetrupp (sicher)', opt));
+        break;
+      case 'sellSite':
+        a.push(
+          btn('sellSite', x.id, 'Projekt verkaufen', opt, { cls: 'danger', confirm: true, price: -x.own!.sellValue }),
+        );
+        break;
+      default:
+        break;
+    }
+  }
+  // permit options first, in the region's order of plant types
+  permits.sort((p, q) => regionTypes.indexOf(p.t) - regionTypes.indexOf(q.t));
+  const permitButtons = permits.map(({ t, opt }) =>
+    x.type
+      ? btn('permit', x.id + '|' + t, 'Erneut beantragen', opt, { cls: 'primary' })
+      : btn('permit', x.id + '|' + t, 'Genehmigung: ' + PLANT_NAME[t], opt, {
+          cls: t === regionTypes[0] ? 'primary' : '',
+        }),
+  );
+  if (permits.length && !x.type)
+    permitButtons.push(
+      `<p class="muted" style="font-size:12px;margin:0">Bau ab ≈ ${permits.map(({ t }) => PLANT_NAME[t] + ' ' + money(v.costs[t].build, true)).join(', ')}</p>`,
+    );
+  a.unshift(...permitButtons);
+  if (own && !mine) {
+    const lt = TRICK_KEYS.find((k) => siteOptions(x.id).some((o) => o.action.type === 'lobby' && o.action.trick === k));
+    if (lt)
+      a.push(
+        `<button class="btn" data-act="trickGo" data-v="${x.id}|${lt}"><span>Lobby-Aktion planen …</span></button>`,
+      );
+  }
+  return `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl><div class="actions">${a.join('')}</div>`;
+}
