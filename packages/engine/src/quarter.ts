@@ -1,13 +1,11 @@
 /** Quarter end: port of legacy `endQuarter()` / `randomEvent()` with the same order of steps. */
 import { applyActionInPlace } from './actions.js';
-import { AI_DEF, CAPTURE, CO2, HIST, INTEREST, PLANTS, PRICE_SEASON, REGION_KEYS } from './data.js';
-import { legalActions } from './legal.js';
-import { clamp, createRng, gauss, nextUint, pick, randomOf } from './rng.js';
+import { AI_DEF, CAPTURE, CO2, INTEREST, PLANTS, PRICE_SEASON } from './data.js';
+import { concerns, emit, eventsForViewer } from './events.js';
+import { clamp, createRng, gauss, nextUint, randomOf } from './rng.js';
 import {
   clone,
   creditLimit,
-  emit,
-  eventsForViewer,
   genEstimate,
   genOffers,
   isStore,
@@ -23,6 +21,7 @@ import type {
   GameEvent,
   GameState,
   OpponentStrategy,
+  Player,
   PlayerId,
   QuarterReport,
   QuarterResult,
@@ -31,6 +30,7 @@ import type {
   RivalProfile,
 } from './types.js';
 import { playerView } from './view.js';
+import { applyWorldEvents } from './world.js';
 
 /** Thrown by `endQuarter` when the quarter cannot be ended. */
 export class EngineError extends Error {
@@ -62,7 +62,10 @@ export async function runTurnInPlace(g: GameState, pid: PlayerId, strategy: Oppo
   const random = createRng(nextUint(g));
   let actions: unknown;
   try {
-    actions = await strategy.decide(playerView(g, pid), legalActions(g, pid), {
+    const view = playerView(g, pid);
+    // the allowed options are exactly the legal actions
+    const legal = view.options.filter((o) => o.error === null).map((o) => o.action);
+    actions = await strategy.decide(view, legal, {
       playerId: pid,
       profile: rivalProfile(pid),
       random,
@@ -90,161 +93,9 @@ export async function playTurn(
   return { state: g, events };
 }
 
-function randomEvent(g: GameState, out: GameEvent[]): void {
+/** Pending permits count down; decided ones are approved or rejected (a successful lawsuit forces a rejection). */
+function decidePermits(g: GameState, out: GameEvent[]): void {
   const r = randomOf(g);
-  const fx = g.fx!;
-  const winter = g.q === 0 || g.q === 3;
-  const E: [number, () => GameEvent][] = [
-    [
-      winter ? 4 : 0,
-      () => {
-        fx.wind = 0.6;
-        fx.solar = 0.5;
-        fx.price = 1.4;
-        fx.spread = 40;
-        return { type: 'worldEvent', key: 'darkDoldrums' };
-      },
-    ],
-    [
-      winter ? 0 : 3,
-      () => {
-        fx.solar = 1.15;
-        fx.price = 0.85;
-        return { type: 'worldEvent', key: 'recordSummer' };
-      },
-    ],
-    [
-      3,
-      () => {
-        fx.wind = 0.75;
-        return { type: 'worldEvent', key: 'lull' };
-      },
-    ],
-    [
-      2,
-      () => {
-        fx.wind = 1.15;
-        for (const x of g.sites) {
-          if (operating(x) && x.type === 'off' && r() < 0.3) {
-            x.fault = true;
-            out.push({ type: 'plantFault', playerId: x.owner, siteId: x.id, cause: 'storm' });
-          }
-        }
-        return { type: 'worldEvent', key: 'stormSeries' };
-      },
-    ],
-    [
-      2,
-      () => {
-        g.base *= 1.25;
-        g.target *= 1.12;
-        fx.price = 1.2;
-        return { type: 'worldEvent', key: 'gasShock' };
-      },
-    ],
-    [
-      3,
-      () => {
-        const region = pick(r, REGION_KEYS);
-        g.grid[region] += 150;
-        return { type: 'worldEvent', key: 'gridExpansion', region };
-      },
-    ],
-    [
-      2,
-      () => {
-        fx.hydro = 0.6;
-        return { type: 'worldEvent', key: 'drought' };
-      },
-    ],
-    [
-      2,
-      () => {
-        g.target *= 0.9;
-        g.base *= 0.93;
-        return { type: 'worldEvent', key: 'industryDip' };
-      },
-    ],
-  ];
-  const tot = E.reduce((s, e) => s + e[0], 0);
-  let k = r() * tot;
-  for (const [w, f] of E) {
-    k -= w;
-    if (w && k <= 0) {
-      emit(g, out, f());
-      return;
-    }
-  }
-}
-
-function applyHistoric(g: GameState, key: (typeof HIST)[number]['key']): void {
-  switch (key) {
-    case 'ets2':
-      g.target *= 1.08;
-      break;
-    case 'grid2030':
-      for (const r of REGION_KEYS) g.grid[r] += 150;
-      break;
-    case 'hydrogen':
-      g.target *= 1.15;
-      g.ppaBoost = 1.6;
-      break;
-    case 'coalExit':
-      g.target *= 1.1;
-      g.spreadAdd += 20;
-      break;
-    case 'eu2040':
-      g.target *= 1.06;
-      break;
-  }
-}
-
-/** Is this event of interest for player `pid`'s quarterly report? */
-function concerns(e: GameEvent, pid: PlayerId): boolean {
-  switch (e.type) {
-    case 'historicEvent':
-    case 'worldEvent':
-    case 'playerBankrupt':
-      return true;
-    case 'trickSucceeded':
-    case 'trickFailed':
-      return e.targetId === pid;
-    default:
-      return 'playerId' in e && e.playerId === pid;
-  }
-}
-
-/**
- * Ends the quarter: world events, permits, reservations, rival turns, generation and revenue,
- * price, solvency, next quarter. `opponents[i]` plays rival `i + 1`.
- * Throws `EngineError` if a challenge is open or the game is over.
- */
-export async function endQuarter(
-  state: GameState,
-  opponents: (OpponentStrategy | undefined)[],
-): Promise<QuarterResult> {
-  const blocked = canEndQuarter(state);
-  if (blocked) throw new EngineError(blocked);
-  const g = clone(state);
-  const r = randomOf(g);
-  const human = 0;
-  const P = g.players[human]!;
-  const events: GameEvent[] = [];
-  const startCash = P.cash;
-  const reportYear = g.year;
-  const reportQ = g.q;
-
-  g.fx = { wind: 1, solar: 1, hydro: 1, price: 1, spread: 0 };
-  const h = HIST.find((e) => e.year === g.year && e.q === g.q);
-  if (h) {
-    applyHistoric(g, h.key);
-    emit(g, events, { type: 'historicEvent', key: h.key });
-  }
-  if (r() < 0.32) randomEvent(g, events);
-  updateSpread(g);
-  const price = g.price * g.fx.price;
-
-  // permits
   for (const x of g.sites) {
     if (x.permit !== 'pending' || !x.type) continue;
     x.permitLeft--;
@@ -252,31 +103,51 @@ export async function endQuarter(
     const rej = x.killed || r() < PLANTS[x.type].reject;
     x.killed = false;
     x.permit = rej ? 'rejected' : 'approved';
-    events.push({ type: 'permitDecided', playerId: x.owner, siteId: x.id, plantType: x.type, approved: !rej });
+    out.push({ type: 'permitDecided', playerId: x.owner, siteId: x.id, plantType: x.type, approved: !rej });
   }
-  // reservations
+}
+
+function expireReservations(g: GameState): void {
   for (const o of g.res) o.left--;
   g.res = g.res.filter((o) => o.left > 0);
+}
 
-  // rival turns
-  const rivalActions: RivalActionLog[] = [];
-  const rivalEvents: GameEvent[] = [];
+/** Every active rival plays its turn. Returns all their events and the log the human may see. */
+async function rivalTurns(
+  g: GameState,
+  opponents: (OpponentStrategy | undefined)[],
+  viewer: PlayerId,
+): Promise<{ events: GameEvent[]; log: RivalActionLog[] }> {
+  const events: GameEvent[] = [];
+  const log: RivalActionLog[] = [];
   for (const p of g.players) {
     if (p.human || p.out) continue;
     const strategy = opponents[p.id - 1];
     if (!strategy) continue;
     const ev = await runTurnInPlace(g, p.id, strategy);
-    rivalEvents.push(...ev);
+    events.push(...ev);
     // the log is attributed to the rival, so tricks only appear if the actor is known anyway
-    const visible = eventsForViewer(ev, human).filter((e) => !(e.type === 'trickSucceeded' && e.actorId === null));
-    rivalActions.push({ playerId: p.id, events: visible });
+    const visible = eventsForViewer(ev, viewer).filter((e) => !(e.type === 'trickSucceeded' && e.actorId === null));
+    log.push({ playerId: p.id, events: visible });
   }
+  return { events, log };
+}
 
-  // generation
-  const st = new Map<PlayerId, { gen: number; val: number; store: number }>();
+interface Output {
+  /** Generated MWh. */
+  gen: number;
+  /** Market value of the generation (spot price × capture rate). */
+  val: number;
+  /** Storage arbitrage revenue. */
+  store: number;
+}
+
+/** Operating plants age, may fail or recover, and produce. Returns the output per player. */
+function produce(g: GameState, price: number, out: GameEvent[]): Map<PlayerId, Output> {
+  const r = randomOf(g);
+  const st = new Map<PlayerId, Output>();
   for (const p of g.players) {
     p.genLast = 0;
-    p.revLast = 0;
     st.set(p.id, { gen: 0, val: 0, store: 0 });
   }
   for (const x of g.sites) {
@@ -285,13 +156,13 @@ export async function endQuarter(
     if (x.fault) {
       if (r() < 0.2) {
         x.fault = false;
-        events.push({ type: 'faultCleared', playerId: x.owner, siteId: x.id });
+        out.push({ type: 'faultCleared', playerId: x.owner, siteId: x.id });
       }
       continue;
     }
     if (r() < 0.025) {
       x.fault = true;
-      events.push({ type: 'plantFault', playerId: x.owner, siteId: x.id, cause: 'technical' });
+      out.push({ type: 'plantFault', playerId: x.owner, siteId: x.id, cause: 'technical' });
       continue;
     }
     const s = st.get(x.owner)!;
@@ -304,75 +175,77 @@ export async function endQuarter(
     }
     if (x.curtail > 0) x.curtail--;
   }
-  // revenue and costs (contracts per player)
+  return st;
+}
+
+/** Books revenue (contracts first, the rest at the spot market) and running costs. Returns the report lines. */
+function settle(g: GameState, p: Player, s: Output, price: number, out: GameEvent[]): ReportLine[] {
+  p.genLast = s.gen;
+  p.co2 += s.gen * CO2;
   const lines: ReportLine[] = [];
-  let reportGen = 0;
-  for (const p of g.players) {
-    if (p.out) continue;
-    const s = st.get(p.id)!;
-    p.genLast = s.gen;
-    p.co2 += s.gen * CO2;
-    const L: ReportLine[] = [];
-    const avgCap = s.gen > 0 ? s.val / s.gen : price;
-    let left = s.gen;
-    let ppa = 0;
-    for (const c of p.contracts) {
-      const d = Math.min(left, c.vol);
-      const short = c.vol - d;
-      left -= d;
-      const v = d * c.price + short * (c.price - price * 1.15);
-      ppa += v;
-      L.push({ kind: 'ppa', amount: Math.round(v), buyer: c.buyer, shortfall: short });
-      c.left--;
-    }
-    const spot = left * avgCap;
-    L.push({ kind: 'spot', amount: Math.round(spot), mwh: left });
-    L.push({ kind: 'storage', amount: Math.round(s.store) });
-    const rev = spot + s.store + ppa;
-    for (const c of p.contracts)
-      if (c.left <= 0) events.push({ type: 'contractExpired', playerId: p.id, buyer: c.buyer });
-    p.contracts = p.contracts.filter((c) => c.left > 0);
-    p.cash += Math.round(rev);
-    p.revLast = rev;
-    let op = 0;
-    let ls = 0;
-    for (const x of g.sites) {
-      if (x.owner !== p.id) continue;
-      ls += x.lease * 0.02;
-      if (x.built && x.type) op += PLANTS[x.type].opex;
-    }
-    const interest = p.loan * INTEREST;
-    p.cash -= Math.round(op + ls + interest);
-    L.push({ kind: 'opex', amount: -Math.round(op) });
-    L.push({ kind: 'lease', amount: -Math.round(ls) });
-    L.push({ kind: 'interest', amount: -Math.round(interest) });
-    if (p.id === human) {
-      reportGen = s.gen;
-      lines.push(...L.filter((l) => l.amount !== 0));
-    }
+  const avgCap = s.gen > 0 ? s.val / s.gen : price;
+  let left = s.gen;
+  let ppa = 0;
+  for (const c of p.contracts) {
+    const d = Math.min(left, c.vol);
+    const short = c.vol - d;
+    left -= d;
+    const v = d * c.price + short * (c.price - price * 1.15);
+    ppa += v;
+    lines.push({ kind: 'ppa', amount: Math.round(v), buyer: c.buyer, shortfall: short });
+    c.left--;
   }
-  // price
+  const spot = left * avgCap;
+  lines.push({ kind: 'spot', amount: Math.round(spot), mwh: left });
+  lines.push({ kind: 'storage', amount: Math.round(s.store) });
+  for (const c of p.contracts) if (c.left <= 0) out.push({ type: 'contractExpired', playerId: p.id, buyer: c.buyer });
+  p.contracts = p.contracts.filter((c) => c.left > 0);
+  p.cash += Math.round(spot + s.store + ppa);
+  let op = 0;
+  let ls = 0;
+  for (const x of g.sites) {
+    if (x.owner !== p.id) continue;
+    ls += x.lease * 0.02;
+    if (x.built && x.type) op += PLANTS[x.type].opex;
+  }
+  const interest = p.loan * INTEREST;
+  p.cash -= Math.round(op + ls + interest);
+  lines.push({ kind: 'opex', amount: -Math.round(op) });
+  lines.push({ kind: 'lease', amount: -Math.round(ls) });
+  lines.push({ kind: 'interest', amount: -Math.round(interest) });
+  return lines;
+}
+
+/** The base price drifts towards the target with some noise. */
+function movePrice(g: GameState): void {
+  const r = randomOf(g);
   g.target *= 1.0025;
   g.base += (g.target - g.base) * 0.15 + gauss(r) * g.base * 0.06;
   g.base = clamp(g.base, 35, 260);
-  // solvency
+}
+
+/** Negative cash is covered by an emergency loan; without credit the human loses and a rival is out. */
+function checkSolvency(g: GameState, out: GameEvent[]): void {
   for (const p of g.players) {
     if (p.out || p.cash >= 0) continue;
     const need = Math.ceil(-p.cash / 1e6) * 1e6;
     if (p.loan + need <= creditLimit(g, p)) {
       p.loan += need;
       p.cash += need;
-      events.push({ type: 'loanTaken', playerId: p.id, amount: need, emergency: true });
+      out.push({ type: 'loanTaken', playerId: p.id, amount: need, emergency: true });
     } else if (p.human) g.over = 'bankrupt';
     else {
       p.out = true;
       p.contracts = [];
       for (const x of g.sites) if (x.owner === p.id) resetSite(x);
       g.res = g.res.filter((o) => o.pid !== p.id);
-      emit(g, events, { type: 'playerBankrupt', playerId: p.id });
+      emit(g, out, { type: 'playerBankrupt', playerId: p.id });
     }
   }
-  // next quarter
+}
+
+/** Moves to the next quarter: new price, offers and history; checks the end of the game. */
+function nextQuarter(g: GameState): void {
   g.q++;
   g.turn++;
   for (const p of g.players) p.trickUsed = 0;
@@ -389,22 +262,57 @@ export async function endQuarter(
   for (const p of g.players) p.hist.push(p.out ? null : worth(g, p));
   if (!g.over && g.year >= g.endYear) g.over = 'time';
   if (!g.over && g.players.every((p) => p.human || p.out)) g.over = 'monopoly';
+}
 
-  const reportEvents = eventsForViewer(
-    [...events, ...rivalEvents.filter((e) => e.type === 'trickSucceeded' || e.type === 'trickFailed')].filter((e) =>
-      concerns(e, human),
-    ),
-    human,
-  );
+/**
+ * Ends the quarter: world events, permits, reservations, rival turns, generation and revenue,
+ * price, solvency, next quarter. `opponents[i]` plays rival `i + 1`.
+ * Throws `EngineError` if a challenge is open or the game is over.
+ */
+export async function endQuarter(
+  state: GameState,
+  opponents: (OpponentStrategy | undefined)[],
+): Promise<QuarterResult> {
+  const blocked = canEndQuarter(state);
+  if (blocked) throw new EngineError(blocked);
+  const g = clone(state);
+  const human = 0;
+  const P = g.players[human]!;
+  const events: GameEvent[] = [];
+  const startCash = P.cash;
+  const reportYear = g.year;
+  const reportQ = g.q;
+
+  applyWorldEvents(g, events);
+  updateSpread(g);
+  const price = g.price * g.fx!.price;
+  decidePermits(g, events);
+  expireReservations(g);
+  const rivals = await rivalTurns(g, opponents, human);
+  const output = produce(g, price, events);
+  let lines: ReportLine[] = [];
+  for (const p of g.players) {
+    if (p.out) continue;
+    const L = settle(g, p, output.get(p.id)!, price, events);
+    if (p.id === human) lines = L.filter((l) => l.amount !== 0);
+  }
+  movePrice(g);
+  checkSolvency(g, events);
+  nextQuarter(g);
+
+  const tricks = rivals.events.filter((e) => e.type === 'trickSucceeded' || e.type === 'trickFailed');
   const report: QuarterReport = {
     year: reportYear,
     q: reportQ,
     lines,
-    events: reportEvents,
-    gen: reportGen,
+    events: eventsForViewer(
+      [...events, ...tricks].filter((e) => concerns(e, human)),
+      human,
+    ),
+    gen: P.genLast,
     startCash,
     endCash: P.cash,
     price,
   };
-  return { state: g, report, rivalActions };
+  return { state: g, report, rivalActions: rivals.log };
 }

@@ -5,6 +5,7 @@ import {
   REGION_KEYS,
   REGIONS,
   TRICK_KEYS,
+  trickTargetIds,
   type Difficulty,
   type PlayerSummary,
   type PlayerView,
@@ -322,7 +323,7 @@ function detail(): string {
     }
     a.push(btn('sellSite', x.id, 'Projekt verkaufen', -x.own.sellValue, { cls: 'danger', confirm: true }));
   } else {
-    const lt = TRICK_KEYS.filter((k) => v.tricks[k].targets.includes(x.id));
+    const lt = TRICK_KEYS.filter((k) => trickTargetIds(v, k).includes(x.id));
     if (lt.length)
       a.push(
         `<button class="btn" data-act="trickGo" data-v="${x.id}|${lt[0]}"><span>Lobby-Aktion planen …</span></button>`,
@@ -386,7 +387,9 @@ function vBank(): string {
 function vLobby(): string {
   const v = V(),
     T = v.tricks[UI.trick],
-    ts = T.targets.map((id) => v.sites.find((s) => s.id === id)!).filter(Boolean);
+    ts = trickTargetIds(v, UI.trick)
+      .map((id) => v.sites.find((s) => s.id === id)!)
+      .filter(Boolean);
   if (UI.target && !ts.find((x) => x.id === UI.target)) UI.target = '';
   const opts = ts
     .map(

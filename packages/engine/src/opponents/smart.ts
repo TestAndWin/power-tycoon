@@ -6,8 +6,10 @@
  * It only sees its PlayerView and only acts through actions (same rules as the player).
  * Difficulty is a set of parameters, see `SMART_PARAMS`.
  */
-import { CAPTURE, HOURS, PLANTS, PRICE_SEASON, REGIONS, SEASON, TRICKS } from '../data.js';
+import { AUTO_MINIGAME, CAPTURE, HOURS, PLANTS, PRICE_SEASON, REGIONS, SEASON, TRICKS } from '../data.js';
 import type { Random } from '../rng.js';
+import { capFactor as siteCapFactor, plantTypesFor, siteValue } from '../rules.js';
+import { trickTargetIds } from '../view.js';
 import type {
   Action,
   OpponentContext,
@@ -80,27 +82,14 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
   },
 };
 
-/** Success probabilities of the automatic minigames for rivals (see AUTO_MINIGAME). */
-const P_ROTOR = 0.8;
-const P_CABLE = 0.85;
-
 type Cls = 'wind' | 'solar' | 'hydro';
 
 /** Capacity factor from what the viewer knows; unknown sites use the regional average. */
 function capFactor(x: SiteView, t: PlantType): number {
   const R = REGIONS[x.r];
-  if (t === 'wind' || t === 'off') {
-    const w = x.wind ?? (R.wind ? (R.wind[0] + R.wind[1]) / 2 : 0);
-    return Math.max(0, 0.08 + (w - 4.5) * 0.075);
-  }
-  if (t === 'solar') return (x.sun ?? (R.sun ? (R.sun[0] + R.sun[1]) / 2 : 0)) / 8760;
-  if (t === 'hydro') return 0.5;
-  return 0;
-}
-
-/** Plant types that are possible on a site (hydro/pump need a known slope). */
-function typesFor(x: SiteView): PlantType[] {
-  return REGIONS[x.r].types.filter((t) => !((t === 'hydro' || t === 'pump') && x.hydro !== true));
+  const wind = x.wind ?? (R.wind ? (R.wind[0] + R.wind[1]) / 2 : 0);
+  const sun = x.sun ?? (R.sun ? (R.sun[0] + R.sun[1]) / 2 : 0);
+  return siteCapFactor({ type: t, wind, sun });
 }
 
 export class SmartOpponent implements OpponentStrategy {
@@ -159,11 +148,9 @@ class Planner {
     return PLANTS[t].opex + x.lease * 0.02;
   }
 
-  /** Book value at the end of the game (see siteValue in rules.ts). */
+  /** Book value of a finished plant at the end of the game. */
   private bookValue(x: SiteView, t: PlantType, invested: number, age: number, grid: boolean): number {
-    return (
-      x.lease * 0.6 + PLANTS[t].permit + invested * Math.max(0.35, 1 - age / 100) + (grid ? PLANTS[t].grid * 0.8 : 0)
-    );
+    return siteValue({ lease: x.lease, type: t, permit: 'approved', built: true, invested, age, grid });
   }
 
   /**
@@ -183,11 +170,11 @@ class Planner {
     }
     if (stage !== 'built') {
       const wind = P.cls === 'wind';
-      capex += c.build + (wind ? (1 - P_ROTOR) * c.retry : 0);
-      wait += wind ? 1 - P_ROTOR : 0;
+      capex += c.build + (wind ? (1 - AUTO_MINIGAME.rotor) * c.retry : 0);
+      wait += wind ? 1 - AUTO_MINIGAME.rotor : 0;
     }
-    capex += P.grid / P_CABLE;
-    wait += (1 - P_CABLE) / P_CABLE;
+    capex += P.grid / AUTO_MINIGAME.cable;
+    wait += (1 - AUTO_MINIGAME.cable) / AUTO_MINIGAME.cable;
     const ops = Math.max(0, left - wait);
     const margin = this.quarterRevenue(x, t) * 0.97 - this.runningCost(x, t); // ~3 % fault losses
     const book = this.bookValue(x, t, stage === 'built' ? (x.own?.invested ?? c.build) : c.build, ops, ops > 0);
@@ -199,7 +186,7 @@ class Planner {
 
   private bestType(x: SiteView, stage: 'new' | 'leased'): { t: PlantType; value: number; capex: number } | null {
     let best: { t: PlantType; value: number; capex: number } | null = null;
-    for (const t of typesFor(x)) {
+    for (const t of plantTypesFor(x)) {
       // grid outlook: other players connect as well, keep a margin
       if (this.v.grid[x.r].capacity - this.v.grid[x.r].used < PLANTS[t].mw) continue;
       const value = this.projectValue(x, t, stage);
@@ -405,7 +392,7 @@ class Planner {
     for (const trick of ['klage', 'bi', 'hack'] as TrickType[]) {
       const T = this.v.tricks[trick];
       const ownCost = T.cost + (1 - T.chance) * 0.4 * T.fine;
-      for (const id of T.targets) {
+      for (const id of trickTargetIds(this.v, trick)) {
         const x = this.v.sites.find((s) => s.id === id);
         if (!x || x.owner !== leader.id) continue;
         const edge = (T.chance * this.harm(trick, x)) / ownCost;

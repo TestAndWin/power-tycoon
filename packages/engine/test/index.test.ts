@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, createRng, ENGINE_VERSION, playerView } from '../src/index.js';
+import { createGame, createRng, playerView } from '../src/index.js';
 import { newGame } from './helpers.js';
 
 describe('createGame', () => {
   it('creates 4 players, 64 sites and 3 offers', () => {
     const g = newGame(1);
-    expect(ENGINE_VERSION).toBe(1);
     expect(g.players.map((p) => p.cash)).toEqual([30e6, 30e6, 30e6, 30e6]);
     expect(g.players[0]!.name).toBe('Testwatt AG');
     expect(g.players.slice(1).map((p) => p.name)).toEqual(['Möwenkraft AG', 'Siestasol S.A.', 'Gletscherwerk Holding']);

@@ -63,7 +63,6 @@ export interface Player {
   hist: (number | null)[];
   genLast: number;
   co2: number;
-  revLast: number;
   contracts: Contract[];
   trickUsed: number;
 }
@@ -155,6 +154,14 @@ export type Action =
   | { type: 'minigameResult'; challengeId: number; outcome: number | boolean };
 
 export type ActionType = Action['type'];
+
+/** An action that applies to the viewer's current state; `error` is set while it is blocked (e.g. no money). */
+export interface ActionOption {
+  action: Action;
+  /** Price at the moment (0 for free actions). */
+  cost: number;
+  error: ErrorCode | null;
+}
 
 export type ErrorCode =
   | 'gameOver'
@@ -393,7 +400,9 @@ export interface PlayerView {
   market: { price: number; spread: number; priceHist: number[]; spreadHist: number[] };
   offers: Offer[];
   costs: Record<PlantType, { build: number; retry: number; permit: number; grid: number; service: number }>;
-  tricks: Record<TrickType, { cost: number; chance: number; fine: number; targets: string[] }>;
+  tricks: Record<TrickType, { cost: number; chance: number; fine: number }>;
+  /** Everything the viewer can do now or is only blocked from by money, capacity or limits. */
+  options: ActionOption[];
   constants: {
     maxContracts: number;
     interest: number;

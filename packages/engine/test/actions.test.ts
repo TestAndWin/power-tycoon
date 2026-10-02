@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { applyAction, legalActions, playerView, PLANTS, validateAction } from '../src/index.js';
+import {
+  applyAction,
+  legalActions,
+  optionsOf,
+  plantTypesFor,
+  playerView,
+  PLANTS,
+  trickTargetIds,
+  validateAction,
+  type GameState,
+} from '../src/index.js';
 import { fails, newGame, ok, setupSite, site } from './helpers.js';
 
 describe('survey', () => {
@@ -334,5 +344,71 @@ describe('general validation', () => {
     expect(legal).toContainEqual({ type: 'lobby', trick: 'hack', siteId: 'nd1' });
     expect(legal).toContainEqual({ type: 'borrow', amount: 20e6 });
     expect(legal).not.toContainEqual({ type: 'applyPermit', siteId: 'nd0', plantType: 'off' });
+  });
+  it('a lobby trick on a non-target is invalidTarget even after the quarterly limit', () => {
+    const g = newGame();
+    setupSite(g, 'nd1', 2, 'approved', 'wind');
+    g.players[0]!.trickUsed = 2;
+    fails(g, { type: 'lobby', trick: 'bi', siteId: 'nd1' }, 'invalidTarget');
+    fails(g, { type: 'lobby', trick: 'klage', siteId: 'nd1' }, 'trickLimit');
+  });
+});
+
+describe('action options in the player view', () => {
+  const opts = (g: GameState) => playerView(g, 0).options;
+  it('lists allowed and blocked actions with their price, but not inapplicable ones', () => {
+    const g = newGame();
+    setupSite(g, 'nd0', 0, 'built', 'wind');
+    setupSite(g, 'nd1', 1, 'approved', 'wind');
+    g.grid.nd = 0;
+    const o = opts(g);
+    // blocked by grid capacity, price still known
+    expect(o).toContainEqual({
+      action: { type: 'connectGrid', siteId: 'nd0' },
+      cost: PLANTS.wind.grid,
+      error: 'noGridCapacity',
+    });
+    expect(o).toContainEqual({ action: { type: 'sellSite', siteId: 'nd0' }, cost: 0, error: null });
+    // already built: no permit or build options
+    expect(o.some((x) => x.action.type === 'build' && x.action.siteId === 'nd0')).toBe(false);
+    expect(o).toContainEqual({ action: { type: 'lobby', trick: 'klage', siteId: 'nd1' }, cost: 0.5e6, error: null });
+    expect(o.some((x) => x.action.type === 'lobby' && x.action.trick === 'bi' && x.action.siteId === 'nd1')).toBe(
+      false,
+    );
+    expect(trickTargetIds(playerView(g, 0), 'klage')).toEqual(['nd1']);
+    // money blocks, but the option stays visible
+    g.players[0]!.cash = 0;
+    expect(opts(g)).toContainEqual({
+      action: { type: 'lease', siteId: 'nd2' },
+      cost: site(g, 'nd2').lease,
+      error: 'insufficientFunds',
+    });
+  });
+  it('offers only the plant types allowed on the site', () => {
+    const g = newGame();
+    const flat = g.sites.find((x) => x.r === 'al' && !x.hydro)!;
+    const slope = g.sites.find((x) => x.r === 'al' && x.hydro)!;
+    setupSite(g, flat.id, 0, 'leased');
+    setupSite(g, slope.id, 0, 'leased');
+    const types = (id: string) =>
+      optionsOf(playerView(g, 0), 'applyPermit')
+        .filter((o) => o.action.siteId === id)
+        .map((o) => o.action.plantType);
+    expect(types(flat.id)).toEqual(['solar', 'batt']);
+    expect(types(slope.id)).toEqual(['solar', 'batt', 'hydro', 'pump']);
+    expect(plantTypesFor({ r: 'al', hydro: null })).toEqual(['solar', 'batt']);
+  });
+  it('allowed options are exactly the legal actions; partial repayment is allowed', () => {
+    const g = newGame();
+    setupSite(g, 'nd0', 0, 'leased');
+    setupSite(g, 'nd1', 1, 'operating');
+    g.players[0]!.loan = 3e6;
+    const allowed = opts(g)
+      .filter((o) => o.error === null)
+      .map((o) => o.action);
+    expect(allowed).toEqual(legalActions(g, 0));
+    expect(allowed).toContainEqual({ type: 'repay', amount: 5e6 });
+    g.challenge = { id: 1, kind: 'cable', siteId: 'nd0', seed: 1, playerId: 0, step: 'connect' };
+    expect(opts(g)).toEqual([]);
   });
 });

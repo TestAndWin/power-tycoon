@@ -1,7 +1,7 @@
 /** Rule helpers ported from legacy/src/core.js. All functions are pure or mutate only the given state. */
-import { BUYERS, HOURS, MIN_CREDIT, NEWS_LIMIT, PLANTS, REGIONS, SEASON } from './data.js';
+import { BUYERS, HOURS, MIN_CREDIT, PLANTS, REGIONS, SEASON } from './data.js';
 import { pick, rand, randint, randomOf } from './rng.js';
-import type { GameEvent, GameState, Player, PlantType, PlayerId, RegionKey, Site, TrickType } from './types.js';
+import type { GameState, Player, PlantType, PlayerId, RegionKey, Site, TrickType } from './types.js';
 
 export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -13,10 +13,15 @@ export const retryCost = (g: GameState, t: PlantType): number => Math.round((bui
 export const serviceCost = (t: PlantType): number => Math.round((PLANTS[t].build * 0.04) / 1e4) * 1e4;
 export const surveyCost = (x: Site): number => (x.r === 'ns' ? 0.3e6 : 0.05e6);
 
-export const operating = (x: Site): boolean => x.owner >= 0 && x.built && x.grid;
+/** Owned, built and connected (a fault only pauses production). Works on sites and site views. */
+export const operating = (x: Pick<Site, 'owner' | 'built' | 'grid'>): boolean => x.owner >= 0 && x.built && x.grid;
 export const isStore = (t: PlantType): boolean => PLANTS[t].cls === 'store';
 
-export function capFactor(x: Site): number {
+/** Plant types allowed on a site: the region's types, hydro and pump only with a (known) slope. */
+export const plantTypesFor = (x: { r: RegionKey; hydro: boolean | null }): PlantType[] =>
+  REGIONS[x.r].types.filter((t) => !((t === 'hydro' || t === 'pump') && x.hydro !== true));
+
+export function capFactor(x: Pick<Site, 'type' | 'wind' | 'sun'>): number {
   const t = x.type;
   if (t === 'wind' || t === 'off') return 0.08 + ((x.wind ?? 0) - 4.5) * 0.075;
   if (t === 'solar') return (x.sun ?? 0) / 8760;
@@ -69,14 +74,16 @@ export function consumeReserve(g: GameState, r: RegionKey, pid: PlayerId, mw: nu
   g.res = g.res.filter((o) => o.mw > 0);
 }
 
-export function siteValue(x: Site): number {
+export type ValuedSite = Pick<Site, 'lease' | 'type' | 'permit' | 'built' | 'invested' | 'age' | 'grid'>;
+
+export function siteValue(x: ValuedSite): number {
   let v = x.lease * 0.6;
   if (x.type && (x.permit === 'approved' || x.built)) v += PLANTS[x.type].permit;
   if (x.built) v += x.invested * Math.max(0.35, 1 - x.age / 100);
   if (x.grid && x.type) v += PLANTS[x.type].grid * 0.8;
   return v;
 }
-export const sellValue = (x: Site): number => Math.round(siteValue(x) * 0.85);
+export const sellValue = (x: ValuedSite): number => Math.round(siteValue(x) * 0.85);
 
 export function worth(g: GameState, p: Player): number {
   let v = p.cash - p.loan;
@@ -155,63 +162,5 @@ export function trickTargets(g: GameState, type: TrickType, pid: PlayerId): Site
 }
 
 export const siteById = (g: GameState, id: string): Site | undefined => g.sites.find((s) => s.id === id);
-
-/* ---------------- News ---------------- */
-
-function isNews(g: GameState, e: GameEvent): boolean {
-  const human = (pid: PlayerId) => !!g.players[pid]?.human;
-  switch (e.type) {
-    case 'gameStarted':
-    case 'historicEvent':
-    case 'worldEvent':
-    case 'playerBankrupt':
-    case 'trickSucceeded':
-    case 'gridReserved':
-      return true;
-    case 'trickFailed':
-      return e.caught;
-    case 'siteLeased':
-      return human(e.playerId) || e.amount >= 1.5e6;
-    case 'plantBuilt':
-    case 'gridConnected':
-    case 'siteSold':
-    case 'contractAccepted':
-      return human(e.playerId);
-    default:
-      return false;
-  }
-}
-
-/** Records an event and, if newsworthy, adds it to the news feed. */
-export function emit(g: GameState, out: GameEvent[], e: GameEvent): void {
-  out.push(e);
-  if (isNews(g, e)) {
-    g.news.unshift({ year: g.year, q: g.q, event: e });
-    if (g.news.length > NEWS_LIMIT) g.news.pop();
-  }
-}
-
-/** What a player may see of an event (null = hidden). */
-export function eventForViewer(e: GameEvent, viewer: PlayerId): GameEvent | null {
-  switch (e.type) {
-    case 'siteSurveyed':
-    case 'loanTaken':
-    case 'loanRepaid':
-    case 'actionRejected':
-      return e.playerId === viewer ? e : null;
-    case 'permitApplied':
-      if (e.playerId === viewer) return e;
-      return { ...e, quarters: undefined };
-    case 'trickFailed':
-      return e.actorId === viewer || e.caught ? e : null;
-    case 'trickSucceeded':
-      return e.actorId === viewer || e.suspected ? e : { ...e, actorId: null };
-    default:
-      return e;
-  }
-}
-
-export const eventsForViewer = (events: GameEvent[], viewer: PlayerId): GameEvent[] =>
-  events.map((e) => eventForViewer(e, viewer)).filter((e): e is GameEvent => e !== null);
 
 export const regionOk = (r: unknown): r is RegionKey => typeof r === 'string' && r in REGIONS;

@@ -9,7 +9,8 @@ import {
   START_YEAR,
 } from './data.js';
 import { rand, randomOf, type Random } from './rng.js';
-import { emit, genOffers, updateSpread, worth } from './rules.js';
+import { emit } from './events.js';
+import { genOffers, updateSpread, worth } from './rules.js';
 import type { Difficulty, GameState, Player, PlayerId, RegionKey, Site } from './types.js';
 
 export interface CreateGameOptions {
@@ -67,7 +68,6 @@ function mkPlayer(id: PlayerId, name: string, human: boolean): Player {
     hist: [],
     genLast: 0,
     co2: 0,
-    revLast: 0,
     contracts: [],
     trickUsed: 0,
   };

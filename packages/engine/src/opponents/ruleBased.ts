@@ -157,10 +157,7 @@ export function legacyTrick(view: PlayerView, legal: Action[], R: Random): Actio
   const others = view.players.filter((p) => p.id !== view.playerId && !p.out).sort((a, b) => b.worth - a.worth);
   if (!others.length) return null;
   const lead = R() < 0.6 ? others[0]! : pick(R, others);
-  const allowed = new Set(
-    legal.filter((a) => a.type === 'lobby' && a.trick === type).map((a) => (a as { siteId: string }).siteId),
-  );
-  const all = view.tricks[type].targets.filter((id) => allowed.has(id));
+  const all = legal.flatMap((a) => (a.type === 'lobby' && a.trick === type ? [a.siteId] : []));
   let ts = all.filter((id) => view.sites.find((s) => s.id === id)?.owner === lead.id);
   if (!ts.length) ts = all;
   if (!ts.length) return null;

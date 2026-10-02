@@ -13,12 +13,13 @@ import {
   TRICK_KEYS,
   TRICKS,
 } from './data.js';
-import { publicChallenge } from './actions.js';
+import { publicChallenge } from './challenges.js';
+import { eventForViewer } from './events.js';
+import { actionOptions } from './legal.js';
 import {
   buildCost,
   clone,
   creditLimit,
-  eventForViewer,
   freeGrid,
   genEstimate,
   isStore,
@@ -33,11 +34,35 @@ import {
   siteValue,
   storeRevenue,
   surveyCost,
-  trickTargets,
   usedGrid,
   worth,
 } from './rules.js';
-import type { GameState, GridView, NewsItem, PlayerId, PlayerView, RegionKey, SiteView } from './types.js';
+import type {
+  Action,
+  ActionOption,
+  ActionType,
+  GameState,
+  GridView,
+  NewsItem,
+  PlayerId,
+  PlayerView,
+  RegionKey,
+  SiteView,
+  TrickType,
+} from './types.js';
+
+/** The viewer's options for one action type (see `PlayerView.options`). */
+export const optionsOf = <K extends ActionType>(
+  v: PlayerView,
+  type: K,
+): (ActionOption & { action: Extract<Action, { type: K }> })[] =>
+  v.options.filter((o) => o.action.type === type) as (ActionOption & { action: Extract<Action, { type: K }> })[];
+
+/** Sites the viewer can target with a lobby trick (even if blocked by money or the quarterly limit). */
+export const trickTargetIds = (v: PlayerView, trick: TrickType): string[] =>
+  optionsOf(v, 'lobby')
+    .filter((o) => o.action.trick === trick)
+    .map((o) => o.action.siteId);
 
 /** Everything player `pid` may know about the game (hidden information removed). */
 export function playerView(g: GameState, pid: PlayerId): PlayerView {
@@ -106,7 +131,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       service: serviceCost(t),
     };
   const tricks = {} as PlayerView['tricks'];
-  for (const k of TRICK_KEYS) tricks[k] = { ...TRICKS[k], targets: trickTargets(g, k, pid).map((x) => x.id) };
+  for (const k of TRICK_KEYS) tricks[k] = { ...TRICKS[k] };
   const news: NewsItem[] = [];
   for (const n of g.news) {
     const e = eventForViewer(n.event, pid);
@@ -161,6 +186,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     offers: clone(g.offers),
     costs,
     tricks,
+    options: actionOptions(g, pid),
     constants: {
       maxContracts: MAX_CONTRACTS,
       interest: INTEREST,
