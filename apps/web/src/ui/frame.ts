@@ -8,6 +8,7 @@ import { SEASON_NAME } from '../texts.js';
 import { vBank } from './bank.js';
 import { drawChart } from './chart.js';
 import { LOGO, meP, todo, V } from './common.js';
+import { ICON } from './icons.js';
 import { vLobby } from './lobby.js';
 import { vMarket } from './market.js';
 import { vNews } from './news.js';
@@ -56,7 +57,7 @@ function renderTabs(): void {
   const n = todo().length;
   $('#tabs')!.innerHTML = TABS.map(
     ([k, l]) =>
-      `<button class="tab" role="tab" aria-selected="${UI.tab === k}" data-act="tab" data-v="${k}">${l}${k === 'overview' && n ? ` <span class="badge">${n}</span>` : ''}</button>`,
+      `<button class="tab" role="tab" aria-selected="${UI.tab === k}" data-act="tab" data-v="${k}">${ICON[k]}<span>${l}</span>${k === 'overview' && n ? ` <span class="badge">${n}</span>` : ''}</button>`,
   ).join('');
 }
 const VIEWS: Record<string, () => string> = {

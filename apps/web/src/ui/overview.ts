@@ -3,6 +3,7 @@ import { operating, PLANTS, REGION_KEYS } from '@power-tycoon/engine';
 import { money, mwh, QN, tons } from '../format.js';
 import { REGION_TEXT } from '../texts.js';
 import { meP, todo, V } from './common.js';
+import { ICON } from './icons.js';
 import { newsList } from './news.js';
 import { ownBar } from './sites.js';
 
@@ -20,10 +21,10 @@ export function vOverview(): string {
   return `<div class="stack" style="gap:14px">
   <div class="minis">${minis}</div>
   <div class="tiles">
-    <div class="tile"><span class="label">Nettovermögen</span><span class="big">${money(P.worth)}</span><span class="muted">Rang ${v.me.rank} · noch ${v.quartersLeft} Quartale bis Ende ${v.endYear - 1}</span></div>
-    <div class="tile"><span class="label">Installierte Leistung</span><span class="big">${v.me.mw.toLocaleString('de-DE')} MW</span><span class="muted">${mine.filter(operating).length} Anlagen am Netz</span></div>
-    <div class="tile"><span class="label">Erzeugung ${QN[v.q]}</span><span class="big">${mwh(v.me.nextGen)}</span><span class="muted">Prognose ohne Wetterereignisse</span></div>
-    <div class="tile"><span class="label">CO₂ vermieden</span><span class="big co2">${tons(v.me.co2)}</span><span class="muted">gegenüber Kohle- und Gasstrom</span></div>
+    <div class="tile"><span class="ticon">${ICON.worth}</span><span class="label">Nettovermögen</span><span class="big">${money(P.worth)}</span><span class="muted">Rang ${v.me.rank} · noch ${v.quartersLeft} Quartale bis Ende ${v.endYear - 1}</span></div>
+    <div class="tile"><span class="ticon">${ICON.power}</span><span class="label">Installierte Leistung</span><span class="big">${v.me.mw.toLocaleString('de-DE')} MW</span><span class="muted">${mine.filter(operating).length} Anlagen am Netz</span></div>
+    <div class="tile"><span class="ticon">${ICON.gen}</span><span class="label">Erzeugung ${QN[v.q]}</span><span class="big">${mwh(v.me.nextGen)}</span><span class="muted">Prognose ohne Wetterereignisse</span></div>
+    <div class="tile"><span class="ticon">${ICON.leaf}</span><span class="label">CO₂ vermieden</span><span class="big co2">${tons(v.me.co2)}</span><span class="muted">gegenüber Kohle- und Gasstrom</span></div>
   </div>
   <div class="grid g2">
     <section class="panel"><div class="phead"><h3>Nettovermögen der Konzerne</h3><span class="muted">quartalsweise</span></div><div class="chart" data-chart="worth"></div></section>
