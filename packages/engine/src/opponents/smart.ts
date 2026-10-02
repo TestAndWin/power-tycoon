@@ -252,7 +252,8 @@ class Planner {
       if (this.cash > this.v.constants.selfRepairCost + 1e6)
         this.spend({ type: 'repairSelf', siteId: x.id }, this.v.constants.selfRepairCost);
       const svc = this.v.costs[x.type].service;
-      if (loss * 0.8 > svc && this.cash > svc + this.buffer()) this.acts.push({ type: 'repairService', siteId: x.id }); // only paid if still broken
+      // only paid if still broken; planned as spent to stay on the safe side
+      if (loss * 0.8 > svc && this.cash > svc + this.buffer()) this.spend({ type: 'repairService', siteId: x.id }, svc);
     }
   }
 
