@@ -142,6 +142,15 @@ h3 {
   margin: 0 auto;
   padding-inline: 16px;
   padding-block: 0 40px;
+  /* Keep the legal footer at the bottom even while the page is empty (start screen). */
+  min-height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.app > main {
+  flex: 1;
+  min-width: 0;
 }
 .topbar {
   position: sticky;
@@ -810,6 +819,16 @@ select {
   color: var(--muted);
 }
 .foot-legal a {
+  color: var(--muted);
+}
+/* The start dialog covers the page footer, so it repeats the legal links. */
+.mlegal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12px;
+}
+.mlegal a {
   color: var(--muted);
 }
 .toast {

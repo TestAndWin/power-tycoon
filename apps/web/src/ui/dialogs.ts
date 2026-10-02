@@ -94,6 +94,8 @@ export function showEnd(): void {
     ${rank.map((p, i) => `<tr><td class="num">${i + 1}</td><td><span class="row" style="flex-wrap:nowrap"><i class="dot" style="--oc:${playerColor(p.id)}"></i>${esc(p.name)}</span></td><td class="r num">${p.out ? 'insolvent' : money(p.worth, true)}</td><td class="r num">${tons(p.co2)}</td></tr>`).join('')}</tbody></table></div>
     <div class="foot"><button class="btn" data-act="closeModal">Endstand ansehen</button><button class="btn primary" data-act="newGameDlg">Neues Spiel</button></div>`);
 }
+// The links live once in index.html (page footer); the start dialog covers that footer.
+const legalLinks = (): string => [...document.querySelectorAll('.foot-legal a')].map((a) => a.outerHTML).join('');
 export function showStart(canContinue: boolean, name = 'Deichwatt AG', difficulty: Difficulty = 'normal'): void {
   openModal(`<div class="banner tall"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">2026 – 2035</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
     <p style="margin:0">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
@@ -104,7 +106,8 @@ export function showStart(canContinue: boolean, name = 'Deichwatt AG', difficult
     <label class="field" for="sDiff">Konkurrenz<select id="sDiff">${DIFFICULTY_KEYS.map((d) => `<option value="${d}" ${d === difficulty ? 'selected' : ''}>${DIFFICULTY_TEXT[d]}</option>`).join('')}</select></label>
     <label class="check"><input type="checkbox" id="sAuto"> Minispiele überspringen (Ergebnis wird ausgewürfelt)</label>
     <p class="muted" style="margin:0;font-size:12px">Alle Firmen und Personen im Spiel sind frei erfunden. Ereignisse nach 2026 sind fiktive Szenarien. Dein Spielstand liegt auf dem Server; nur dieser Browser kennt den Zugangsschlüssel.</p>
-    <div class="foot">${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>`);
+    <div class="foot">${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>
+    <div class="mlegal">${legalLinks()}</div>`);
 }
 export function showBuilt(x: SiteView): void {
   const v = V();
