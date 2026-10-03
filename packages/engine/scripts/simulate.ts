@@ -1,17 +1,17 @@
 /**
  * Bot-vs-bot simulation: plays N full games and reports the average net worth per strategy.
  *
- *   pnpm simulate -- --games 200 --seat0 easy
+ *   pnpm simulate -- --games 200 --seat0 normal
  *
- * `--rivals mixed` (default): seats 1–3 get easy / normal / hard, rotated over the games so that
+ * `--rivals mixed` (default): seats 1–3 get normal / hard, rotated over the games so that
  * the regional preferences of the rivals do not favour one strategy. `--rivals hard` etc. gives all
  * three rivals the same strategy. Seat 0 (the "human") is played by `--seat0`
- * (easy | normal | hard | idle) with automatic minigames.
+ * (normal | hard | idle) with automatic minigames.
  */
 import { createGame, endQuarter, opponentFor, playTurn, playerView, type OpponentStrategy } from '../src/index.js';
 
-type Name = 'easy' | 'normal' | 'hard';
-const STRATS: Name[] = ['easy', 'normal', 'hard'];
+type Name = 'normal' | 'hard';
+const STRATS: Name[] = ['normal', 'hard'];
 
 function arg(name: string, def: string): string {
   const i = process.argv.indexOf('--' + name);
@@ -20,7 +20,7 @@ function arg(name: string, def: string): string {
 
 const games = Number(arg('games', '100'));
 const seed0 = Number(arg('seed', '1000'));
-const seat0 = arg('seat0', 'easy') as Name | 'idle';
+const seat0 = arg('seat0', 'normal') as Name | 'idle';
 const rivalsArg = arg('rivals', 'mixed') as Name | 'mixed';
 
 interface Stat {
@@ -42,7 +42,7 @@ const add = (k: string, worth: number, win: boolean, out: boolean) => {
 const t0 = performance.now();
 for (let i = 0; i < games; i++) {
   let g = createGame({ companyName: 'Sim', autoMinigames: true, seed: seed0 + i });
-  const names: Name[] = [0, 1, 2].map((k) => (rivalsArg === 'mixed' ? STRATS[(i + k) % 3]! : rivalsArg));
+  const names: Name[] = [0, 1, 2].map((k) => (rivalsArg === 'mixed' ? STRATS[(i + k) % 2]! : rivalsArg));
   const rivals: OpponentStrategy[] = names.map((n) => opponentFor(n));
   const human = seat0 === 'idle' ? null : opponentFor(seat0);
   while (!g.over) {

@@ -5,7 +5,7 @@ import {
   HIST,
   playerView,
   playTurn,
-  RuleBasedOpponent,
+  SmartOpponent,
   type Action,
   type OpponentStrategy,
 } from '../src/index.js';
@@ -241,9 +241,9 @@ describe('rival turns', () => {
     expect(JSON.stringify(v)).not.toContain('"rng"');
   });
 
-  it('the rule-based rivals expand over a few quarters', async () => {
+  it('the rivals expand over a few quarters', async () => {
     let g = newGame(21);
-    const opp = [new RuleBasedOpponent(), new RuleBasedOpponent(), new RuleBasedOpponent()];
+    const opp = [new SmartOpponent(), new SmartOpponent(), new SmartOpponent()];
     for (let i = 0; i < 12; i++) g = (await endQuarter(g, opp)).state;
     for (const pid of [1, 2, 3]) expect(g.sites.filter((x) => x.owner === pid).length).toBeGreaterThan(0);
     expect(g.sites.some((x) => x.owner > 0 && x.grid)).toBe(true);
@@ -251,7 +251,7 @@ describe('rival turns', () => {
 
   it('playTurn runs a strategy for any seat', async () => {
     const g = newGame(2, true);
-    const { state } = await playTurn(g, 0, new RuleBasedOpponent());
+    const { state } = await playTurn(g, 0, new SmartOpponent());
     expect(state.turn).toBe(0);
     expect(JSON.stringify(state)).not.toBe(JSON.stringify(g));
   });

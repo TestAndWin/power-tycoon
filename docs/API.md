@@ -23,7 +23,8 @@ player may know about the rivals. Add `GET /api/games/:id/rivals` only if the vi
 { "gameId": "q3Jb0…", "token": "x9F…(43 chars)", "view": { … } }
 ```
 
-`difficulty` (`easy` | `normal` | `hard`) is optional, default `normal`; `easy` are the legacy rivals.
+`difficulty` (`normal` | `hard`) is optional, default `normal`. Stored games without a difficulty (or with
+the removed `easy`) play against `normal`.
 The token is returned **only here**. The client stores `{ gameId, token }` in `localStorage`.
 Rate limit: 10 new games per IP per hour.
 

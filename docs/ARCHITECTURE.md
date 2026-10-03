@@ -24,7 +24,7 @@
 ├─────────────────────────────────────────────────────────┤
 │ packages/engine (pure TS)                               │
 │  createGame · applyAction · endQuarter · playerView     │
-│  RuleBasedOpponent (later: LlmOpponent)                 │
+│  SmartOpponent (later: LlmOpponent)                     │
 ├─────────────────────────────────────────────────────────┤
 │ SQLite  /data/power-tycoon.db  (hostPath volume)        │
 └─────────────────────────────────────────────────────────┘
@@ -61,7 +61,7 @@ Modules of `packages/engine/src`:
 | `quarter.ts` | `endQuarter` as named steps (permits, rival turns, production, settlement, price, solvency, next quarter) |
 | `events.ts` | event recording, news feed, what a viewer may see |
 | `view.ts` | `playerView` (hidden information removed) and helpers on the view |
-| `opponents/` | `RuleBasedOpponent` (easy), `SmartOpponent` (normal/hard) |
+| `opponents/` | `SmartOpponent` (normal/hard) |
 
 - `GameState` is a plain JSON-serializable object (like the legacy `G`), including the RNG state.
 - Functions work on a copy (or mutate a clone made by the caller); a rejected action leaves the state unchanged.
@@ -80,7 +80,7 @@ Modules of `packages/engine/src`:
   advance quarter → offers → history → game-over check.
 - Lobby tricks: max 2 per player per quarter (legacy only limited the human; apply it to all).
 - PPA contracts: legacy stores `G.contracts` globally for the human only. Store contracts **per player**
-  so rivals can use them. The legacy rival AI (`easy`) does not accept contracts; `SmartOpponent` does.
+  so rivals can use them; `SmartOpponent` accepts contracts.
 
 ### Randomness
 
@@ -195,10 +195,8 @@ interface OpponentStrategy {
 ```
 
 - The engine applies the returned actions one by one via `applyAction`; invalid actions are skipped and logged.
-- `RuleBasedOpponent`: port of `aiTurn()` / `aiTrick()` expressed as actions (borrow, survey, lease, applyPermit,
-  build, connectGrid, reserveGrid, repay, lobby). Used for difficulty `easy` and for games created before
-  difficulties existed (`settings.difficulty` missing).
-- `SmartOpponent` (phase 6, difficulties `normal` / `hard`): values every project by its expected
+- `SmartOpponent` (phase 6, difficulties `normal` / `hard`; the legacy rival AI `easy` was removed, stored games
+  without a difficulty or with `easy` play against `normal`): values every project by its expected
   contribution to net worth at game end (remaining quarters × margin + book value − investment), surveys
   before leasing, finances with debt up to a share of the credit limit, accepts PPA contracts covered by
   its own generation, values storage by the spread, reserves grid capacity (`hard`) and aims lobby tricks
@@ -214,9 +212,9 @@ interface OpponentStrategy {
   Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly.
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
 - `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds.
-  Reference (200 games, mixed rivals, seat 0 = legacy bot): easy ≈ 119 M€, normal ≈ 217 M€, hard ≈ 401 M€.
+  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 181 M€, hard ≈ 292 M€.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
-  `AI_DEF`. Falls back to `RuleBasedOpponent` on timeout/error. Details are decided when step 2 starts.
+  `AI_DEF`. Falls back to `SmartOpponent` (`normal`) on timeout/error. Details are decided when step 2 starts.
 
 ## Deployment
 

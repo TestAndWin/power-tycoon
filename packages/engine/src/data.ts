@@ -203,7 +203,7 @@ export const BUYERS: readonly string[] = [
   'Batteriewerk Akkuwitz',
 ];
 
-export const DIFFICULTY_KEYS: readonly Difficulty[] = ['easy', 'normal', 'hard'];
+export const DIFFICULTY_KEYS: readonly Difficulty[] = ['normal', 'hard'];
 
 export interface RivalDef {
   name: string;
