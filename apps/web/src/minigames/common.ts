@@ -43,14 +43,24 @@ export function listenKeys(handlers: {
   };
 }
 
-/** Appends the outcome to the open minigame dialog; "Weiter" closes it and calls `done`. */
+/** Hides the game controls without changing the dialog's height. */
+export function hideControls(el: HTMLElement | null): void {
+  if (!el) return;
+  el.style.visibility = 'hidden';
+  el.querySelectorAll('button').forEach((b) => (b.disabled = true));
+}
+
+/**
+ * Shows the outcome as an overlay on the game board (the dialog keeps its height);
+ * "Weiter" closes the dialog and calls `done`.
+ */
 export function resultBox(ok: boolean, title: string, text: string, done: () => void, label?: string): void {
   const box = document.createElement('div');
-  box.className = 'stack';
+  box.className = 'mg-result';
   if (ok) SND.ok();
   else SND.fail();
   box.innerHTML =
-    '<div class="row"><span class="chip ' +
+    '<div class="mg-result-card"><div class="row"><span class="chip ' +
     (ok ? 'good' : 'bad') +
     '">' +
     (label || (ok ? 'Erfolg' : 'Fehlschlag')) +
@@ -58,8 +68,8 @@ export function resultBox(ok: boolean, title: string, text: string, done: () => 
     title +
     '</h3></div><p class="muted" style="margin:0">' +
     text +
-    '</p><div class="foot"><button class="btn primary" id="mgDone">Weiter</button></div>';
-  $('#mcard')!.appendChild(box);
+    '</p><div class="foot"><button class="btn primary" id="mgDone">Weiter</button></div></div>';
+  $('#mcard .game-wrap, #mcard .laywrap, #mcard .pipegrid')!.appendChild(box);
   const b = $<HTMLButtonElement>('#mgDone')!;
   b.focus();
   b.onclick = () => {
@@ -80,7 +90,7 @@ export function finishAnimated(
   text: string,
   done: () => void,
 ): void {
-  $('#mgCtl')!.remove();
+  hideControls($('#mgCtl'));
   setTimeout(() => {
     loop.stop();
     resultBox(ok, title, text, done);

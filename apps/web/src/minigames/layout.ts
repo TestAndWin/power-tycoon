@@ -4,7 +4,7 @@ import { openModal } from '../modal.js';
 import { SND } from '../sound.js';
 import { $ } from '../state.js';
 import { siteName } from '../texts.js';
-import { resultBox } from './common.js';
+import { hideControls, resultBox } from './common.js';
 import { HOUSE, PANEL, TREES, TURBINE } from './icons.js';
 
 export type LayoutKind = 'solar' | 'onshore' | 'offshore';
@@ -164,7 +164,7 @@ export function miniLayout(x: SiteView, R: Random): Promise<number> {
     });
     $<HTMLButtonElement>('#lOk')!.onclick = () => {
       const s = Math.round(field.score() * 100) / 100;
-      $('#lOk')!.parentElement!.remove();
+      hideControls($('#lOk')!.parentElement);
       resultBox(
         s >= 1,
         'Wirkungsgrad ' + Math.round(s * 100) + ' %',

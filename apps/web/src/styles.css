@@ -1861,6 +1861,34 @@ label.field {
   touch-action: none;
   border: 2px solid var(--edge);
 }
+/* minigame result on top of the board, so the dialog keeps its height */
+.mg-result {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(42, 32, 22, 0.35);
+  animation: pop 0.22s ease-out;
+}
+.mg-result-card {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 360px);
+  padding: 14px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 2px solid var(--edge);
+  border-radius: 12px;
+  box-shadow: 0 4px 0 var(--edge);
+}
+.mg-result-card h3 {
+  margin: 0;
+}
+.mg-result-card .foot {
+  margin: 0;
+}
 .game-wrap canvas {
   display: block;
   width: 100%;
@@ -1901,6 +1929,7 @@ label.field {
   cursor: default;
 }
 .cablegrid {
+  position: relative;
   background: linear-gradient(180deg, #b6d59a, #9ec580);
   padding: 6px;
   border-radius: 12px;
