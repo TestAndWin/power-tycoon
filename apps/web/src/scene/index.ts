@@ -19,7 +19,7 @@ import {
 import type { Ctx, Frame } from './frame.js';
 import { geo, quad } from './geometry.js';
 import { drawFarScenery, drawGround } from './landscape.js';
-import { drawObject } from './objects.js';
+import { drawObject, drawOwnerFlag } from './objects.js';
 import { DEFAULT_PLAYER_COLORS, FIELDS, SEASONS } from './palette.js';
 import { drawFields, drawPlotFrames } from './plots.js';
 import { drawSky } from './sky.js';
@@ -170,6 +170,7 @@ function drawScene(sc: Scene, t: number): void {
   drawPlotFrames(fr, plots);
   // objects back to front
   for (const plot of plots) drawObject(fr, plot);
+  for (const plot of plots) drawOwnerFlag(fr, plot);
   drawCloudShadows(fr, clouds);
   drawAtmosphere(fr);
   drawNightLights(fr, plots);
