@@ -100,18 +100,19 @@ export function showEnd(): void {
 // The links live once in index.html (page footer); the start dialog covers that footer.
 const legalLinks = (): string => [...document.querySelectorAll('.foot-legal a')].map((a) => a.outerHTML).join('');
 export function showStart(canContinue: boolean, name = 'Deichwatt AG', difficulty: Difficulty = 'normal'): void {
-  openModal(`<div class="banner tall"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">2026 – 2035</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
-    <p style="margin:0">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
-    <div class="foes"><span class="label">Deine Gegner</span><div class="foe-row">${[1, 2, 3].map((id) => `<div class="foe" style="--oc:var(--c${id})">${portrait(id, 56)}<span><b>${esc(RIVAL_TEXT[id]!.ceo)}</b><span class="muted">${esc(rivalProfile(id).name)}</span><i>„${esc(RIVAL_TEXT[id]!.motto)}“</i></span></div>`).join('')}</div></div>
+  openModal(
+    `<div class="banner start"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">2026 – 2035 · ${GAME_YEARS} Jahre · ${GAME_YEARS * 4} Quartale</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
+    <p class="intro">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
+    <div class="foes"><span class="label">Deine Gegner</span><div class="foe-row">${[1, 2, 3].map((id) => `<div class="foe" style="--oc:var(--c${id})">${portrait(id, 44)}<span><b>${esc(RIVAL_TEXT[id]!.ceo)}</b><span class="muted">${esc(rivalProfile(id).name)}</span><i>„${esc(RIVAL_TEXT[id]!.motto)}“</i></span></div>`).join('')}</div></div>
     <div class="field-grid">
       <label for="sName">Konzernname<input type="text" id="sName" value="${esc(name)}" maxlength="24"></label>
-      <div class="field-grid-info"><span class="label">Spieldauer</span><b>${GAME_YEARS} Jahre · ${GAME_YEARS * 4} Quartale</b><span class="muted">2026 bis Ende 2035</span></div>
+      <label for="sDiff">Konkurrenz<select id="sDiff">${DIFFICULTY_KEYS.map((d) => `<option value="${d}" ${d === difficulty ? 'selected' : ''}>${DIFFICULTY_TEXT[d]}</option>`).join('')}</select></label>
     </div>
-    <label class="field" for="sDiff">Konkurrenz<select id="sDiff">${DIFFICULTY_KEYS.map((d) => `<option value="${d}" ${d === difficulty ? 'selected' : ''}>${DIFFICULTY_TEXT[d]}</option>`).join('')}</select></label>
     <label class="check"><input type="checkbox" id="sAuto"> Minispiele überspringen (Ergebnis wird ausgewürfelt)</label>
-    <p class="muted" style="margin:0;font-size:12px">Alle Firmen und Personen im Spiel sind frei erfunden. Ereignisse nach 2026 sind fiktive Szenarien. Dein Spielstand liegt auf dem Server; nur dieser Browser kennt den Zugangsschlüssel.</p>
-    <div class="foot">${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>
-    <div class="mlegal">${legalLinks()}</div>`);
+    <p class="muted fine">Alle Firmen und Personen im Spiel sind frei erfunden. Ereignisse nach 2026 sind fiktive Szenarien. Dein Spielstand liegt auf dem Server; nur dieser Browser kennt den Zugangsschlüssel.</p>
+    <div class="foot start-foot"><div class="mlegal">${legalLinks()}</div>${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>`,
+    { wide: true },
+  );
 }
 export function showBuilt(x: SiteView): void {
   const v = V();
