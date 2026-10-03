@@ -2,7 +2,7 @@
  * Data tables ported 1:1 from legacy/src/core.js. Only numbers and identifiers live here;
  * German names and descriptions are in apps/web/src/texts.ts.
  */
-import type { Difficulty, PlantClass, PlantType, RegionKey, TrickType } from './types.js';
+import type { Difficulty, PlantClass, PlantType, RegionKey, TrickType, WorldEventKey } from './types.js';
 
 export interface RegionDef {
   code: string;
@@ -149,6 +149,9 @@ export const CAPTURE: Record<'wind' | 'solar' | 'hydro', [number, number, number
   hydro: [1, 1, 1, 1],
 };
 export const PRICE_SEASON = [1.12, 0.92, 0.9, 1.06];
+/** Price model: the target price drifts up per quarter, the base price follows it by this share. */
+export const TARGET_DRIFT = 1.0025;
+export const PRICE_FOLLOW = 0.15;
 
 export const START_YEAR = 2026;
 export const GAME_YEARS = 10;
@@ -212,11 +215,58 @@ export const AI_DEF: readonly RivalDef[] = [
   { name: 'Gletscherwerk Holding', pref: ['al', 'al', 'nd', 'ib', 'ns'] },
 ];
 
+export interface WorldEventDef {
+  /** Selection weight in winter (Q1, Q4) and summer (Q2, Q3). */
+  weight: [number, number];
+  /** Factors for this quarter's generation and price, extra storage spread. */
+  wind?: number;
+  solar?: number;
+  hydro?: number;
+  price?: number;
+  spread?: number;
+  /** Lasting factors on the base and target price. */
+  base?: number;
+  target?: number;
+  /** Extra grid capacity in one random region (MW). */
+  grid?: number;
+}
+/** Chance per quarter that a random world event happens. */
+export const WORLD_EVENT_CHANCE = 0.32;
+export const WORLD_EVENTS: Record<WorldEventKey, WorldEventDef> = {
+  darkDoldrums: { weight: [4, 0], wind: 0.6, solar: 0.5, price: 1.4, spread: 40 },
+  recordSummer: { weight: [0, 3], solar: 1.15, price: 0.85 },
+  lull: { weight: [3, 3], wind: 0.75 },
+  stormSeries: { weight: [2, 2], wind: 1.15 },
+  gasShock: { weight: [2, 2], base: 1.25, target: 1.12, price: 1.2 },
+  gridExpansion: { weight: [3, 3], grid: 150 },
+  drought: { weight: [2, 2], hydro: 0.6 },
+  industryDip: { weight: [2, 2], base: 0.93, target: 0.9 },
+};
+/** Chance that an operating offshore park fails in a storm series. */
+export const STORM_FAULT = 0.3;
+
 export type HistoricKey = 'ets2' | 'grid2030' | 'hydrogen' | 'coalExit' | 'eu2040';
-export const HIST: readonly { year: number; q: number; key: HistoricKey }[] = [
-  { year: 2028, q: 0, key: 'ets2' },
-  { year: 2030, q: 0, key: 'grid2030' },
-  { year: 2031, q: 2, key: 'hydrogen' },
-  { year: 2033, q: 0, key: 'coalExit' },
-  { year: 2035, q: 0, key: 'eu2040' },
+export interface HistoricDef {
+  year: number;
+  q: number;
+  key: HistoricKey;
+  /** Factor on the target price. */
+  target?: number;
+  /** Extra grid capacity in every region (MW). */
+  grid?: number;
+  /** Permanent addition to the storage spread. */
+  spread?: number;
+  /** New factor on PPA offer volumes. */
+  ppaBoost?: number;
+}
+/**
+ * Historic milestones, spread evenly over the 40 quarters (every 7 quarters from turn 6).
+ * Public knowledge: they are political announcements, so strategies may plan with them.
+ */
+export const HIST: readonly HistoricDef[] = [
+  { year: 2027, q: 2, key: 'ets2', target: 1.08 },
+  { year: 2029, q: 1, key: 'grid2030', grid: 150 },
+  { year: 2031, q: 0, key: 'hydrogen', target: 1.15, ppaBoost: 1.6 },
+  { year: 2032, q: 3, key: 'coalExit', target: 1.1, spread: 20 },
+  { year: 2034, q: 2, key: 'eu2040', target: 1.06 },
 ];

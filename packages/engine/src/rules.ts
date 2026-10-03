@@ -121,14 +121,15 @@ export function resetSite(x: Site): void {
   });
 }
 
+/** Storage spread from the turn, the operating renewable capacity (MW) and the permanent additions. */
+export const spreadFor = (turn: number, renewableMw: number, add: number): number =>
+  35 + 70 * Math.min(1, (800 + turn * 25 + renewableMw) / 3000) + add;
+
 export function updateSpread(g: GameState): void {
-  const re =
-    800 +
-    g.turn * 25 +
-    g.sites
-      .filter((x) => operating(x) && x.type && !isStore(x.type))
-      .reduce((s, x) => s + PLANTS[x.type as PlantType].mw, 0);
-  g.spread = Math.round(35 + 70 * Math.min(1, re / 3000) + g.spreadAdd + (g.fx ? g.fx.spread || 0 : 0));
+  const mw = g.sites
+    .filter((x) => operating(x) && x.type && !isStore(x.type))
+    .reduce((s, x) => s + PLANTS[x.type as PlantType].mw, 0);
+  g.spread = Math.round(spreadFor(g.turn, mw, g.spreadAdd + (g.fx ? g.fx.spread || 0 : 0)));
 }
 
 export function genOffers(g: GameState): void {

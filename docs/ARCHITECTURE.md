@@ -71,6 +71,8 @@ Modules of `packages/engine/src`:
 ### Rules to carry over (from legacy)
 
 - Data tables: `REG`, `PT`, `SEASON`, `CAPTURE`, `PRICE_SEASON`, `TRICK`, `HIST`, `AI_DEF`, `BUYERS`, constants.
+  Deviation: the `HIST` milestones are spread evenly over the 40 quarters (legacy: 2028–2035, EU 2040 only
+  in the last year); their effects and those of the random world events are data (`HIST`, `WORLD_EVENTS`).
 - Quarter end order must stay the same as `endQuarter()` in legacy: historic event → random event →
   spread → permits → reservations → **rival turns** → generation/revenue/costs → price → solvency →
   advance quarter → offers → history → game-over check.
@@ -199,9 +201,18 @@ interface OpponentStrategy {
   before leasing, finances with debt up to a share of the credit limit, accepts PPA contracts covered by
   its own generation, values storage by the spread, reserves grid capacity (`hard`) and aims lobby tricks
   at the leader, preferably the human (`humanBias`). Difficulty = a parameter set (`SMART_PARAMS`).
+  `hard` additionally uses the full credit limit and
+  - forecasts price and storage spread per quarter like the engine's price model (trend, the announced
+    `HIST` milestones, this quarter's world event from `WORLD_EVENTS`) and grid capacity (projects of
+    others, announced expansions); a project is valued along its timeline, only finished parts count at the end,
+  - surveys the unknown sites with the best expected return first (offshore too), sells dead projects,
+    spreads over regions and raises its project limits with uncommitted financing room,
+  - values tricks by the target's real loss (season, timing, end of game), may use both tricks of a quarter
+    and strikes back at a human who was caught or suspected tricking it.
+  Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly.
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
 - `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds.
-  Reference (200 games, mixed rivals, seat 0 = legacy bot): easy ≈ 112 M€, normal ≈ 221 M€, hard ≈ 266 M€.
+  Reference (200 games, mixed rivals, seat 0 = legacy bot): easy ≈ 119 M€, normal ≈ 217 M€, hard ≈ 401 M€.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `RuleBasedOpponent` on timeout/error. Details are decided when step 2 starts.
 

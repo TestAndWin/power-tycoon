@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   endQuarter,
   EngineError,
+  HIST,
   playerView,
   playTurn,
   RuleBasedOpponent,
@@ -128,6 +129,14 @@ describe('endQuarter', () => {
     const over = newGame();
     over.over = 'time';
     await expect(endQuarter(over, idleRivals)).rejects.toBeInstanceOf(EngineError);
+  });
+
+  it('spreads the historic milestones over the whole game', () => {
+    const g = newGame();
+    const turns = HIST.map((h) => (h.year - g.startYear) * 4 + h.q);
+    expect(turns[0]).toBeGreaterThan(2);
+    expect(turns.at(-1)).toBeLessThan((g.endYear - g.startYear) * 4 - 3);
+    for (let i = 1; i < turns.length; i++) expect(turns[i]! - turns[i - 1]!).toBeGreaterThanOrEqual(6);
   });
 
   it('ends after 40 quarters with reason "time" and applies historic events', async () => {

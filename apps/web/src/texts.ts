@@ -91,7 +91,8 @@ export const TRICK_TEXT: Record<TrickType, { name: string; desc: string }> = {
 
 export const HIST_TEXT: Record<string, string> = {
   ets2: 'Emissionshandel für Gebäude und Verkehr startet. Fossile Energie wird teurer.',
-  grid2030: 'Zieljahr 2030: Die Netzbetreiber schalten in allen Regionen 150 MW zusätzliche Kapazität frei.',
+  grid2030:
+    'Netzausbau für das Zieljahr 2030: Die Netzbetreiber schalten in allen Regionen 150 MW zusätzliche Kapazität frei.',
   hydrogen: 'Wasserstoff-Boom: Elektrolyseure fragen massenhaft Grünstrom nach.',
   coalExit: 'Das letzte deutsche Kohlekraftwerk geht vom Netz. Flexibilität wird knapp.',
   eu2040: 'Die EU verschärft ihr Klimaziel für 2040. Grünstrom ist gefragter denn je.',

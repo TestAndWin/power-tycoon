@@ -1,6 +1,6 @@
 /** Quarter end: port of legacy `endQuarter()` / `randomEvent()` with the same order of steps. */
 import { applyActionInPlace } from './actions.js';
-import { AI_DEF, CAPTURE, CO2, INTEREST, PLANTS, PRICE_SEASON } from './data.js';
+import { AI_DEF, CAPTURE, CO2, INTEREST, PLANTS, PRICE_FOLLOW, PRICE_SEASON, TARGET_DRIFT } from './data.js';
 import { concerns, emit, eventsForViewer } from './events.js';
 import { clamp, createRng, gauss, nextUint, randomOf } from './rng.js';
 import {
@@ -219,8 +219,8 @@ function settle(g: GameState, p: Player, s: Output, price: number, out: GameEven
 /** The base price drifts towards the target with some noise. */
 function movePrice(g: GameState): void {
   const r = randomOf(g);
-  g.target *= 1.0025;
-  g.base += (g.target - g.base) * 0.15 + gauss(r) * g.base * 0.06;
+  g.target *= TARGET_DRIFT;
+  g.base += (g.target - g.base) * PRICE_FOLLOW + gauss(r) * g.base * 0.06;
   g.base = clamp(g.base, 35, 260);
 }
 

@@ -81,6 +81,8 @@ Quick wins before any LLM, measured with bot-vs-bot simulations over many seeds:
 - [x] Target lobby tricks at the leader (esp. the human) when it pays off
 - [x] Difficulty levels (easy/normal/hard) as parameters of the strategy
 - [x] Simulation script: N games, report average net worth per strategy
+- [x] Hard: market/grid forecast, end-of-game accounting, value-based surveys, selling dead projects,
+      diversification, timed lobby tricks and revenge on the human; historic milestones spread over the game
 
 ## Step 2 – LLM rivals (separate planning later)
 
