@@ -61,7 +61,7 @@ pnpm build        # engine + web + api
 ```
 
 ## Coding Conventions
-- TypeScript `strict`, ES modules, Node 22
+- TypeScript `strict`, ES modules, Node 24
 - Money in whole euros as `number` (the legacy game uses e.g. `20e6`), energy in MWh
 - IDs: sites keep the legacy format (`nd0`…`al15`), players are `0` (human) and `1..3` (rivals)
 - Tests with vitest; engine tests use fixed seeds

@@ -23,7 +23,7 @@ apps/web/          Vite + TypeScript client
 
 ## Run locally
 
-Requires Node 22 and pnpm 10.
+Requires Node 24 and pnpm 10.
 
 ```bash
 pnpm install

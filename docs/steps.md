@@ -57,7 +57,7 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 
 ## Phase 4 – Container
 
-- [x] Dockerfile (multi-stage, node:22-alpine, python3/make/g++ for better-sqlite3, non-root 1001)
+- [x] Dockerfile (multi-stage, node:24-alpine, python3/make/g++ for better-sqlite3, non-root 1001)
 - [x] Container serves web + API on one port, `DATA_DIR=/data`
 - [ ] `docker run` locally, play one quarter (Docker Hub was not reachable from the build sandbox; the
       `pnpm deploy` bundle the image uses was started natively and played one quarter – run once on the server)

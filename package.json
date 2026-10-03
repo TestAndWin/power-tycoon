@@ -4,7 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@10.34.6",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "pnpm --filter @power-tycoon/engine build && concurrently -k -n api,web \"pnpm --filter @power-tycoon/api dev\" \"pnpm --filter @power-tycoon/web dev\"",
@@ -16,7 +16,7 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@types/node": "^22.20.4",
+    "@types/node": "^24.19.1",
     "concurrently": "^10.0.5",
     "prettier": "^3.9.9",
     "typescript": "^7.0.2",

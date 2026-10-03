@@ -11,7 +11,7 @@ vanilla JS with string templates and canvas drawing.
 
 ## Decision
 
-- pnpm workspace with `packages/engine`, `apps/api`, `apps/web`, TypeScript strict, Node 22.
+- pnpm workspace with `packages/engine`, `apps/api`, `apps/web`, TypeScript strict, Node 24.
 - API: Fastify (JSON schema validation, `inject` for tests, rate-limit and static plugins).
 - Web: Vite + TypeScript **without a UI framework**. The legacy UI is ported, not rewritten.
 - The API serves the web build: one container, one origin, no CORS.

@@ -209,7 +209,7 @@ interface OpponentStrategy {
 
 Same pattern as `eat-hike-art` (MicroK8s on the eServer):
 
-- `Dockerfile`: multi-stage, `node:22-alpine`, build tools for `better-sqlite3`, non-root user `1001`.
+- `Dockerfile`: multi-stage, `node:24-alpine`, build tools for `better-sqlite3`, non-root user `1001`.
 - `deploy.sh`: `docker build` → `docker save` → `microk8s ctr image import` → `kubectl apply` → rollout restart.
 - `k8s/`: `namespace.yaml`, `configmap.yaml`, `deployment.yaml`, `service.yaml`, `ingress.yaml`
   (step 2 adds `secret.yaml.example` for the `ANTHROPIC_API_KEY`).
