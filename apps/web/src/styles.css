@@ -984,11 +984,9 @@ h3 {
 }
 .foe {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
-  gap: 6px;
-  padding: 10px 8px;
+  gap: 8px;
+  padding: 7px 9px;
   border-radius: 14px;
   border: 2px solid var(--edge);
   background: color-mix(in srgb, var(--oc) 12%, var(--surface));
@@ -997,6 +995,7 @@ h3 {
 .foe > span {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   line-height: 1.25;
 }
 .foe b {
@@ -1007,7 +1006,7 @@ h3 {
 }
 .foe i {
   font-size: 11.5px;
-  margin-top: 3px;
+  margin-top: 1px;
   color: color-mix(in srgb, var(--oc) 70%, var(--ink));
 }
 
@@ -1668,8 +1667,23 @@ input[type='checkbox'] {
   width: 100%;
   aspect-ratio: 16/6;
 }
-.banner.tall canvas {
-  aspect-ratio: 16/7;
+.banner.start canvas {
+  aspect-ratio: 16/4.2;
+}
+.intro {
+  margin: 0;
+  font-size: 13.5px;
+}
+.fine {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.start-foot {
+  align-items: center;
+}
+.start-foot .mlegal {
+  margin-right: auto;
 }
 .bcap {
   position: absolute;
@@ -2215,15 +2229,22 @@ svg.live .pulse {
     gap: 6px;
   }
   .foe {
-    padding: 8px 4px;
+    flex-direction: column;
+    text-align: center;
+    gap: 4px;
+    padding: 6px 4px;
   }
   .foe .portrait {
-    width: 44px !important;
-    height: 44px !important;
+    width: 36px !important;
+    height: 36px !important;
   }
   .foe .portrait svg {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
+  }
+  .start-foot .mlegal {
+    order: 2;
+    flex-basis: 100%;
   }
   .foe i {
     display: none;
