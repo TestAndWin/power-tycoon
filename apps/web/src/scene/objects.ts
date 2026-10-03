@@ -530,19 +530,22 @@ const PLANT_PAINTERS: Record<PlantType, (fr: Frame, sp: Spot) => void> = {
   pump: drawPump,
 };
 
-/** Draws everything on one plot, depending on its owner and stage. */
+/** Owner flag in the bottom right corner of the plot; drawn after all objects so it stays in front. */
+export function drawOwnerFlag(fr: Frame, { x, qd }: Plot): void {
+  if (x.owner < 0) return;
+  const u = qd.bw,
+    fx = qd.p[2]![0] - u * 0.2,
+    fy = qd.p[2]![1] - (qd.y1 - qd.y0) * 0.08;
+  flag(fr, fx, fy, u, fr.colors[x.owner]!, fr.label(x.owner));
+}
+
+/** Draws everything on one plot except the owner flag, depending on its owner and stage. */
 export function drawObject(fr: Frame, { x, qd }: Plot): void {
-  const { r, mini, still, q, t, d, colors, label } = fr;
+  const { r, mini, still, q, t, d } = fr;
   const u = qd.bw,
     bx = qd.cx,
     by = qd.y1 - (qd.y1 - qd.y0) * 0.22,
     s = Math.max(3, u * 0.06);
-  if (x.owner >= 0) {
-    // bottom right corner of the plot, clear of the plants in the middle
-    const fx = qd.p[2]![0] - u * 0.2,
-      fy = qd.p[2]![1] - (qd.y1 - qd.y0) * 0.08;
-    flag(fr, fx, fy, u, colors[x.owner]!, label(x.owner));
-  }
   if (x.owner < 0) {
     if (!mini && (r === 'nd' || r === 'ib') && (q === 2 || q === 3) && h1(x.i + 3) < 0.6) bales(fr, qd, x.i);
     return;
