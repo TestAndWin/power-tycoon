@@ -214,7 +214,7 @@ function detail(): string {
   }
   const permitButtons = permits.map(({ t, opt }) =>
     x.type
-      ? btn('permit', x.id + '|' + t, 'Erneut beantragen', opt, { cls: 'primary' })
+      ? btn('permit', x.id + '|' + t, 'Erneut beantragen: ' + PLANT_NAME[t], opt, { cls: 'primary' })
       : btn('permit', x.id + '|' + t, 'Genehmigung: ' + PLANT_NAME[t], opt, {
           cls: t === regionTypes[0] ? 'primary' : '',
         }),
