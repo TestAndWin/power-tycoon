@@ -39,6 +39,15 @@ describe('health', () => {
     expect(res.json()).toEqual({ ok: true });
     expect(res.headers['x-content-type-options']).toBe('nosniff');
   });
+  it('sends security headers with a strict script policy', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/health' });
+    const csp = res.headers['content-security-policy'] as string;
+    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).not.toMatch(/script-src[^;]*unsafe/);
+    expect(res.headers['strict-transport-security']).toContain('max-age=');
+    expect(res.headers['x-frame-options']).toBe('DENY');
+  });
 });
 
 describe('POST /api/games', () => {
@@ -68,7 +77,7 @@ describe('POST /api/games', () => {
   it('validates the body', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/games', payload: { companyName: 5 } });
     expect(res.statusCode).toBe(400);
-    expect(res.json().error).toBe('badRequest');
+    expect(res.json()).toEqual({ error: 'badRequest' });
   });
   it('is rate limited per IP', async () => {
     const limited = await buildApp({ dbFile: join(dir, 'rl.db'), createLimit: 2 });
@@ -309,5 +318,12 @@ describe('static web app', () => {
     expect(api404.statusCode).toBe(404);
     expect(api404.json()).toEqual({ error: 'notFound' });
     await app3.close();
+  });
+  it('answers 404 instead of failing when the web root has no index.html', async () => {
+    const app4 = await buildApp({ dbFile: join(dir, 'e.db'), webRoot: join(dir, 'missing') });
+    const res = await app4.inject({ method: 'GET', url: '/some/page' });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'notFound' });
+    await app4.close();
   });
 });

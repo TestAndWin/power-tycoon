@@ -45,6 +45,22 @@ export interface AppOptions {
 }
 
 const HUMAN = 0;
+/**
+ * The web app loads only its own bundle. Inline style attributes are used throughout the
+ * rendered HTML, fonts are embedded as data URLs in the CSS, scripts stay strictly 'self'.
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
 const CONFLICT_ERRORS = new Set<ErrorCode>(['challengeOpen', 'gameOver']);
 
 class HttpError extends Error {
@@ -89,6 +105,10 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Referrer-Policy', 'no-referrer');
     reply.header('X-Frame-Options', 'DENY');
+    reply.header('Content-Security-Policy', CSP);
+    reply.header('Strict-Transport-Security', 'max-age=31536000');
+    reply.header('Cross-Origin-Opener-Policy', 'same-origin');
+    reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
     return payload;
   });
 
@@ -100,7 +120,8 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
 
   app.setErrorHandler((err: Error & { statusCode?: number; validation?: unknown }, _req, reply) => {
     if (err instanceof HttpError) return reply.status(err.status).send({ error: err.code });
-    if (err.validation) return reply.status(400).send({ error: 'badRequest', message: err.message });
+    // no validator message: it would reveal schema internals, the client only uses the code
+    if (err.validation) return reply.status(400).send({ error: 'badRequest' });
     const status = err.statusCode ?? 500;
     if (status === 429) return reply.status(429).send({ error: 'rateLimited' });
     if (status >= 500) app.log.error(err);
@@ -184,8 +205,8 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
   });
 
   // web app
-  const webRoot = opts.webRoot;
-  if (webRoot && existsSync(join(webRoot, 'index.html'))) {
+  const webRoot = opts.webRoot && existsSync(join(opts.webRoot, 'index.html')) ? opts.webRoot : undefined;
+  if (webRoot) {
     await app.register(fastifyStatic, {
       root: webRoot,
       wildcard: false,

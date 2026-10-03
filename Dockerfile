@@ -22,6 +22,8 @@ ENV NODE_ENV=production \
     DATA_DIR=/data \
     WEB_ROOT=/app/web
 WORKDIR /app
+# npm, npx and corepack are not needed at runtime; dropping them shrinks the attack surface
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY --from=build --chown=1001:1001 /out /app
 RUN mkdir -p /data && chown 1001:1001 /data
 USER 1001
