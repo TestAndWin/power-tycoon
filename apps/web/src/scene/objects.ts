@@ -458,8 +458,9 @@ export function drawObject(fr: Frame, { x, qd }: Plot): void {
     by = qd.y1 - (qd.y1 - qd.y0) * 0.22,
     s = Math.max(3, u * 0.06);
   if (x.owner >= 0) {
-    const fx = qd.p[1]![0] - u * 0.26,
-      fy = qd.p[1]![1] + (qd.y1 - qd.y0) * 0.3;
+    // bottom right corner of the plot, clear of the plants in the middle
+    const fx = qd.p[2]![0] - u * 0.2,
+      fy = qd.p[2]![1] - (qd.y1 - qd.y0) * 0.08;
     flag(fr, fx, fy, u, colors[x.owner]!, label(x.owner));
   }
   if (x.owner < 0) {

@@ -51,6 +51,11 @@ export function setHover(id: string | null): void {
   }
 }
 
+/** Redraws the still scenes (reduced motion) after a change the animation loop would otherwise pick up. */
+export function redrawStill(): void {
+  if (RMO) SC.forEach((sc) => drawScene(sc, 0));
+}
+
 /** Finds all scene canvases on the page (call after every render). */
 export function registerScenes(): void {
   SC.length = 0;

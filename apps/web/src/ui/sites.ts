@@ -13,7 +13,7 @@ import {
 } from '@power-tycoon/engine';
 import { esc, money, mwh, QN } from '../format.js';
 import { playerColor } from '../players.js';
-import { geo, quad } from '../scene/index.js';
+import { geo, quad, redrawStill } from '../scene/index.js';
 import { UI } from '../state.js';
 import { PLANT_NAME, REGION_TEXT, siteName, siteQuality } from '../texts.js';
 import { crest } from './companies.js';
@@ -72,6 +72,18 @@ export function vSites(): string {
     </section>
     <aside class="panel" id="detail">${detail()}</aside>
   </div>`;
+}
+/**
+ * Selects a plot without re-rendering the view: only the hit highlight and the detail panel change,
+ * so the landscape canvas keeps running instead of flickering.
+ */
+export function selectSite(id: string): boolean {
+  const panel = document.getElementById('detail');
+  if (!panel) return false;
+  document.querySelectorAll<HTMLElement>('.hits .hit').forEach((h) => h.classList.toggle('sel', h.dataset.v === id));
+  panel.innerHTML = detail();
+  redrawStill();
+  return true;
 }
 function hits(r: RegionKey): string {
   const g = geo(100, 100),

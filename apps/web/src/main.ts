@@ -10,7 +10,7 @@ import { registerScenes, setHover } from './scene/index.js';
 import { SND, toggleSound } from './sound.js';
 import { $, S, UI } from './state.js';
 import { errorText, newsTexts, REGION_TEXT, siteName, siteQuality } from './texts.js';
-import { redrawCharts, render, renderTop, showBuilt, showEnd, showReport, showStart } from './ui/index.js';
+import { redrawCharts, render, renderTop, selectSite, showBuilt, showEnd, showReport, showStart } from './ui/index.js';
 import { recordRivalMoves } from './ui/rivals.js';
 
 function handleError(e: unknown): void {
@@ -168,7 +168,7 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
   sel: (v) => {
     UI.sel = v;
     UI.confirm = null;
-    render();
+    if (!selectSite(v)) render();
     if (window.innerWidth < 980) $('#detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
   goRegion: (v) => {
