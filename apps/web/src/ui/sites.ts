@@ -85,6 +85,9 @@ export function selectSite(id: string): boolean {
   redrawStill();
   return true;
 }
+/** Always-visible clipboard mark on free plots the player has already surveyed. */
+const SURVEY_MARK =
+  '<i class="svy" title="Ertragsgutachten liegt vor"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="9" rx="1"/><path d="M4.5 1.2h3v1.6h-3zM4 6.2l1.4 1.4L8 5"/></svg></i>';
 function hits(r: RegionKey): string {
   const g = geo(100, 100),
     v = V();
@@ -97,9 +100,10 @@ function hits(r: RegionKey): string {
         s = siteStatus(x),
         own = x.owner >= 0;
       const o = own ? v.players[x.owner]! : null,
-        val = !own ? (x.surveyed ? siteQuality(x) : money(x.lease, true)) : o!.human ? s.t : esc(shortName(o!));
-      return `<button class="hit ${UI.sel === x.id ? 'sel' : ''}" style="left:${l}%;top:${qd.y0}%;width:${w}%;height:${qd.y1 - qd.y0}%" data-act="sel" data-v="${x.id}" aria-label="${siteName(x)}: ${own ? (o!.human ? 'deine Fläche' : 'gehört ' + esc(o!.name)) + ', ' + s.t : 'frei, ' + s.t}">
-      <span class="stag">${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}<span class="sval">${val}</span></span></button>`;
+        svy = !own && x.surveyed,
+        val = !own ? (svy ? siteQuality(x) + ' · ' : '') + money(x.lease, true) : o!.human ? s.t : esc(shortName(o!));
+      return `<button class="hit ${UI.sel === x.id ? 'sel' : ''}" style="left:${l}%;top:${qd.y0}%;width:${w}%;height:${qd.y1 - qd.y0}%" data-act="sel" data-v="${x.id}" aria-label="${siteName(x)}: ${own ? (o!.human ? 'deine Fläche' : 'gehört ' + esc(o!.name)) + ', ' + s.t : 'frei, ' + s.t}${svy ? ', Ertragsgutachten liegt vor' : ''}">
+      <span class="stag">${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}${svy ? SURVEY_MARK : ''}<span class="sval">${val}</span></span></button>`;
     })
     .join('');
 }
