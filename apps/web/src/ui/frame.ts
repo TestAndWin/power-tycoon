@@ -1,6 +1,6 @@
 /** Page frame: top bar, tabs and the active view. */
 import { esc, eur, money, qStr } from '../format.js';
-import { registerScenes } from '../scene/index.js';
+import { registerScenes, swapKeepingScenes } from '../scene/index.js';
 import { SND } from '../sound.js';
 import { $, S, UI } from '../state.js';
 import { SEASON_NAME } from '../texts.js';
@@ -70,9 +70,13 @@ const VIEWS: Record<string, () => string> = {
   rivals: vRivals,
   news: vNews,
 };
+let shownTab = '';
 function renderView(): void {
   const el = $('#view')!;
-  el.innerHTML = (VIEWS[UI.tab] ?? vOverview)();
+  // fade in only when switching tabs; a re-render of the same tab must not blink
+  el.classList.toggle('enter', UI.tab !== shownTab);
+  shownTab = UI.tab;
+  swapKeepingScenes(el, (VIEWS[UI.tab] ?? vOverview)());
   el.querySelectorAll<HTMLElement>('[data-chart]').forEach(drawChart);
   registerScenes();
 }
