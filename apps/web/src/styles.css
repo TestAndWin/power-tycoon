@@ -1255,7 +1255,7 @@ h3 {
   border: 0;
   border-radius: 6px;
   cursor: pointer;
-  padding: 3px;
+  padding: 1px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -1271,17 +1271,21 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(42, 32, 22, 0.78);
+  background: rgba(42, 32, 22, 0.62);
   color: #fff;
-  border-radius: 7px;
-  padding: 2px 6px;
+  border-radius: 5px;
+  padding: 1px 4px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1.25;
   max-width: 100%;
   flex-wrap: wrap;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  transition: transform 0.12s;
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+.hit:hover .stag {
+  background: rgba(42, 32, 22, 0.85);
 }
 .stag .sval {
   display: none;
@@ -1303,37 +1307,20 @@ h3 {
   text-overflow: ellipsis;
   max-width: 100%;
 }
-.stag.own {
-  background: color-mix(in srgb, var(--oc) 84%, #000);
-  border-color: var(--edge);
-  box-shadow: 0 2px 0 rgba(42, 32, 22, 0.7);
-  gap: 5px;
-  padding: 2px 7px 2px 3px;
-}
-.stag.me {
-  box-shadow:
-    0 0 0 2px var(--gold),
-    0 2px 0 rgba(42, 32, 22, 0.7);
-}
 .stag .alert {
   display: inline-grid;
   place-items: center;
-  width: 13px;
-  height: 13px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: #e5484d;
   color: #fff;
   font: 800 9px/1 var(--sans);
   font-style: normal;
 }
-.hit.sel .stag:not(.own) {
+.hit.sel .stag {
   background: #fff;
   color: var(--ink);
-}
-.hit.sel .stag.own {
-  box-shadow:
-    0 0 0 2px #fff,
-    0 0 14px rgba(255, 255, 255, 0.7);
 }
 /* owner marks */
 .mb {
@@ -2257,12 +2244,9 @@ svg.live .pulse {
     display: none !important;
   }
   .stag {
-    font-size: 9px;
-    padding: 1px 4px;
+    font-size: 8px;
+    padding: 0 3px;
     white-space: nowrap;
-  }
-  .stag.own {
-    padding: 2px 5px 2px 2px;
   }
   .ochip {
     font-size: 11px;

@@ -12,7 +12,7 @@ import {
   type RegionKey,
 } from '@power-tycoon/engine';
 import { esc, money, mwh, QN } from '../format.js';
-import { playerColor, playerMark } from '../players.js';
+import { playerColor } from '../players.js';
 import { geo, quad } from '../scene/index.js';
 import { UI } from '../state.js';
 import { PLANT_NAME, REGION_TEXT, siteName, siteQuality } from '../texts.js';
@@ -87,7 +87,7 @@ function hits(r: RegionKey): string {
       const o = own ? v.players[x.owner]! : null,
         val = !own ? (x.surveyed ? siteQuality(x) : money(x.lease, true)) : o!.human ? s.t : esc(shortName(o!));
       return `<button class="hit ${UI.sel === x.id ? 'sel' : ''}" style="left:${l}%;top:${qd.y0}%;width:${w}%;height:${qd.y1 - qd.y0}%" data-act="sel" data-v="${x.id}" aria-label="${siteName(x)}: ${own ? (o!.human ? 'deine Fläche' : 'gehört ' + esc(o!.name)) + ', ' + s.t : 'frei, ' + s.t}">
-      <span class="stag${own ? ' own' : ''}${x.owner === v.playerId ? ' me' : ''}"${own ? ` style="--oc:${playerColor(x.owner)}"` : ''}>${own ? `<i class="mb">${playerMark(x.owner)}</i>` : ''}${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}<span class="sval">${val}</span></span></button>`;
+      <span class="stag">${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}<span class="sval">${val}</span></span></button>`;
     })
     .join('');
 }
