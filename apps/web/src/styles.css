@@ -458,6 +458,7 @@ h3 {
   font-size: 12px;
   font-weight: 500;
   opacity: 0.8;
+  white-space: nowrap;
 }
 .btn.icon {
   padding: 9px;
