@@ -148,7 +148,10 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     endYear: g.endYear,
     quartersLeft: Math.max(0, (g.endYear - g.year) * 4 - g.q),
     over: g.over,
-    settings: { ...g.settings },
+    settings: {
+      autoMinigames: g.settings.autoMinigames,
+      difficulty: g.settings.difficulty === 'hard' ? 'hard' : 'normal',
+    },
     me: {
       id: pid,
       name: me.name,

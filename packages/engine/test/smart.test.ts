@@ -6,8 +6,8 @@ import {
   opponentFor,
   opponentsFor,
   playerView,
-  RuleBasedOpponent,
   SmartOpponent,
+  SMART_PARAMS,
   type Difficulty,
   type GameState,
 } from '../src/index.js';
@@ -28,10 +28,11 @@ async function play(seed: number, rivals: Difficulty[]): Promise<GameState> {
 }
 
 describe('SmartOpponent', () => {
-  it('maps difficulties to strategies; old games without difficulty keep the legacy rivals', () => {
-    expect(opponentFor('easy')).toBeInstanceOf(RuleBasedOpponent);
-    expect(opponentFor(undefined)).toBeInstanceOf(RuleBasedOpponent);
-    expect(opponentFor('normal')).toBeInstanceOf(SmartOpponent);
+  it('maps difficulties to strategies; old games without difficulty or with easy play normal', () => {
+    const params = (o: unknown) => (o as SmartOpponent).params;
+    expect(params(opponentFor('easy'))).toBe(SMART_PARAMS.normal);
+    expect(params(opponentFor(undefined))).toBe(SMART_PARAMS.normal);
+    expect(params(opponentFor('hard'))).toBe(SMART_PARAMS.hard);
     expect(opponentsFor('hard')).toHaveLength(3);
     expect(createGame({ companyName: 'X', autoMinigames: false, seed: 1 }).settings.difficulty).toBe('normal');
   });
@@ -54,17 +55,15 @@ describe('SmartOpponent', () => {
     expect(a.year).toBe(2036);
   });
 
-  it('is clearly stronger than the legacy rivals on average', async () => {
-    const sum: Record<Difficulty, number> = { easy: 0, normal: 0, hard: 0 };
-    const order: Difficulty[] = ['easy', 'normal', 'hard'];
+  it('hard is clearly stronger than normal on average', async () => {
+    const sum: Record<Difficulty, number> = { normal: 0, hard: 0 };
+    const order: Difficulty[] = ['normal', 'hard'];
     const N = 12;
     for (let i = 0; i < N; i++) {
-      const seats = [0, 1, 2].map((k) => order[(i + k) % 3]!);
+      const seats = [0, 1, 2].map((k) => order[(i + k) % 2]!);
       const v = playerView(await play(200 + i, seats), 0);
       seats.forEach((d, k) => (sum[d] += v.players[k + 1]!.out ? 0 : v.players[k + 1]!.worth));
     }
-    expect(sum.normal).toBeGreaterThan(sum.easy * 1.3);
-    expect(sum.hard).toBeGreaterThan(sum.easy * 1.3);
     expect(sum.hard).toBeGreaterThan(sum.normal * 1.2);
   });
 

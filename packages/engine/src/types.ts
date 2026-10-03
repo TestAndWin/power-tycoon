@@ -130,8 +130,8 @@ export interface GameState {
   news: NewsItem[];
   nextId: number;
   over: GameOver;
-  /** `difficulty` is missing in games created before phase 6; they keep the legacy rivals. */
-  settings: { autoMinigames: boolean; difficulty?: Difficulty };
+  /** `difficulty` is missing in games created before phase 6 (or `easy` from before its removal): `normal`. */
+  settings: { autoMinigames: boolean; difficulty?: Difficulty | 'easy' };
   challenge: OpenChallenge | null;
 }
 
@@ -289,7 +289,7 @@ export interface QuarterResult {
 
 /* ---------------- Opponents ---------------- */
 
-export type Difficulty = 'easy' | 'normal' | 'hard';
+export type Difficulty = 'normal' | 'hard';
 
 export interface RivalProfile {
   name: string;
@@ -377,7 +377,7 @@ export interface PlayerView {
   endYear: number;
   quartersLeft: number;
   over: GameOver;
-  settings: { autoMinigames: boolean; difficulty?: Difficulty };
+  settings: { autoMinigames: boolean; difficulty: Difficulty };
   me: {
     id: PlayerId;
     name: string;

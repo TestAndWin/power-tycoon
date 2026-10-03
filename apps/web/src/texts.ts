@@ -40,7 +40,6 @@ export const PLANT_NAME: Record<PlantType, string> = {
 export const plantAcc = (t: PlantType): string => (t === 'hydro' || t === 'pump' ? 'ein ' : 'einen ') + PLANT_NAME[t];
 
 export const DIFFICULTY_TEXT: Record<Difficulty, string> = {
-  easy: 'Leicht – wie im Original',
   normal: 'Normal – rechnende Konkurrenz',
   hard: 'Schwer – aggressiv und gut finanziert',
 };

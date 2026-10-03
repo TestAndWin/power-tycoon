@@ -67,12 +67,14 @@ describe('POST /api/games', () => {
     const d = (g: { view: unknown }) => (g.view as { settings: { difficulty: string } }).settings.difficulty;
     expect(d(await newGame())).toBe('normal');
     expect(d(await newGame({ companyName: 'X', autoMinigames: true, difficulty: 'hard' }))).toBe('hard');
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/games',
-      payload: { companyName: 'X', autoMinigames: true, difficulty: 'insane' },
-    });
-    expect(res.statusCode).toBe(400);
+    for (const difficulty of ['insane', 'easy']) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/games',
+        payload: { companyName: 'X', autoMinigames: true, difficulty },
+      });
+      expect(res.statusCode).toBe(400);
+    }
   });
   it('validates the body', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/games', payload: { companyName: 5 } });

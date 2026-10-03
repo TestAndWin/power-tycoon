@@ -25,7 +25,7 @@ Work phase by phase. Each phase ends with passing tests and a commit/PR.
 - [x] `applyAction` for every action in API.md, incl. minigame challenge flow
 - [x] `endQuarter` with the legacy order of steps, per-player contracts
 - [x] `playerView` with hidden information
-- [x] `RuleBasedOpponent` as port of `aiTurn`/`aiTrick`, using actions only
+- [x] `RuleBasedOpponent` as port of `aiTurn`/`aiTrick`, using actions only (removed in phase 6)
 - [x] Tests: each action (happy path + rule violations), determinism (same seed ⇒ same result),
       invariants (grid capacity never exceeded, cash bookkeeping), a full 40-quarter bot-vs-bot
       smoke game that ends without exceptions
@@ -79,7 +79,7 @@ Quick wins before any LLM, measured with bot-vs-bot simulations over many seeds:
 - [x] Evaluate sites with expected return (generation × price − costs) instead of fixed thresholds
 - [x] Use PPA contracts, storage arbitrage and grid reservations deliberately
 - [x] Target lobby tricks at the leader (esp. the human) when it pays off
-- [x] Difficulty levels (easy/normal/hard) as parameters of the strategy
+- [x] Difficulty levels (normal/hard) as parameters of the strategy; the legacy rivals (`easy`) were removed
 - [x] Simulation script: N games, report average net worth per strategy
 - [x] Hard: market/grid forecast, end-of-game accounting, value-based surveys, selling dead projects,
       diversification, timed lobby tricks and revenge on the human; historic milestones spread over the game
@@ -88,6 +88,6 @@ Quick wins before any LLM, measured with bot-vs-bot simulations over many seeds:
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)
 - [ ] Persona per rival from `AI_DEF`, short memory via recent events
-- [ ] Timeout + fallback to `RuleBasedOpponent`, cost limit per game, prompt caching
+- [ ] Timeout + fallback to `SmartOpponent` (normal), cost limit per game, prompt caching
 - [ ] `end-quarter` via SSE
 - [ ] `ANTHROPIC_API_KEY` as k8s secret
