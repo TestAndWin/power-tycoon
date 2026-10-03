@@ -78,6 +78,13 @@ Modules of `packages/engine/src`:
 - Quarter end order must stay the same as `endQuarter()` in legacy: historic event → random event →
   spread → permits → reservations → **rival turns** → generation/revenue/costs → price → solvency →
   advance quarter → offers → history → game-over check.
+- Storage (deviation from legacy, where every storage earned capacity × spread): a storage first takes the
+  generation of its owner's plants in the same region and earns the full spread on it; the rest of its
+  capacity trades with bought power at `STORE_MARKET_SHARE` of the spread (`storeIncome` in `rules.ts`).
+  The report books both parts as separate `storage` lines.
+- Change of mind (new): `applyPermit` for another plant type on an unbuilt site replaces a running application;
+  with an approved permit it runs as `Site.alt` next to it – granted, it replaces type and permit, rejected,
+  the approved permit stays (`permitDecided.previous`). Starting the build drops it.
 - Lobby tricks: max 2 per player per quarter (legacy only limited the human; apply it to all).
 - PPA contracts: legacy stores `G.contracts` globally for the human only. Store contracts **per player**
   so rivals can use them; `SmartOpponent` accepts contracts.
@@ -199,7 +206,7 @@ interface OpponentStrategy {
   without a difficulty or with `easy` play against `normal`): values every project by its expected
   contribution to net worth at game end (remaining quarters × margin + book value − investment), surveys
   before leasing, finances with debt up to a share of the credit limit, accepts PPA contracts covered by
-  its own generation, values storage by the spread, reserves grid capacity (`hard`) and aims lobby tricks
+  its own generation, values storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity (`hard`) and aims lobby tricks
   at the leader, preferably the human (`humanBias`). Difficulty = a parameter set (`SMART_PARAMS`).
   `hard` additionally uses the full credit limit and
   - forecasts price and storage spread per quarter like the engine's price model (trend, the announced

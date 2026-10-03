@@ -96,7 +96,8 @@ option and disables it while `error` is set; the server still validates every re
 }
 ```
 
-Report lines are structured (`kind`: `ppa` | `spot` | `storage` | `opex` | `lease` | `interest`) because the
+Report lines are structured (`kind`: `ppa` | `spot` | `storage` | `opex` | `lease` | `interest`; storage lines carry
+`source`: `own` (own generation of the region shifted, with `mwh`) or `market`) because the
 engine never produces German text; the web app labels them.
 
 `409 { "error": "challengeOpen" }` while a minigame challenge is pending, `409 { "error": "gameOver" }` after the end.

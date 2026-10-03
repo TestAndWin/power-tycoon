@@ -34,6 +34,11 @@ export interface Site {
   lease: number;
   /** Set by a successful lawsuit: the pending permit will be rejected. Hidden from views. */
   killed: boolean;
+  /**
+   * Application for another plant type while the current permit stays valid. Granted, it replaces the
+   * current type and permit; rejected, the current permit stays. Dropped when building starts.
+   */
+  alt?: { type: PlantType; left: number } | null;
 }
 
 export interface Offer {
@@ -243,7 +248,15 @@ export type GameEvent =
     }
   | { type: 'historicEvent'; key: 'ets2' | 'grid2030' | 'hydrogen' | 'coalExit' | 'eu2040' }
   | { type: 'worldEvent'; key: WorldEventKey; region?: RegionKey }
-  | { type: 'permitDecided'; playerId: PlayerId; siteId: string; plantType: PlantType; approved: boolean }
+  | {
+      type: 'permitDecided';
+      playerId: PlayerId;
+      siteId: string;
+      plantType: PlantType;
+      approved: boolean;
+      /** Set when an alternative application was decided: the plant type of the permit it replaces or keeps. */
+      previous?: PlantType;
+    }
   | { type: 'plantFault'; playerId: PlayerId; siteId: string; cause: 'technical' | 'storm' }
   | { type: 'faultCleared'; playerId: PlayerId; siteId: string }
   | { type: 'playerBankrupt'; playerId: PlayerId }
@@ -259,7 +272,9 @@ export type ActionResult =
 export type ReportLine =
   | { kind: 'ppa'; amount: number; buyer: string; shortfall: number }
   | { kind: 'spot'; amount: number; mwh: number }
-  | { kind: 'storage'; amount: number }
+  /** `own`: own generation of the region sold later at the full spread; `market`: trading with bought power. */
+  | { kind: 'storage'; source: 'own'; amount: number; mwh: number }
+  | { kind: 'storage'; source: 'market'; amount: number }
   | { kind: 'opex'; amount: number }
   | { kind: 'lease'; amount: number }
   | { kind: 'interest'; amount: number };
@@ -333,13 +348,20 @@ export interface SiteView {
   /** Only for the viewer's own sites. */
   own?: {
     permitLeft: number;
+    /** Running application for another plant type (see `Site.alt`). */
+    alt: { type: PlantType; left: number } | null;
     eff: number;
     invested: number;
     age: number;
     value: number;
     sellValue: number;
     genEstimate: number;
+    /** Expected storage revenue per quarter (own and market part). */
     storeRevenue: number;
+    /** Expected MWh per quarter the storage takes from own plants in the region. */
+    storeOwnMwh: number;
+    /** MWh the storage can shift per quarter. */
+    storeCapacity: number;
   };
 }
 

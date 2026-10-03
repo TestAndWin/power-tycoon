@@ -45,6 +45,7 @@ function makeSite(r: Random, k: RegionKey, i: number): Site {
     hydro: false,
     lease: 0,
     killed: false,
+    alt: null,
   };
   s.wind = R.wind ? Math.round(rand(r, R.wind[0], R.wind[1]) * 10) / 10 : null;
   s.sun = R.sun ? Math.round(rand(r, R.sun[0], R.sun[1]) / 10) * 10 : null;

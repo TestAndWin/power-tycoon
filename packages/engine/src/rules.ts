@@ -1,5 +1,5 @@
 /** Rule helpers ported from legacy/src/core.js. All functions are pure or mutate only the given state. */
-import { BUYERS, HOURS, MIN_CREDIT, PLANTS, REGIONS, SEASON } from './data.js';
+import { BUYERS, HOURS, MIN_CREDIT, PLANTS, REGIONS, SEASON, STORE_MARKET_SHARE } from './data.js';
 import { pick, rand, randint, randomOf } from './rng.js';
 import type { GameState, Player, PlantType, PlayerId, RegionKey, Site, TrickType } from './types.js';
 
@@ -45,10 +45,43 @@ export function genEstimate(g: GameState, x: Site, q?: number): number {
   );
 }
 
-export function storeRevenue(g: GameState, x: Site): number {
+/** MWh a storage plant can shift per quarter. */
+export function storeCapacity(x: Pick<Site, 'type' | 'eff'>): number {
   if (!x.type) return 0;
   const P = PLANTS[x.type];
-  return (P.mwh ?? 0) * (P.cycles ?? 0) * g.spread * (P.eta ?? 0) * x.eff;
+  return (P.mwh ?? 0) * (P.cycles ?? 0) * (P.eta ?? 0) * x.eff;
+}
+
+export interface StoreIncome {
+  /** MWh taken from the owner's own plants in the same region. */
+  ownMwh: number;
+  /** Revenue from the own MWh (full spread). */
+  own: number;
+  /** Revenue from the rest of the capacity, charged from the market. */
+  market: number;
+}
+
+/**
+ * Storage revenue per storage site. Each storage first takes the generation (`gen`, MWh per site id) of its
+ * owner's plants in the same region and sells it later at the full spread; the remaining capacity trades on
+ * the market at `STORE_MARKET_SHARE` of the spread. Several storages of one owner share that generation in
+ * site order.
+ */
+export function storeIncome(g: GameState, gen: ReadonlyMap<string, number>, stores: Site[]): Map<string, StoreIncome> {
+  const pool = new Map<string, number>();
+  for (const x of g.sites) {
+    const e = gen.get(x.id);
+    if (e) pool.set(x.owner + x.r, (pool.get(x.owner + x.r) ?? 0) + e);
+  }
+  const res = new Map<string, StoreIncome>();
+  for (const x of stores) {
+    const cap = storeCapacity(x),
+      avail = pool.get(x.owner + x.r) ?? 0,
+      m = Math.min(cap, avail);
+    pool.set(x.owner + x.r, avail - m);
+    res.set(x.id, { ownMwh: m, own: m * g.spread, market: (cap - m) * g.spread * STORE_MARKET_SHARE });
+  }
+  return res;
 }
 
 export function usedGrid(g: GameState, r: RegionKey, pid?: PlayerId): number {
@@ -118,6 +151,7 @@ export function resetSite(x: Site): void {
     invested: 0,
     age: 0,
     killed: false,
+    alt: null,
   });
 }
 

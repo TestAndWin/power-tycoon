@@ -18,12 +18,13 @@ import {
   PRICE_SEASON,
   REGIONS,
   SEASON,
+  STORE_MARKET_SHARE,
   TARGET_DRIFT,
   TRICKS,
   WORLD_EVENTS,
   type HistoricDef,
 } from '../data.js';
-import type { Random } from '../rng.js';
+import { clamp, type Random } from '../rng.js';
 import { capFactor as siteCapFactor, plantTypesFor, siteValue, spreadFor } from '../rules.js';
 import { trickTargetIds } from '../view.js';
 import type {
@@ -284,7 +285,7 @@ class Planner {
     if (P.cls === 'store') {
       // spread grows with the share of renewables; assume a bit more than today on average
       const spread = this.v.market.spread * 1.1;
-      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff;
+      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff * this.storeShare(x, t, eff);
     }
     const cls = P.cls as Cls;
     let s = 0;
@@ -297,11 +298,36 @@ class Planner {
     if (!this.p.foresight) return this.quarterRevenue(x, t, eff);
     if (k >= this.left) return 0;
     const P = PLANTS[t];
-    if (P.cls === 'store') return (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff;
+    if (P.cls === 'store')
+      return (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff * this.storeShare(x, t, eff);
     const cls = P.cls as Cls;
     const q = this.qAt(k);
     const fx = k === 0 ? this.fxNow[cls] : 1;
     return P.mw * HOURS * capFactor(x, t) * SEASON[cls][q]! * CAPTURE[cls][q]! * this.price[k]! * eff * fx;
+  }
+
+  /**
+   * Share of the spread a storage of type `t` on `x` earns: full for the part it can fill from our own plants
+   * in the region (planned ones included), `STORE_MARKET_SHARE` for the rest. Other own storages there take
+   * their capacity first.
+   */
+  private storeShare(x: SiteView, t: PlantType, eff: number): number {
+    const P = PLANTS[t];
+    const cap = (P.mwh ?? 0) * (P.cycles ?? 0) * (P.eta ?? 0) * eff;
+    if (cap <= 0) return STORE_MARKET_SHARE;
+    let avail = 0;
+    for (const y of this.mine()) {
+      if (y.r !== x.r || y.id === x.id || !y.type) continue;
+      const Q = PLANTS[y.type];
+      if (Q.cls === 'store') avail -= (Q.mwh ?? 0) * (Q.cycles ?? 0) * (Q.eta ?? 0) * (y.own?.eff ?? 1);
+      else {
+        const cls = Q.cls as Cls;
+        avail +=
+          Q.mw * HOURS * capFactor(y, y.type) * ((SEASON[cls].reduce((a, b) => a + b, 0) / 4) * (y.own?.eff ?? 1));
+      }
+    }
+    const own = clamp(avail / cap, 0, 1);
+    return own + (1 - own) * STORE_MARKET_SHARE;
   }
 
   private runningCost(x: SiteView, t: PlantType): number {
