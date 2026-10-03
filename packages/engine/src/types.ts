@@ -1,3 +1,4 @@
+import type { HistoricDef } from './data.js';
 import type { Random } from './rng.js';
 
 export type PlayerId = number;
@@ -415,4 +416,6 @@ export interface PlayerView {
   };
   challenge: Challenge | null;
   news: NewsItem[];
+  /** Announced historic milestones that have not happened yet, with their effects. */
+  milestones: HistoricDef[];
 }

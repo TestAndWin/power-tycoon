@@ -1,4 +1,5 @@
 import {
+  HIST,
   INTEREST,
   MAX_CONTRACTS,
   MAX_TRICKS,
@@ -199,5 +200,6 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     },
     challenge: g.challenge && g.challenge.playerId === pid ? publicChallenge(g.challenge) : null,
     news,
+    milestones: HIST.filter((h) => (h.year - g.startYear) * 4 + h.q >= g.turn).map((h) => ({ ...h })),
   };
 }

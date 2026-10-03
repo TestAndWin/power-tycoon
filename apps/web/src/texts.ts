@@ -5,6 +5,8 @@
 import type {
   Difficulty,
   GameEvent,
+  HistoricDef,
+  HistoricKey,
   PlantType,
   PlayerView,
   RegionKey,
@@ -88,6 +90,24 @@ export const TRICK_TEXT: Record<TrickType, { name: string; desc: string }> = {
     desc: 'Die Leitwarte eines Kraftwerks fällt aus. Es liefert nichts, bis der Betreiber das Netz stabilisiert.',
   },
 };
+
+export const MILESTONE_NAME: Record<HistoricKey, string> = {
+  ets2: 'Emissionshandel 2',
+  grid2030: 'Netzausbau 2030',
+  hydrogen: 'Wasserstoff-Boom',
+  coalExit: 'Kohleausstieg',
+  eu2040: 'EU-Klimaziel 2040',
+};
+
+/** Effects of an announced milestone, built from its data. */
+export function milestoneEffects(h: HistoricDef): string[] {
+  const out: string[] = [];
+  if (h.target) out.push(`Strompreis steigt langfristig um ${Math.round((h.target - 1) * 100)} %`);
+  if (h.grid) out.push(`+${h.grid} MW Netzkapazität in jeder Region`);
+  if (h.spread) out.push(`Speicher-Spread +${h.spread} €/MWh`);
+  if (h.ppaBoost) out.push(`Abnahmeverträge mit ${h.ppaBoost.toLocaleString('de-DE')}-fachem Volumen`);
+  return out;
+}
 
 export const HIST_TEXT: Record<string, string> = {
   ets2: 'Emissionshandel für Gebäude und Verkehr startet. Fossile Energie wird teurer.',

@@ -139,6 +139,15 @@ describe('endQuarter', () => {
     for (let i = 1; i < turns.length; i++) expect(turns[i]! - turns[i - 1]!).toBeGreaterThanOrEqual(6);
   });
 
+  it('announces the milestones that are still ahead in the player view', async () => {
+    let g = newGame();
+    expect(playerView(g, 0).milestones.map((h) => h.key)).toEqual(HIST.map((h) => h.key));
+    while (g.year < 2028) g = (await endQuarter(g, idleRivals)).state;
+    const next = playerView(g, 0).milestones;
+    expect(next[0]).toEqual({ year: 2029, q: 1, key: 'grid2030', grid: 150 });
+    expect(next).toHaveLength(HIST.length - 1);
+  });
+
   it('ends after 40 quarters with reason "time" and applies historic events', async () => {
     let g = newGame(11);
     let n = 0;

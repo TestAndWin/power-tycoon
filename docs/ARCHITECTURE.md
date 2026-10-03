@@ -73,6 +73,8 @@ Modules of `packages/engine/src`:
 - Data tables: `REG`, `PT`, `SEASON`, `CAPTURE`, `PRICE_SEASON`, `TRICK`, `HIST`, `AI_DEF`, `BUYERS`, constants.
   Deviation: the `HIST` milestones are spread evenly over the 40 quarters (legacy: 2028–2035, EU 2040 only
   in the last year); their effects and those of the random world events are data (`HIST`, `WORLD_EVENTS`).
+  The upcoming milestones are public: `PlayerView.milestones` lists them with their effects (overview and
+  news tab show them), and the rivals plan with them.
 - Quarter end order must stay the same as `endQuarter()` in legacy: historic event → random event →
   spread → permits → reservations → **rival turns** → generation/revenue/costs → price → solvency →
   advance quarter → offers → history → game-over check.
