@@ -362,7 +362,15 @@ export function reportEventText(view: PlayerView, e: GameEvent): { kind: TextKin
     case 'permitDecided':
       return {
         kind: e.approved ? 'good' : 'bad',
-        text: `Genehmigung für ${PLANT_NAME[e.plantType]} auf ${sn(c, e.siteId)}${e.approved ? ' erteilt. Jetzt kann gebaut werden.' : ' abgelehnt.'}`,
+        text: `Genehmigung für ${PLANT_NAME[e.plantType]} auf ${sn(c, e.siteId)}${
+          e.approved
+            ? e.previous
+              ? ` erteilt. Sie ersetzt die Genehmigung für ${PLANT_NAME[e.previous]}.`
+              : ' erteilt. Jetzt kann gebaut werden.'
+            : e.previous
+              ? ` abgelehnt. Die Genehmigung für ${PLANT_NAME[e.previous]} bleibt bestehen.`
+              : ' abgelehnt.'
+        }`,
       };
     case 'plantFault':
       return e.cause === 'storm'

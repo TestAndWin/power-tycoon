@@ -82,6 +82,9 @@ Modules of `packages/engine/src`:
   generation of its owner's plants in the same region and earns the full spread on it; the rest of its
   capacity trades with bought power at `STORE_MARKET_SHARE` of the spread (`storeIncome` in `rules.ts`).
   The report books both parts as separate `storage` lines.
+- Change of mind (new): `applyPermit` for another plant type on an unbuilt site replaces a running application;
+  with an approved permit it runs as `Site.alt` next to it – granted, it replaces type and permit, rejected,
+  the approved permit stays (`permitDecided.previous`). Starting the build drops it.
 - Lobby tricks: max 2 per player per quarter (legacy only limited the human; apply it to all).
 - PPA contracts: legacy stores `G.contracts` globally for the human only. Store contracts **per player**
   so rivals can use them; `SmartOpponent` accepts contracts.

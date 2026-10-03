@@ -103,6 +103,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     if (mine)
       v.own = {
         permitLeft: x.permitLeft,
+        alt: x.alt ?? null,
         eff: x.eff,
         invested: x.invested,
         age: x.age,

@@ -140,6 +140,7 @@ function detail(): string {
   if (mine && x.type && x.own) {
     const P = PLANTS[x.type];
     f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}</dd><dt>Leistung</dt><dd>${P.mw} MW${P.mwh ? ' / ' + P.mwh + ' MWh' : ''}</dd>`;
+    if (x.own.alt) f += `<dt>Neuer Antrag</dt><dd>${PLANT_NAME[x.own.alt.type]} · noch ${x.own.alt.left} Q</dd>`;
     if (x.built) f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.own.eff * 100)} %</dd>`;
     if (operating(x))
       f += isStore(x.type)
@@ -198,6 +199,19 @@ function detail(): string {
   }
   // permit options first, in the region's order of plant types
   permits.sort((p, q) => regionTypes.indexOf(p.t) - regionTypes.indexOf(q.t));
+  // change of mind: apply for another type while a permit is running or granted (offered below the main actions)
+  const rethink = !!x.type && x.permit !== 'rejected';
+  if (rethink && permits.length) {
+    a.push(
+      `<p class="muted" style="font-size:12px;margin:6px 0 0">${
+        x.permit === 'approved'
+          ? `Umplanen: Die Genehmigung für ${PLANT_NAME[x.type!]} bleibt gültig, bis über den neuen Antrag entschieden ist.${x.own?.alt ? ' Bauen verwirft den laufenden Antrag.' : ''}`
+          : 'Umplanen: Ein neuer Antrag ersetzt den laufenden – dessen Kosten sind verloren.'
+      }</p>`,
+      ...permits.map(({ t, opt }) => btn('permit', x.id + '|' + t, 'Stattdessen beantragen: ' + PLANT_NAME[t], opt)),
+    );
+    permits.length = 0;
+  }
   const permitButtons = permits.map(({ t, opt }) =>
     x.type
       ? btn('permit', x.id + '|' + t, 'Erneut beantragen', opt, { cls: 'primary' })

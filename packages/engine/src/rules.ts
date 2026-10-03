@@ -151,6 +151,7 @@ export function resetSite(x: Site): void {
     invested: 0,
     age: 0,
     killed: false,
+    alt: null,
   });
 }
 

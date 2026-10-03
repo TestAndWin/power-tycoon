@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAction,
+  endQuarter,
   legalActions,
   optionsOf,
   plantTypesFor,
@@ -9,8 +10,12 @@ import {
   trickTargetIds,
   validateAction,
   type GameState,
+  type OpponentStrategy,
 } from '../src/index.js';
 import { fails, newGame, ok, setupSite, site } from './helpers.js';
+
+const idle: OpponentStrategy = { decide: async () => [] };
+const idleRivals = [idle, idle, idle];
 
 describe('survey', () => {
   it('reveals site data to the player only', () => {
@@ -91,6 +96,53 @@ describe('permits', () => {
     const c = ok(g, { type: 'changePlantType', siteId: 'nd0' }).state;
     expect(site(c, 'nd0')).toMatchObject({ type: null, permit: null });
     expect(site(ok(c, { type: 'applyPermit', siteId: 'nd0', plantType: 'solar' }).state, 'nd0').type).toBe('solar');
+  });
+  it('replaces a running application with another plant type', () => {
+    const g = newGame();
+    const x = setupSite(g, 'nd0', 0, 'approved', 'wind');
+    x.permit = 'pending';
+    x.permitLeft = 3;
+    const s = site(ok(g, { type: 'applyPermit', siteId: 'nd0', plantType: 'solar' }).state, 'nd0');
+    expect(s).toMatchObject({ type: 'solar', permit: 'pending', permitLeft: 1 });
+    expect(s.alt ?? null).toBeNull();
+  });
+  it('keeps an approved permit while applying for another type, until the decision', async () => {
+    const g = newGame();
+    setupSite(g, 'nd0', 0, 'approved', 'wind');
+    const r = ok(g, { type: 'applyPermit', siteId: 'nd0', plantType: 'solar' });
+    expect(site(r.state, 'nd0')).toMatchObject({ type: 'wind', permit: 'approved', alt: { type: 'solar', left: 1 } });
+    expect(r.state.players[0]!.cash).toBe(30e6 - 0.15e6);
+    fails(r.state, { type: 'applyPermit', siteId: 'nd0', plantType: 'solar' }, 'invalidState');
+    fails(r.state, { type: 'applyPermit', siteId: 'nd0', plantType: 'wind' }, 'invalidState');
+    // granted (solar is rejected in 5 %; seed 42 grants it): the new type replaces the old permit
+    const granted = (await endQuarter(r.state, idleRivals)).state;
+    expect(site(granted, 'nd0')).toMatchObject({ type: 'solar', permit: 'approved', alt: null });
+    // building drops a running alternative application
+    const alt = ok(g, { type: 'applyPermit', siteId: 'nd0', plantType: 'solar' }).state;
+    expect(site(ok(alt, { type: 'build', siteId: 'nd0' }).state, 'nd0').alt).toBeNull();
+  });
+  it('a rejected alternative keeps the approved permit', async () => {
+    const g = newGame();
+    const x = setupSite(g, 'nd0', 0, 'approved', 'wind');
+    x.alt = { type: 'solar', left: 1 };
+    // force the rejection
+    const reject = PLANTS.solar.reject;
+    PLANTS.solar.reject = 1;
+    try {
+      const { state, report } = await endQuarter(g, idleRivals);
+      expect(site(state, 'nd0')).toMatchObject({ type: 'wind', permit: 'approved', alt: null });
+      expect(report.events).toContainEqual(
+        expect.objectContaining({
+          type: 'permitDecided',
+          siteId: 'nd0',
+          plantType: 'solar',
+          approved: false,
+          previous: 'wind',
+        }),
+      );
+    } finally {
+      PLANTS.solar.reject = reject;
+    }
   });
 });
 

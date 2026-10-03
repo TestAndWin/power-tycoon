@@ -98,6 +98,24 @@ export async function playTurn(
 function decidePermits(g: GameState, out: GameEvent[]): void {
   const r = randomOf(g);
   for (const x of g.sites) {
+    if (x.alt && x.type) {
+      const alt = x.alt;
+      if (--alt.left <= 0) {
+        const ok = r() >= PLANTS[alt.type].reject,
+          previous = x.type;
+        x.alt = null;
+        if (ok) Object.assign(x, { type: alt.type, permit: 'approved', permitLeft: 0, killed: false });
+        out.push({
+          type: 'permitDecided',
+          playerId: x.owner,
+          siteId: x.id,
+          plantType: alt.type,
+          approved: ok,
+          previous,
+        });
+        if (ok) continue;
+      }
+    }
     if (x.permit !== 'pending' || !x.type) continue;
     x.permitLeft--;
     if (x.permitLeft > 0) continue;

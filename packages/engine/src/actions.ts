@@ -117,18 +117,33 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       const err = ownSite(c);
       if (err) return err;
       if (!plantTypesFor(x).includes(a.plantType)) return 'invalidPlantType';
-      if (x.type) {
-        if (x.permit !== 'rejected') return 'invalidState';
-        if (x.type !== a.plantType) return 'invalidPlantType';
-      }
+      if (!x.type) return null;
+      if (x.permit === 'rejected') return x.type !== a.plantType ? 'invalidPlantType' : null;
+      // change of mind: a running application is replaced, an approved permit stays until the new one is decided
+      if (x.built) return 'invalidState';
+      if (x.type === a.plantType || x.alt?.type === a.plantType) return 'invalidState';
       return null;
     },
     price: (c) => PLANTS[c.a.plantType].permit,
     execute({ g, p, pid, x, a }, cost, out) {
       p.cash -= cost;
+      const left = randint(randomOf(g), ...PLANTS[a.plantType].permitQ);
+      if (x.type && x.permit === 'approved') {
+        x.alt = { type: a.plantType, left };
+        emit(g, out, {
+          type: 'permitApplied',
+          playerId: pid,
+          siteId: x.id,
+          plantType: a.plantType,
+          cost,
+          quarters: left,
+        });
+        return;
+      }
       x.type = a.plantType;
       x.permit = 'pending';
-      x.permitLeft = randint(randomOf(g), ...PLANTS[a.plantType].permitQ);
+      x.killed = false;
+      x.permitLeft = left;
       emit(g, out, {
         type: 'permitApplied',
         playerId: pid,
@@ -145,6 +160,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     execute({ g, pid, x }, _cost, out) {
       x.type = null;
       x.permit = null;
+      x.alt = null;
       emit(g, out, { type: 'plantTypeCleared', playerId: pid, siteId: x.id });
     },
   },
@@ -155,6 +171,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     execute({ g, p, pid, x }, cost, out) {
       const t = x.type!;
       p.cash -= cost;
+      x.alt = null;
       emit(g, out, { type: 'buildStarted', playerId: pid, siteId: x.id, plantType: t, cost, retry: x.fail });
       if (x.fail) return startChallenge(g, pid, 'rotor', x, 'retry', out);
       x.invested = cost;
