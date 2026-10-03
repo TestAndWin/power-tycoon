@@ -43,6 +43,37 @@ export const DIFFICULTY_TEXT: Record<Difficulty, string> = {
   hard: 'Schwer – aggressiv und gut finanziert',
 };
 
+/** Faces of the rival companies (player ids 1–3). All persons are fictitious. */
+export const RIVAL_TEXT: Record<number, { ceo: string; role: string; motto: string; style: string }> = {
+  1: {
+    ceo: 'Hinnerk Ostendorp',
+    role: 'Vorstandschef, Hamburg',
+    motto: 'Wo Wind weht, sind wir schon da.',
+    style: 'Setzt auf Wind an Land und auf See. Baut beharrlich und scheut große Offshore-Kredite nicht.',
+  },
+  2: {
+    ceo: 'Inés Valcárcel',
+    role: 'Consejera Delegada, Sevilla',
+    motto: 'El sol no espera.',
+    style: 'Sichert sich Iberiens Sonnenflächen schnell und billig – wer zögert, geht leer aus.',
+  },
+  3: {
+    ceo: 'Dr. Ueli Brunner',
+    role: 'Verwaltungsratspräsident, Zug',
+    motto: 'Geduld ist auch eine Energiequelle.',
+    style: 'Wasserkraft und Speicher in den Alpen. Rechnet lange, schlägt dann mit voller Bilanz zu.',
+  },
+};
+
+/** How a rival stands against the player. */
+export const STANDING_TEXT = {
+  leads: 'Zieht davon',
+  ahead: 'Knapp vor dir',
+  close: 'Sitzt dir im Nacken',
+  behind: 'Liegt zurück',
+  out: 'Insolvent',
+} as const;
+
 export const TRICK_TEXT: Record<TrickType, { name: string; desc: string }> = {
   klage: {
     name: 'Klage gegen Genehmigung',

@@ -6,11 +6,12 @@ import { api, ApiError, loadStored, saveStored } from './api.js';
 import { money } from './format.js';
 import { playChallenge } from './minigames/index.js';
 import { closeModal, modalLocked, openModal, toast } from './modal.js';
-import { readCols, registerScenes, setHover } from './scene/index.js';
+import { registerScenes, setHover } from './scene/index.js';
 import { SND, toggleSound } from './sound.js';
 import { $, S, UI } from './state.js';
 import { errorText, newsTexts, REGION_TEXT, siteName, siteQuality } from './texts.js';
 import { redrawCharts, render, renderTop, showBuilt, showEnd, showReport, showStart } from './ui/index.js';
+import { recordRivalMoves } from './ui/rivals.js';
 
 function handleError(e: unknown): void {
   if (e instanceof ApiError) {
@@ -121,6 +122,7 @@ async function endQuarter(): Promise<void> {
   try {
     const res = await api.endQuarter(S.game);
     S.view = res.view;
+    recordRivalMoves(res.report, res.rivalActions);
     UI.confirm = null;
     S.busy = false;
     render();
@@ -141,6 +143,7 @@ async function startGame(): Promise<void> {
     S.game = { gameId: res.gameId, token: res.token };
     saveStored(S.game);
     S.view = res.view;
+    S.rivalMoves = {};
     UI.tab = 'overview';
     UI.sel = null;
     closeModal();
@@ -285,7 +288,6 @@ document.addEventListener('pointerover', (e) => {
   const h = (e.target as HTMLElement).closest?.<HTMLElement>('.hit');
   setHover(h ? (h.dataset.v ?? null) : null);
 });
-matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => readCols());
 
 async function boot(): Promise<void> {
   const stored = loadStored();

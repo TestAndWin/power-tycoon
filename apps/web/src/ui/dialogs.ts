@@ -5,6 +5,7 @@ import {
   operating,
   PLANTS,
   REGION_KEYS,
+  rivalProfile,
   type Difficulty,
   type QuarterReport,
   type RivalActionLog,
@@ -22,8 +23,10 @@ import {
   reportEventText,
   reportLineText,
   rivalActionText,
+  RIVAL_TEXT,
 } from '../texts.js';
 import { disabledUnless, LOGO, V } from './common.js';
+import { crest, portrait } from './companies.js';
 import { byRank } from './rivals.js';
 
 export function showReport(rep: QuarterReport, rivals: RivalActionLog[]): void {
@@ -68,7 +71,7 @@ function compLog(rivals: RivalActionLog[]): string {
       const fromNews = e.type === 'trickSucceeded' || e.type === 'trickFailed';
       L.push({ id: r.playerId, t: fromNews ? t : esc(v.players[r.playerId]!.name) + ' ' + t + '.' });
     }
-  return `<details class="comp" ${L.length ? 'open' : ''}><summary><b>Konkurrenz</b> <span class="muted">${L.length ? L.length + ' Aktionen' : 'ruhiges Quartal'}</span></summary><ul class="list" id="compList">${L.map((c) => `<li class="rv"><i class="dot" style="--oc:${playerColor(c.id)};margin-top:5px"></i><span>${c.t}</span></li>`).join('')}</ul></details>`;
+  return `<details class="comp" ${L.length ? 'open' : ''}><summary><b>Züge der Konkurrenz</b> <span class="muted">${L.length ? L.length + ' Aktionen' : 'ruhiges Quartal'}</span></summary><ul class="list" id="compList">${L.map((c) => `<li class="rv" style="--oc:${playerColor(c.id)}">${portrait(c.id, 30)}<span>${c.t}</span></li>`).join('')}</ul></details>`;
 }
 /** Shows the rival actions one after the other. */
 function animateRivals(): void {
@@ -91,7 +94,7 @@ export function showEnd(): void {
   const won = v.over !== 'bankrupt' && rank[0]!.human;
   openModal(`<h2>${won ? 'Du führst die Energiewende an!' : 'Spielende'}</h2><p class="muted" style="margin:0">${reason} Du hast ${tons(v.me.co2)} CO₂ vermieden.</p>
     <div class="tw"><table class="t"><thead><tr><th>#</th><th>Konzern</th><th class="r">Vermögen</th><th class="r">CO₂ vermieden</th></tr></thead><tbody>
-    ${rank.map((p, i) => `<tr><td class="num">${i + 1}</td><td><span class="row" style="flex-wrap:nowrap"><i class="dot" style="--oc:${playerColor(p.id)}"></i>${esc(p.name)}</span></td><td class="r num">${p.out ? 'insolvent' : money(p.worth, true)}</td><td class="r num">${tons(p.co2)}</td></tr>`).join('')}</tbody></table></div>
+    ${rank.map((p, i) => `<tr><td class="num">${i + 1}</td><td><span class="row" style="flex-wrap:nowrap">${crest(p.id, 22)}${esc(p.name)}</span></td><td class="r num">${p.out ? 'insolvent' : money(p.worth, true)}</td><td class="r num">${tons(p.co2)}</td></tr>`).join('')}</tbody></table></div>
     <div class="foot"><button class="btn" data-act="closeModal">Endstand ansehen</button><button class="btn primary" data-act="newGameDlg">Neues Spiel</button></div>`);
 }
 // The links live once in index.html (page footer); the start dialog covers that footer.
@@ -99,6 +102,7 @@ const legalLinks = (): string => [...document.querySelectorAll('.foot-legal a')]
 export function showStart(canContinue: boolean, name = 'Deichwatt AG', difficulty: Difficulty = 'normal'): void {
   openModal(`<div class="banner tall"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">2026 – 2035</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
     <p style="margin:0">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
+    <div class="foes"><span class="label">Deine Gegner</span><div class="foe-row">${[1, 2, 3].map((id) => `<div class="foe" style="--oc:var(--c${id})">${portrait(id, 56)}<span><b>${esc(RIVAL_TEXT[id]!.ceo)}</b><span class="muted">${esc(rivalProfile(id).name)}</span><i>„${esc(RIVAL_TEXT[id]!.motto)}“</i></span></div>`).join('')}</div></div>
     <div class="field-grid">
       <label for="sName">Konzernname<input type="text" id="sName" value="${esc(name)}" maxlength="24"></label>
       <div class="field-grid-info"><span class="label">Spieldauer</span><b>${GAME_YEARS} Jahre · ${GAME_YEARS * 4} Quartale</b><span class="muted">2026 bis Ende 2035</span></div>

@@ -5,6 +5,7 @@ import { REGION_TEXT } from '../texts.js';
 import { meP, todo, V } from './common.js';
 import { ICON } from './icons.js';
 import { newsList } from './news.js';
+import { raceTrack } from './rivals.js';
 import { ownBar } from './sites.js';
 
 export function vOverview(): string {
@@ -18,7 +19,8 @@ export function vOverview(): string {
     return `<button class="mini" data-act="goRegion" data-v="${r}"><canvas data-scene="${r}" data-mini="1"></canvas><span class="mcap"><b>${REGION_TEXT[r].name}</b><span>${m.length ? m.length + ' Fläche' + (m.length > 1 ? 'n' : '') + ' · ' + mw2 + ' MW' : 'noch nicht vertreten'}</span>${ownBar(r)}</span></button>`;
   }).join('');
   const news = newsList().slice(0, 4);
-  return `<div class="stack" style="gap:14px">
+  return `<div class="stack" style="gap:16px">
+  ${raceTrack()}
   <div class="minis">${minis}</div>
   <div class="tiles">
     <div class="tile"><span class="ticon">${ICON.worth}</span><span class="label">Nettovermögen</span><span class="big">${money(P.worth)}</span><span class="muted">Rang ${v.me.rank} · noch ${v.quartersLeft} Quartale bis Ende ${v.endYear - 1}</span></div>

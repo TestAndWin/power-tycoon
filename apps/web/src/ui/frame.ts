@@ -1,6 +1,5 @@
 /** Page frame: top bar, tabs and the active view. */
 import { esc, eur, money, qStr } from '../format.js';
-import { playerColor } from '../players.js';
 import { registerScenes } from '../scene/index.js';
 import { SND } from '../sound.js';
 import { $, S, UI } from '../state.js';
@@ -8,6 +7,7 @@ import { SEASON_NAME } from '../texts.js';
 import { vBank } from './bank.js';
 import { drawChart } from './chart.js';
 import { LOGO, meP, todo, V } from './common.js';
+import { crest } from './companies.js';
 import { ICON } from './icons.js';
 import { vLobby } from './lobby.js';
 import { vMarket } from './market.js';
@@ -32,14 +32,15 @@ export function renderTop(): void {
     P = meP(),
     ph = v.market.priceHist,
     d = ph.length > 1 ? ph[ph.length - 1]! - ph[ph.length - 2]! : 0;
+  const alive = v.players.filter((p) => !p.out).length;
   $('#top')!.innerHTML = `
-    <div class="brand"><b>${LOGO}Wattmogul</b><span><i class="dot" style="--oc:${playerColor(0)}"></i>${esc(P.name)}</span></div>
+    <div class="hq">${crest(0, 46)}<div class="hq-name"><span class="game">${LOGO}Wattmogul</span><b>${esc(P.name)}</b></div></div>
     <div class="stats">
-      <div class="stat"><span class="label">Quartal</span><span class="v">${qStr(v.year, v.q)} <span class="season s${v.q}">${SEASON_NAME[v.q]}</span></span></div>
-      <div class="stat"><span class="label">Kasse</span><span class="v ${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</span></div>
-      <div class="stat"><span class="label">Kredit</span><span class="v">${money(P.loan)}</span></div>
-      <div class="stat"><span class="label">Strompreis</span><span class="v">${eur(v.market.price)} <span class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'}${Math.abs(d)}</span></span></div>
-      <div class="stat"><span class="label">Rang</span><span class="v">${v.me.rank} von ${v.players.filter((p) => !p.out).length}</span></div>
+      <div class="stat cal"><span class="label">Quartal</span><span class="v">${qStr(v.year, v.q)} <span class="season s${v.q}">${SEASON_NAME[v.q]}</span></span></div>
+      <div class="stat res"><i class="tok coin" aria-hidden="true">€</i><span><span class="label">Kasse</span><span class="v ${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</span></span></div>
+      <div class="stat res"><i class="tok debt" aria-hidden="true">%</i><span><span class="label">Kredit</span><span class="v">${money(P.loan)}</span></span></div>
+      <div class="stat res"><i class="tok volt" aria-hidden="true">⚡</i><span><span class="label">Strompreis</span><span class="v">${eur(v.market.price)} <span class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'}${Math.abs(d)}</span></span></span></div>
+      <div class="stat rank r${v.me.rank}"><i class="ribbon" aria-hidden="true">${v.me.rank}</i><span><span class="label">Rang</span><span class="v">${v.me.rank} von ${alive}</span></span></div>
     </div>
     <div class="row" style="flex-wrap:nowrap"><button class="btn icon" data-act="sound" aria-label="Ton ${SND.on ? 'aus' : 'an'}schalten" title="Ton ${SND.on ? 'aus' : 'an'}">${SND.on ? SPK_ON : SPK_OFF}</button>
     ${v.over ? '<button class="btn primary big endq" data-act="newGameDlg">Neues Spiel</button>' : `<button class="btn primary big endq" data-act="endQuarter" ${S.busy ? 'disabled' : ''}>Quartal beenden →</button>`}</div>`;
