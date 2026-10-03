@@ -11,7 +11,7 @@ import {
   isStore,
   operating,
   resetSite,
-  storeRevenue,
+  storeIncome,
   updateSpread,
   worth,
 } from './rules.js';
@@ -28,6 +28,7 @@ import type {
   ReportLine,
   RivalActionLog,
   RivalProfile,
+  Site,
 } from './types.js';
 import { playerView } from './view.js';
 import { applyWorldEvents } from './world.js';
@@ -138,8 +139,10 @@ interface Output {
   gen: number;
   /** Market value of the generation (spot price × capture rate). */
   val: number;
-  /** Storage arbitrage revenue. */
-  store: number;
+  /** Storage revenue from own generation and from market trading, and the own MWh shifted. */
+  storeOwn: number;
+  storeMarket: number;
+  storeMwh: number;
 }
 
 /** Operating plants age, may fail or recover, and produce. Returns the output per player. */
@@ -148,8 +151,10 @@ function produce(g: GameState, price: number, out: GameEvent[]): Map<PlayerId, O
   const st = new Map<PlayerId, Output>();
   for (const p of g.players) {
     p.genLast = 0;
-    st.set(p.id, { gen: 0, val: 0, store: 0 });
+    st.set(p.id, { gen: 0, val: 0, storeOwn: 0, storeMarket: 0, storeMwh: 0 });
   }
+  const gen = new Map<string, number>();
+  const stores: Site[] = [];
   for (const x of g.sites) {
     if (!operating(x) || !x.type) continue;
     x.age++;
@@ -166,14 +171,21 @@ function produce(g: GameState, price: number, out: GameEvent[]): Map<PlayerId, O
       continue;
     }
     const s = st.get(x.owner)!;
-    if (isStore(x.type)) s.store += storeRevenue(g, x);
+    if (isStore(x.type)) stores.push(x);
     else {
       const e = genEstimate(g, x);
       const cls = PLANTS[x.type].cls as 'wind' | 'solar' | 'hydro';
+      gen.set(x.id, e);
       s.gen += e;
       s.val += e * price * CAPTURE[cls][g.q]!;
     }
     if (x.curtail > 0) x.curtail--;
+  }
+  for (const [id, inc] of storeIncome(g, gen, stores)) {
+    const s = st.get(g.sites.find((x) => x.id === id)!.owner)!;
+    s.storeOwn += inc.own;
+    s.storeMarket += inc.market;
+    s.storeMwh += inc.ownMwh;
   }
   return st;
 }
@@ -197,10 +209,11 @@ function settle(g: GameState, p: Player, s: Output, price: number, out: GameEven
   }
   const spot = left * avgCap;
   lines.push({ kind: 'spot', amount: Math.round(spot), mwh: left });
-  lines.push({ kind: 'storage', amount: Math.round(s.store) });
+  if (s.storeOwn > 0) lines.push({ kind: 'storage', source: 'own', amount: Math.round(s.storeOwn), mwh: s.storeMwh });
+  if (s.storeMarket > 0) lines.push({ kind: 'storage', source: 'market', amount: Math.round(s.storeMarket) });
   for (const c of p.contracts) if (c.left <= 0) out.push({ type: 'contractExpired', playerId: p.id, buyer: c.buyer });
   p.contracts = p.contracts.filter((c) => c.left > 0);
-  p.cash += Math.round(spot + s.store + ppa);
+  p.cash += Math.round(spot + s.storeOwn + s.storeMarket + ppa);
   let op = 0;
   let ls = 0;
   for (const x of g.sites) {

@@ -259,7 +259,9 @@ export type ActionResult =
 export type ReportLine =
   | { kind: 'ppa'; amount: number; buyer: string; shortfall: number }
   | { kind: 'spot'; amount: number; mwh: number }
-  | { kind: 'storage'; amount: number }
+  /** `own`: own generation of the region sold later at the full spread; `market`: trading with bought power. */
+  | { kind: 'storage'; source: 'own'; amount: number; mwh: number }
+  | { kind: 'storage'; source: 'market'; amount: number }
   | { kind: 'opex'; amount: number }
   | { kind: 'lease'; amount: number }
   | { kind: 'interest'; amount: number };
@@ -339,7 +341,12 @@ export interface SiteView {
     value: number;
     sellValue: number;
     genEstimate: number;
+    /** Expected storage revenue per quarter (own and market part). */
     storeRevenue: number;
+    /** Expected MWh per quarter the storage takes from own plants in the region. */
+    storeOwnMwh: number;
+    /** MWh the storage can shift per quarter. */
+    storeCapacity: number;
   };
 }
 

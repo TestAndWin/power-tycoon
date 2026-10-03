@@ -6,6 +6,7 @@ import {
   REGION_KEYS,
   REGIONS,
   SITES_PER_REGION,
+  STORE_MARKET_SHARE,
   TRICK_KEYS,
   type ActionOption,
   type PlantType,
@@ -107,6 +108,15 @@ function hits(r: RegionKey): string {
     })
     .join('');
 }
+/** Which own plants feed a storage in region `r`, and what happens without them. */
+function storeFeeders(r: RegionKey): string {
+  const v = V(),
+    feeders = v.sites.filter((s) => s.owner === v.playerId && s.r === r && s.type && !isStore(s.type) && operating(s));
+  const rule = `Ohne eigenen Strom kauft der Speicher an der Börse – das bringt nur ${Math.round(STORE_MARKET_SHARE * 100)} % des Preisvorteils.`;
+  return feeders.length
+    ? `Lädt mit Strom deiner Anlagen ${feeders.map(siteName).join(', ')} und verkauft ihn zu teuren Zeiten – dafür gibt es den vollen Spread. ${rule}`
+    : `Keine eigene Anlage in dieser Region liefert Strom. ${rule} Bau hier eigene Kraftwerke dazu.`;
+}
 /** Facts and actions of the selected site. The actions are exactly the engine's options for it. */
 function detail(): string {
   const v = V();
@@ -133,10 +143,14 @@ function detail(): string {
     if (x.built) f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.own.eff * 100)} %</dd>`;
     if (operating(x))
       f += isStore(x.type)
-        ? `<dt>Arbitrage/Quartal</dt><dd>≈ ${money(x.own.storeRevenue, true)}</dd>`
+        ? `<dt>Speicherertrag/Quartal</dt><dd>≈ ${money(x.own.storeRevenue, true)}</dd><dt>Eigener Strom</dt><dd>≈ ${mwh(x.own.storeOwnMwh)} von ${mwh(x.own.storeCapacity)}</dd>`
         : `<dt>Erzeugung ${QN[v.q]}</dt><dd>≈ ${mwh(x.own.genEstimate)}</dd>`;
     f += `<dt>Wert</dt><dd>${money(x.own.value, true)}</dd>`;
   }
+  const storeNote =
+    mine && x.type && isStore(x.type)
+      ? `<p class="muted" style="font-size:12px;margin:8px 0 0">${storeFeeders(x.r)}</p>`
+      : '';
   const regionTypes = REGIONS[x.r].types;
   const permits: { t: PlantType; opt: ActionOption }[] = [];
   const a: string[] = [];
@@ -203,5 +217,5 @@ function detail(): string {
         `<button class="btn" data-act="trickGo" data-v="${x.id}|${lt}"><span>Lobby-Aktion planen …</span></button>`,
       );
   }
-  return `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl><div class="actions">${a.join('')}</div>`;
+  return `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl>${storeNote}<div class="actions">${a.join('')}</div>`;
 }

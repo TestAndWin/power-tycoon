@@ -160,6 +160,11 @@ export const INTEREST = 0.012;
 export const MAX_CONTRACTS = 3;
 export const CO2 = 0.4;
 export const START_CASH = 30e6;
+/**
+ * Storage charged from the market instead of the owner's own plants in the region earns only this share of
+ * the spread (grid fees, competing traders).
+ */
+export const STORE_MARKET_SHARE = 0.5;
 export const SITES_PER_REGION = 16;
 export const MAX_TRICKS = 2;
 export const RESERVE_MW = 50;

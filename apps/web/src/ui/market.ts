@@ -25,7 +25,7 @@ export function vMarket(): string {
   return `<div class="grid g2">
     <div class="stack" style="gap:14px">
       <section class="panel"><div class="phead"><h3>Börse</h3><span class="mono">${eur(v.market.price)} · Spread ${eur(v.market.spread)}</span></div><div class="chart" data-chart="price"></div>
-      <p class="muted" style="margin:10px 0 0;font-size:13px">Strom wird automatisch zum Börsenpreis verkauft. Solarstrom erzielt im Sommer weniger, weil dann alle gleichzeitig einspeisen. Speicher verdienen am Spread zwischen billigen und teuren Stunden – je mehr Wind und Sonne im Markt, desto größer.</p></section>
+      <p class="muted" style="margin:10px 0 0;font-size:13px">Strom wird automatisch zum Börsenpreis verkauft. Solarstrom erzielt im Sommer weniger, weil dann alle gleichzeitig einspeisen. Speicher verdienen am Spread zwischen billigen und teuren Stunden – je mehr Wind und Sonne im Markt, desto größer. Den vollen Spread gibt es für Strom deiner eigenen Anlagen in derselben Region, mit zugekauftem Börsenstrom nur die Hälfte.</p></section>
       <section class="panel"><h3 style="margin-bottom:8px">Deine Lieferverpflichtung</h3>
         <dl class="facts"><dt>Erwartete Erzeugung ${QN[v.q]}</dt><dd>${mwh(next)}</dd><dt>Vertraglich gebunden</dt><dd>${mwh(need)}</dd></dl>
         ${need > next ? '<span class="chip bad">Mehr verkauft als erzeugt – Zukauf droht</span>' : ''}</section>

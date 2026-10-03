@@ -33,7 +33,8 @@ import {
   sellValue,
   serviceCost,
   siteValue,
-  storeRevenue,
+  storeCapacity,
+  storeIncome,
   surveyCost,
   usedGrid,
   worth,
@@ -69,6 +70,12 @@ export const trickTargetIds = (v: PlayerView, trick: TrickType): string[] =>
 export function playerView(g: GameState, pid: PlayerId): PlayerView {
   const me = g.players[pid];
   if (!me) throw new Error('unknown player');
+  // expected storage income of the viewer's own storages (same split as in the quarter, without faults)
+  const myGen = new Map<string, number>();
+  const myStores = g.sites.filter((x) => x.owner === pid && operating(x) && x.type && isStore(x.type));
+  for (const x of g.sites)
+    if (x.owner === pid && operating(x) && !x.fault && x.type && !isStore(x.type)) myGen.set(x.id, genEstimate(g, x));
+  const myStore = storeIncome(g, myGen, myStores);
   const sites: SiteView[] = g.sites.map((x) => {
     const mine = x.owner === pid;
     const surveyed = x.surveyed.includes(pid);
@@ -102,7 +109,9 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
         value: Math.round(siteValue(x)),
         sellValue: sellValue(x),
         genEstimate: operating(x) && !x.fault ? genEstimate(g, x) : 0,
-        storeRevenue: x.type && isStore(x.type) && operating(x) ? Math.round(storeRevenue(g, x)) : 0,
+        storeRevenue: Math.round((myStore.get(x.id)?.own ?? 0) + (myStore.get(x.id)?.market ?? 0)),
+        storeOwnMwh: Math.round(myStore.get(x.id)?.ownMwh ?? 0),
+        storeCapacity: x.type && isStore(x.type) ? Math.round(storeCapacity(x)) : 0,
       };
     return v;
   });

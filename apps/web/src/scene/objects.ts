@@ -391,6 +391,16 @@ function drawSolar(fr: Frame, sp: Spot): void {
 }
 
 /** Two battery containers with status LEDs. */
+/**
+ * Storage fill level over the scene's day (0..1): charges while the sun is up, sells in the evening,
+ * stays low at night. `charging` tells the direction.
+ */
+function storeLevel(p: number): { lvl: number; charging: boolean } {
+  const ease = (v: number) => v * v * (3 - 2 * v);
+  if (p < 0.45) return { lvl: 0.15 + 0.85 * ease(clamp((p - 0.05) / 0.35, 0, 1)), charging: p >= 0.05 };
+  return { lvl: 0.15 + 0.85 * (1 - ease(clamp((p - 0.5) / 0.3, 0, 1))), charging: false };
+}
+
 function drawBattery(fr: Frame, sp: Spot): void {
   const { ctx, t, d, colors, lights } = fr;
   const { x, u, bx, by, op } = sp;
@@ -412,6 +422,13 @@ function drawBattery(fr: Frame, sp: Spot): void {
     ctx.fill();
     ctx.fillStyle = colors[x.owner]!;
     ctx.fillRect(x0, y0 + h * 0.35, w, h * 0.15);
+    // charge gauge: four cells, green while charging, amber while selling
+    const { lvl, charging } = storeLevel(fr.p);
+    const cells = op ? Math.round(lvl * 4) : 0;
+    for (let c = 0; c < 4; c++) {
+      ctx.fillStyle = c < cells ? (charging ? '#39d353' : '#f0b429') : 'rgba(0,0,0,.25)';
+      ctx.fillRect(x0 + w * (0.08 + c * 0.15), y0 + h * 0.62, w * 0.12, h * 0.24);
+    }
     ctx.fillStyle = op ? (Math.floor(t * 2 + k) % 2 ? '#39d353' : '#1a7f37') : '#666';
     ctx.fillRect(x0 + w * 0.8, y0 + h * 0.65, 3, 3);
     lights.push([x0 + w * 0.8 + 1.5, y0 + h * 0.65 + 1.5, op ? '#39d353' : '#666']);
@@ -458,9 +475,12 @@ function drawPump(fr: Frame, sp: Spot): void {
   ctx.beginPath();
   ctx.ellipse(ux, uy, u * 0.2, u * 0.06, 0, 0, 7);
   ctx.fill();
+  // upper basin fills while pumping (cheap power) and empties while generating
+  const { lvl, charging } = storeLevel(fr.p),
+    wl = op ? 0.35 + 0.65 * lvl : 0.6;
   ctx.fillStyle = mix('#0b2033', '#4a90c2', d);
   ctx.beginPath();
-  ctx.ellipse(ux, uy, u * 0.17, u * 0.045, 0, 0, 7);
+  ctx.ellipse(ux, uy, u * 0.17 * wl, u * 0.045 * wl, 0, 0, 7);
   ctx.fill();
   ctx.strokeStyle = '#5c6166';
   ctx.lineWidth = Math.max(2, u * 0.025);
@@ -476,7 +496,8 @@ function drawPump(fr: Frame, sp: Spot): void {
   if (op) {
     ctx.fillStyle = '#bfe3ff';
     for (let k = 0; k < 4; k++) {
-      const f = (t * 0.4 + k / 4) % 1,
+      const f0 = (t * 0.4 + k / 4) % 1,
+        f = charging ? 1 - f0 : f0,
         px = ux + u * 0.1 + (bx + u * 0.2 - ux - u * 0.1) * f,
         py = uy + 2 + (by - u * 0.08 - uy - 2) * f;
       ctx.beginPath();

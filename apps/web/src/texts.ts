@@ -239,7 +239,9 @@ export function reportLineText(l: ReportLine): string {
     case 'spot':
       return 'Börsenverkauf (' + mwh(l.mwh) + ')';
     case 'storage':
-      return 'Speicher-Arbitrage';
+      return l.source === 'own'
+        ? 'Speicher: eigenen Strom später verkauft (' + mwh(l.mwh) + ')'
+        : 'Speicher: Handel mit Börsenstrom';
     case 'opex':
       return 'Betrieb & Wartung';
     case 'lease':
