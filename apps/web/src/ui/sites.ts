@@ -12,7 +12,7 @@ import {
   type RegionKey,
 } from '@power-tycoon/engine';
 import { esc, money, mwh, QN } from '../format.js';
-import { playerColor, playerMark } from '../players.js';
+import { playerColor } from '../players.js';
 import { geo, quad } from '../scene/index.js';
 import { UI } from '../state.js';
 import { PLANT_NAME, REGION_TEXT, siteName, siteQuality } from '../texts.js';
@@ -57,16 +57,14 @@ export function vSites(): string {
     (k) =>
       `<button class="rpill" aria-pressed="${k === r}" data-act="region" data-v="${k}">${REGION_TEXT[k].name}<span class="n">${v.sites.filter((x) => x.r === k && x.owner === v.playerId).length}/${SITES_PER_REGION}</span>${ownBar(k)}</button>`,
   ).join('');
-  return `<div class="regions">${pills}</div>
-  <div class="field-layout">
+  return `<div class="field-layout">
     <section class="panel">
-      <div class="phead"><h2>${REGION_TEXT[r].name}</h2><span class="muted">${R.types.map((t) => PLANT_NAME[t]).join(' · ')}</span></div>
-      <p class="muted" style="margin:0 0 12px">${REGION_TEXT[r].desc}</p>
+      <div class="regions" role="group" aria-label="Region">${pills}</div>
+      <p class="rdesc muted"><b>${R.types.map((t) => PLANT_NAME[t]).join(' · ')}</b> – ${REGION_TEXT[r].desc}</p>
       <div class="region-bar">
-        ${R.wind ? `<div class="stat"><span class="label">Wind</span><span class="v">${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</span></div>` : ''}
-        ${R.sun ? `<div class="stat"><span class="label">Sonne</span><span class="v">${R.sun[0]}–${R.sun[1]} kWh/kWp</span></div>` : ''}
+        <dl class="rclimate">${R.wind ? `<dt class="label">Wind</dt><dd class="mono">${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</dd>` : ''}${R.sun ? `<dt class="label">Sonne</dt><dd class="mono">${R.sun[0]}–${R.sun[1]} kWh/kWp</dd>` : ''}</dl>
         ${gridBar(r)}
-        <button class="btn" data-act="reserve" data-v="${r}" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)} · ${v.constants.reserveQuarters} Q</small></button>
+        <button class="btn reserve" data-act="reserve" data-v="${r}" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)} · ${v.constants.reserveQuarters} Q</small></button>
       </div>
       <div class="scene"><canvas data-scene="${r}" aria-hidden="true"></canvas><div class="hits">${hits(r)}</div></div>
       ${ownerLegend(r)}
@@ -89,7 +87,7 @@ function hits(r: RegionKey): string {
       const o = own ? v.players[x.owner]! : null,
         val = !own ? (x.surveyed ? siteQuality(x) : money(x.lease, true)) : o!.human ? s.t : esc(shortName(o!));
       return `<button class="hit ${UI.sel === x.id ? 'sel' : ''}" style="left:${l}%;top:${qd.y0}%;width:${w}%;height:${qd.y1 - qd.y0}%" data-act="sel" data-v="${x.id}" aria-label="${siteName(x)}: ${own ? (o!.human ? 'deine Fläche' : 'gehört ' + esc(o!.name)) + ', ' + s.t : 'frei, ' + s.t}">
-      <span class="stag${own ? ' own' : ''}${x.owner === v.playerId ? ' me' : ''}"${own ? ` style="--oc:${playerColor(x.owner)}"` : ''}>${own ? `<i class="mb">${playerMark(x.owner)}</i>` : ''}${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}<span class="sval">${val}</span></span></button>`;
+      <span class="stag">${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}<span class="sval">${val}</span></span></button>`;
     })
     .join('');
 }

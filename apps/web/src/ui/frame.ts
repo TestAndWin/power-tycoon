@@ -34,7 +34,7 @@ export function renderTop(): void {
     d = ph.length > 1 ? ph[ph.length - 1]! - ph[ph.length - 2]! : 0;
   const alive = v.players.filter((p) => !p.out).length;
   $('#top')!.innerHTML = `
-    <div class="hq">${crest(0, 46)}<div class="hq-name"><span class="game">${LOGO}Wattmogul</span><b>${esc(P.name)}</b></div></div>
+    <div class="hq">${crest(0, 38)}<div class="hq-name"><span class="game">${LOGO}Wattmogul</span><b>${esc(P.name)}</b></div></div>
     <div class="stats">
       <div class="stat cal"><span class="label">Quartal</span><span class="v">${qStr(v.year, v.q)} <span class="season s${v.q}">${SEASON_NAME[v.q]}</span></span></div>
       <div class="stat res"><i class="tok coin" aria-hidden="true">€</i><span><span class="label">Kasse</span><span class="v ${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</span></span></div>

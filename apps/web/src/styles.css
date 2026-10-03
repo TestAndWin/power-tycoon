@@ -137,15 +137,15 @@ h3 {
   position: sticky;
   top: env(safe-area-inset-top, 0px);
   z-index: 20;
-  padding-block: 12px 0;
+  padding-block: 8px 0;
 }
 .topbar-in {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 20px;
-  padding: 10px 14px;
-  border-radius: 20px;
+  gap: 8px 18px;
+  padding: 6px 10px 6px 8px;
+  border-radius: 18px;
   border: 2px solid var(--edge);
   color: #fff4dc;
   background: var(--grain), linear-gradient(180deg, #3a2d20, #251b12);
@@ -247,10 +247,10 @@ h3 {
   flex: none;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  font: 800 14px/1 var(--sans);
+  font: 800 13px/1 var(--sans);
   font-style: normal;
   color: var(--ink);
   border: 2px solid #150f09;
@@ -275,8 +275,8 @@ h3 {
   position: relative;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   font: 800 14px/1 var(--display);
   font-style: normal;
@@ -338,14 +338,14 @@ h3 {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding: 16px 2px 16px;
+  padding: 10px 2px 12px;
   scrollbar-width: none;
 }
 .tab {
   appearance: none;
   border: 2px solid var(--edge);
   background: var(--surface2);
-  padding: 7px 14px;
+  padding: 5px 12px;
   border-radius: 12px;
   cursor: pointer;
   color: var(--ink);
@@ -467,6 +467,14 @@ h3 {
 .endq {
   position: relative;
   overflow: hidden;
+}
+.topbar-in .btn.big {
+  padding: 8px 16px;
+}
+.topbar-in .btn.icon {
+  width: 38px;
+  height: 38px;
+  padding: 7px;
 }
 .topbar-in .endq {
   box-shadow: 0 4px 0 #150f09;
@@ -1008,7 +1016,33 @@ h3 {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+}
+.rclimate {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 10px;
+  align-items: baseline;
+  margin: 0;
+}
+.rclimate dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.region-bar .reserve {
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.2;
+  padding: 6px 12px;
+}
+.rdesc {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.rdesc b {
+  color: var(--ink);
 }
 .rpill {
   appearance: none;
@@ -1059,15 +1093,15 @@ h3 {
 .region-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 26px;
+  gap: 8px 22px;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 .gridwrap {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 220px;
+  gap: 4px;
+  min-width: 170px;
   flex: 1;
 }
 .gridbar {
@@ -1189,6 +1223,27 @@ h3 {
   width: 100%;
   aspect-ratio: 5/3;
 }
+@media (min-width: 621px) and (max-width: 1180px) {
+  .topbar-in .tok,
+  .topbar-in .ribbon {
+    display: none;
+  }
+  .hq-name .game {
+    display: none;
+  }
+}
+@media (min-width: 981px) and (max-height: 800px) {
+  .rdesc {
+    display: none;
+  }
+}
+/* on wide screens the landscape shrinks with the window height so it fits below the sticky header */
+@media (min-width: 981px) {
+  .field-layout .scene {
+    max-width: max(420px, calc((100dvh - 290px) * 5 / 3));
+    margin-inline: auto;
+  }
+}
 .hits {
   position: absolute;
   inset: 0;
@@ -1200,7 +1255,7 @@ h3 {
   border: 0;
   border-radius: 6px;
   cursor: pointer;
-  padding: 3px;
+  padding: 1px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -1216,17 +1271,21 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(42, 32, 22, 0.78);
+  background: rgba(42, 32, 22, 0.62);
   color: #fff;
-  border-radius: 7px;
-  padding: 2px 6px;
+  border-radius: 5px;
+  padding: 1px 4px;
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1.25;
   max-width: 100%;
   flex-wrap: wrap;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  transition: transform 0.12s;
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+.hit:hover .stag {
+  background: rgba(42, 32, 22, 0.85);
 }
 .stag .sval {
   display: none;
@@ -1248,37 +1307,20 @@ h3 {
   text-overflow: ellipsis;
   max-width: 100%;
 }
-.stag.own {
-  background: color-mix(in srgb, var(--oc) 84%, #000);
-  border-color: var(--edge);
-  box-shadow: 0 2px 0 rgba(42, 32, 22, 0.7);
-  gap: 5px;
-  padding: 2px 7px 2px 3px;
-}
-.stag.me {
-  box-shadow:
-    0 0 0 2px var(--gold),
-    0 2px 0 rgba(42, 32, 22, 0.7);
-}
 .stag .alert {
   display: inline-grid;
   place-items: center;
-  width: 13px;
-  height: 13px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: #e5484d;
   color: #fff;
   font: 800 9px/1 var(--sans);
   font-style: normal;
 }
-.hit.sel .stag:not(.own) {
+.hit.sel .stag {
   background: #fff;
   color: var(--ink);
-}
-.hit.sel .stag.own {
-  box-shadow:
-    0 0 0 2px #fff,
-    0 0 14px rgba(255, 255, 255, 0.7);
 }
 /* owner marks */
 .mb {
@@ -2078,6 +2120,10 @@ svg.live .pulse {
   }
 }
 @media (max-width: 620px) {
+  /* the full header would cover a third of a phone screen: scroll it away instead */
+  .topbar {
+    position: static;
+  }
   .topbar-in {
     gap: 10px 12px;
     padding: 10px 12px;
@@ -2198,12 +2244,9 @@ svg.live .pulse {
     display: none !important;
   }
   .stag {
-    font-size: 9px;
-    padding: 1px 4px;
+    font-size: 8px;
+    padding: 0 3px;
     white-space: nowrap;
-  }
-  .stag.own {
-    padding: 2px 5px 2px 2px;
   }
   .ochip {
     font-size: 11px;
