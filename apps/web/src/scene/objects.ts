@@ -489,7 +489,7 @@ function drawPump(fr: Frame, sp: Spot): void {
 /** Smoke and a blinking warning sign. */
 function drawFault(fr: Frame, sp: Spot): void {
   const { ctx, still, t } = fr;
-  const { u, bx, by } = sp;
+  const { u, bx, by, qd } = sp;
   for (let k = 0; k < 4; k++) {
     const f = (t * 0.5 + k / 4) % 1;
     ctx.fillStyle = `rgba(90,90,90,${0.55 * (1 - f)})`;
@@ -498,14 +498,22 @@ function drawFault(fr: Frame, sp: Spot): void {
     ctx.fill();
   }
   if (still || Math.floor(t * 3) % 2 === 0) {
+    // warning sign inside the plot itself (a fixed height above the base would end up on the plot behind)
+    const top = qd.y0 + (qd.y1 - qd.y0) * 0.25,
+      th = Math.min(u * 0.17, (qd.y1 - qd.y0) * 0.4);
     ctx.fillStyle = '#e5484d';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = Math.max(1, th * 0.06);
     ctx.beginPath();
-    ctx.moveTo(bx, by - u * 0.75);
-    ctx.lineTo(bx + u * 0.1, by - u * 0.58);
-    ctx.lineTo(bx - u * 0.1, by - u * 0.58);
+    ctx.moveTo(bx, top);
+    ctx.lineTo(bx + th * 0.6, top + th);
+    ctx.lineTo(bx - th * 0.6, top + th);
+    ctx.closePath();
     ctx.fill();
+    ctx.stroke();
     ctx.fillStyle = '#fff';
-    ctx.fillRect(bx - 1, by - u * 0.71, 2, u * 0.08);
+    ctx.fillRect(bx - 1, top + th * 0.3, 2, th * 0.4);
+    ctx.fillRect(bx - 1, top + th * 0.78, 2, th * 0.1);
   }
 }
 
