@@ -1,7 +1,7 @@
 /** Objects on the plots: owner flags, hay bales and the plants in all their stages. */
 import { clamp, operating, PLANTS, SEASON, type PlantClass, type PlantType, type SiteView } from '@power-tycoon/engine';
 import { h1, mix } from './color.js';
-import type { Frame, Plot } from './frame.js';
+import type { Ctx, Frame, Plot } from './frame.js';
 import type { Quad } from './geometry.js';
 
 /** A plot with an object and the measures derived from its geometry. */
@@ -206,37 +206,117 @@ function drawPermitSign(fr: Frame, sp: Spot): void {
   ctx.textAlign = 'left';
 }
 
-/** Construction site with crane (a failed assembly shows a "!"). */
+/** Small yellow bulldozer facing left, `w` wide, standing on `y`. */
+function bulldozer(ctx: Ctx, x: number, y: number, w: number, still: boolean, t: number): void {
+  const h = w * 0.62,
+    lw = Math.max(1, w * 0.035),
+    jig = still ? 0 : Math.sin(t * 9) * w * 0.008;
+  ctx.lineWidth = lw;
+  ctx.strokeStyle = '#2b2118';
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  ctx.beginPath();
+  ctx.ellipse(x + w * 0.5, y, w * 0.6, w * 0.07, 0, 0, 7);
+  ctx.fill();
+  // tracks
+  ctx.fillStyle = '#3a3330';
+  ctx.beginPath();
+  ctx.roundRect(x + w * 0.12, y - h * 0.3, w * 0.86, h * 0.3, h * 0.15);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#8a817a';
+  for (let k = 0; k < 3; k++) {
+    ctx.beginPath();
+    ctx.arc(x + w * (0.3 + k * 0.25), y - h * 0.15, h * 0.07, 0, 7);
+    ctx.fill();
+  }
+  // body, cabin and exhaust
+  ctx.fillStyle = '#f2b705';
+  ctx.beginPath();
+  ctx.rect(x + w * 0.16, y - h * 0.58 + jig, w * 0.78, h * 0.28);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.rect(x + w * 0.52, y - h + jig, w * 0.36, h * 0.42);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#bfe3f2';
+  ctx.fillRect(x + w * 0.57, y - h * 0.92 + jig, w * 0.26, h * 0.22);
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.32, y - h * 0.58 + jig);
+  ctx.lineTo(x + w * 0.32, y - h * 0.86 + jig);
+  ctx.stroke();
+  // blade
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.16, y - h * 0.42 + jig);
+  ctx.lineTo(x + w * 0.04, y - h * 0.3);
+  ctx.stroke();
+  ctx.fillStyle = '#d99a00';
+  ctx.beginPath();
+  ctx.moveTo(x, y - h * 0.62);
+  ctx.quadraticCurveTo(x + w * 0.1, y - h * 0.3, x - w * 0.02, y);
+  ctx.lineTo(x + w * 0.06, y);
+  ctx.lineTo(x + w * 0.08, y - h * 0.62);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+/** Small installation vessel bobbing on the water, `w` wide, waterline at `y`. */
+function vessel(ctx: Ctx, x: number, y: number, w: number, still: boolean, t: number): void {
+  const h = w * 0.5,
+    bob = still ? 0 : Math.sin(t * 1.6) * w * 0.02;
+  y += bob;
+  ctx.lineWidth = Math.max(1, w * 0.03);
+  ctx.strokeStyle = '#2b2118';
+  // hull
+  ctx.fillStyle = '#c8402f';
+  ctx.beginPath();
+  ctx.moveTo(x, y - h * 0.42);
+  ctx.lineTo(x + w, y - h * 0.42);
+  ctx.lineTo(x + w * 0.9, y);
+  ctx.lineTo(x + w * 0.08, y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fdfcf7';
+  ctx.fillRect(x + w * 0.04, y - h * 0.42, w * 0.92, h * 0.1);
+  // bridge
+  ctx.beginPath();
+  ctx.rect(x + w * 0.66, y - h * 0.9, w * 0.24, h * 0.48);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#2f4a5c';
+  ctx.fillRect(x + w * 0.69, y - h * 0.82, w * 0.18, h * 0.1);
+  // deck cargo: a tower section
+  ctx.fillStyle = '#eef1f0';
+  ctx.beginPath();
+  ctx.rect(x + w * 0.12, y - h * 0.6, w * 0.46, h * 0.18);
+  ctx.fill();
+  ctx.stroke();
+  // wake
+  ctx.strokeStyle = 'rgba(255,255,255,.7)';
+  ctx.beginPath();
+  ctx.moveTo(x - w * 0.1, y + w * 0.02);
+  ctx.lineTo(x + w * 1.1, y + w * 0.02);
+  ctx.stroke();
+}
+
+/** Ready to build or under construction: bulldozer on land, vessel at sea (a failed assembly shows a "!"). */
 function drawConstruction(fr: Frame, sp: Spot): void {
-  const { ctx, t, d } = fr;
+  const { ctx, t, d, still } = fr;
   const { x, st, cls, u, bx, by, s } = sp;
-  // construction site
-  const ch = u * (st === 'off' ? 1.1 : 0.95);
-  ctx.strokeStyle = '#e0a100';
-  ctx.lineWidth = Math.max(1.5, u * 0.02);
-  ctx.beginPath();
-  ctx.moveTo(bx + u * 0.25, by);
-  ctx.lineTo(bx + u * 0.25, by - ch);
-  ctx.lineTo(bx - u * 0.25, by - ch);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = '#333';
-  const hk = bx - u * 0.1 + Math.sin(t * 1.3) * u * 0.04;
-  ctx.beginPath();
-  ctx.moveTo(bx - u * 0.1, by - ch);
-  ctx.lineTo(hk, by - ch * 0.55);
-  ctx.stroke();
   if (cls === 'wind') {
     ctx.fillStyle = mix('#56606a', '#eef1f0', d);
-    ctx.fillRect(bx - u * 0.03, by - ch * 0.45, u * 0.06, ch * 0.45);
+    ctx.fillRect(bx - u * 0.2, by - u * 0.4, u * 0.06, u * 0.4);
   } else {
     ctx.fillStyle = '#b5b9b6';
-    ctx.fillRect(bx - u * 0.2, by - u * 0.12, u * 0.3, u * 0.12);
+    ctx.fillRect(bx - u * 0.32, by - u * 0.12, u * 0.28, u * 0.12);
   }
+  if (st === 'off') vessel(ctx, bx - u * 0.12, by + u * 0.02, u * 0.3, still, t);
+  else bulldozer(ctx, bx - u * 0.02, by + u * 0.04, u * 0.2, still, t);
   if (x.fail) {
     ctx.fillStyle = '#b42318';
     ctx.font = `700 ${Math.max(9, s * 2)}px Manrope,sans-serif`;
-    ctx.fillText('!', bx - u * 0.3, by - u * 0.1);
+    ctx.fillText('!', bx - u * 0.38, by - u * 0.16);
   }
 }
 

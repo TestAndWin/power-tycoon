@@ -56,6 +56,27 @@ export function redrawStill(): void {
   if (RMO) SC.forEach((sc) => drawScene(sc, 0));
 }
 
+/**
+ * Replaces `el`'s content with `html`, but moves the existing scene canvases into the new markup
+ * (matched by region and size class). The landscapes keep running instead of going blank for a frame.
+ */
+export function swapKeepingScenes(el: HTMLElement, html: string): void {
+  const key = (cv: HTMLCanvasElement) => cv.dataset.scene + '|' + (cv.dataset.mini ?? '');
+  const old = new Map<string, HTMLCanvasElement[]>();
+  el.querySelectorAll<HTMLCanvasElement>('canvas[data-scene]').forEach((cv) => {
+    const k = key(cv);
+    old.set(k, [...(old.get(k) ?? []), cv]);
+  });
+  el.innerHTML = html;
+  el.querySelectorAll<HTMLCanvasElement>('canvas[data-scene]').forEach((cv) => {
+    const keep = old.get(key(cv))?.shift();
+    if (keep) {
+      keep.className = cv.className;
+      cv.replaceWith(keep);
+    }
+  });
+}
+
 /** Finds all scene canvases on the page (call after every render). */
 export function registerScenes(): void {
   SC.length = 0;
@@ -63,9 +84,12 @@ export function registerScenes(): void {
     const W = cv.clientWidth,
       H = cv.clientHeight;
     if (!W || !H) return;
-    const d = Math.min(2, window.devicePixelRatio || 1);
-    cv.width = Math.round(W * d);
-    cv.height = Math.round(H * d);
+    const d = Math.min(2, window.devicePixelRatio || 1),
+      cw = Math.round(W * d),
+      ch = Math.round(H * d);
+    // setting the size clears the canvas, so only touch it when it really changed (kept canvases stay drawn)
+    if (cv.width !== cw) cv.width = cw;
+    if (cv.height !== ch) cv.height = ch;
     const ctx = cv.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(d, 0, 0, d, 0, 0);
