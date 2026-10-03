@@ -16,6 +16,7 @@ import { playerColor, playerMark } from '../players.js';
 import { geo, quad } from '../scene/index.js';
 import { UI } from '../state.js';
 import { PLANT_NAME, REGION_TEXT, siteName, siteQuality } from '../texts.js';
+import { crest } from './companies.js';
 import { btn, disabledUnless, shortName, siteOptions, siteStatus, V } from './common.js';
 
 function gridBar(r: RegionKey): string {
@@ -44,7 +45,7 @@ function ownerLegend(r: RegionKey): string {
     .players.filter((p) => !p.out)
     .map((p) => {
       const n = Sx.filter((x) => x.owner === p.id).length;
-      return `<span class="ochip${n ? '' : ' zero'}${p.human ? ' me' : ''}" style="--oc:${playerColor(p.id)}"><i class="mb">${playerMark(p.id)}</i>${esc(p.human ? 'Du · ' + p.name : p.name)}<b>${n}</b></span>`;
+      return `<span class="ochip${n ? '' : ' zero'}${p.human ? ' me' : ''}" style="--oc:${playerColor(p.id)}">${crest(p.id, 20)}${esc(p.human ? 'Du · ' + p.name : p.name)}<b>${n}</b></span>`;
     })
     .join('')}<span class="ochip free"><i class="mb"></i>Frei<b>${free}</b></span></div>`;
 }
@@ -104,7 +105,7 @@ function detail(): string {
     mine = x.owner === v.playerId;
   const o = own ? v.players[x.owner]! : null;
   const band = own
-    ? `<div class="oband" style="--oc:${playerColor(x.owner)}"><i class="mb">${playerMark(x.owner)}</i><span><span class="label">${mine ? 'Deine Fläche' : 'Gepachtet von'}</span><b>${esc(o!.name)}</b></span></div>`
+    ? `<div class="oband" style="--oc:${playerColor(x.owner)}">${crest(x.owner, 34)}<span><span class="label">${mine ? 'Deine Fläche' : 'Gepachtet von'}</span><b>${esc(o!.name)}</b></span></div>`
     : `<div class="oband free"><i class="mb"></i><span><span class="label">Freie Fläche</span><b>Noch nicht verpachtet</b></span></div>`;
   let f = `<dt>Region</dt><dd>${REGION_TEXT[x.r].name}</dd><dt>Pacht</dt><dd>${money(x.lease)}</dd>`;
   if (x.known) {

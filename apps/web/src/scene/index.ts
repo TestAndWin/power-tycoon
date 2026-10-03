@@ -74,7 +74,7 @@ export function registerScenes(): void {
   if (!raf) raf = requestAnimationFrame(loop);
 }
 
-/** Reads the player colours from the CSS (they change with the colour scheme). */
+/** Reads the player colours from the CSS. */
 export function readCols(): void {
   const cs = getComputedStyle(document.documentElement);
   colors = [0, 1, 2, 3].map((i) => cs.getPropertyValue('--c' + i).trim() || colors[i]!);

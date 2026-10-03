@@ -65,7 +65,8 @@ pnpm build        # engine + web + api
 - Money in whole euros as `number` (the legacy game uses e.g. `20e6`), energy in MWh
 - IDs: sites keep the legacy format (`nd0`…`al15`), players are `0` (human) and `1..3` (rivals)
 - Tests with vitest; engine tests use fixed seeds
-- Keep the look and feel of the legacy game – port its CSS and canvas code instead of redesigning
+- Visual style: board game look (warm paper, ink outlines, cardboard shadows, company crests and CEO portraits).
+  Light theme only – no dark mode. The canvas landscapes are still ported from the legacy game
 
 ## Security Notes
 - The GitHub repo is **public**: never commit secrets. `k8s/secret.yaml` is git-ignored.

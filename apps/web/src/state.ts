@@ -16,6 +16,8 @@ export const S = {
   view: null as PlayerView | null,
   game: null as StoredGame | null,
   busy: false,
+  /** Latest moves of each rival (newest first), collected from the quarterly reports of this session. */
+  rivalMoves: {} as Record<number, { d: string; text: string }[]>,
 };
 
 export const $ = <T extends HTMLElement = HTMLElement>(s: string): T | null => document.querySelector<T>(s);
