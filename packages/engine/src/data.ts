@@ -298,6 +298,12 @@ export const DUEL_REFUND = 0.5;
 export const DUEL_RESERVE_QUARTERS = 2;
 /** Seconds the rival needs per cable piece in the duel minigame, by difficulty. */
 export const DUEL_PACE: Record<Difficulty, number> = { normal: 1.15, hard: 0.9 };
+/** Size of the cable puzzle: columns per region (offshore cables are longer) and rows. */
+export const CABLE_COLS: Record<RegionKey, number> = { nd: 6, ns: 7, ib: 6, al: 6 };
+export const CABLE_ROWS = 5;
+/** Seconds the rival needs for the cable puzzle of region `r`. */
+export const duelSeconds = (difficulty: Difficulty, r: RegionKey): number =>
+  Math.round(DUEL_PACE[difficulty] * CABLE_COLS[r] * CABLE_ROWS);
 /** Allowed range for a client-reported layout efficiency. */
 export const LAYOUT_RANGE: [number, number] = [0.8, 1.15];
 

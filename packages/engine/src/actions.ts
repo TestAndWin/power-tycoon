@@ -7,7 +7,7 @@
 import {
   DETECTIVE_QUARTERS,
   DETECTIVES,
-  DUEL_PACE,
+  duelSeconds,
   MAX_CONTRACTS,
   MAX_TRICKS,
   PLANT_SIZE_KEYS,
@@ -231,8 +231,8 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       p.cash -= cost;
       const rival = duelRival(g, pid, x);
       if (rival === null) return startChallenge(g, pid, 'cable', x, 'connect', out);
-      const pace = DUEL_PACE[g.settings.difficulty === 'hard' ? 'hard' : 'normal'];
-      startChallenge(g, pid, 'cable', x, 'connect', out, { playerId: rival, pace });
+      const seconds = duelSeconds(g.settings.difficulty, x.r);
+      startChallenge(g, pid, 'cable', x, 'connect', out, { playerId: rival, seconds });
     },
   },
   repower: {

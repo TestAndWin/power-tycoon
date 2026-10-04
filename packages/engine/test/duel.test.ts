@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyAction,
-  DUEL_PACE,
+  CABLE_COLS,
+  duelSeconds,
   DUEL_REFUND,
   DUEL_RESERVE_QUARTERS,
   PLANTS,
@@ -29,7 +30,10 @@ describe('cable duel', () => {
     const g = scarce(PLANTS.wind.mw * 2 - 1);
     g.settings.difficulty = 'hard';
     const r = ok(g, { type: 'connectGrid', siteId: 'nd0' });
-    expect(r.challenge).toMatchObject({ kind: 'cable', rival: { playerId: 2, pace: DUEL_PACE.hard } });
+    expect(r.challenge).toMatchObject({ kind: 'cable', rival: { playerId: 2, seconds: duelSeconds('hard', 'nd') } });
+    // the rival is faster on hard, still within the solo time limit of the puzzle
+    expect(duelSeconds('hard', 'nd')).toBeLessThan(duelSeconds('normal', 'nd'));
+    expect(duelSeconds('normal', 'ns')).toBeLessThan(36 + CABLE_COLS.ns * 4);
     expect(playerView(r.state, 0).challenge).toEqual(r.challenge);
   });
   it('no duel without a rival in the region', () => {

@@ -133,14 +133,3 @@ describe('frequency', () => {
     expect(m.ok).toBeGreaterThanOrEqual(15);
   });
 });
-
-describe('cable duel', () => {
-  it('the rival needs pace × pieces seconds, faster on hard', async () => {
-    const { duelTime } = await import('../src/minigames/cable.js');
-    const { DUEL_PACE } = await import('@power-tycoon/engine');
-    expect(duelTime(DUEL_PACE.normal, 6, 5)).toBe(35);
-    expect(duelTime(DUEL_PACE.hard, 6, 5)).toBeLessThan(duelTime(DUEL_PACE.normal, 6, 5));
-    // still less than the solo time limit, so the duel is harder than the plain puzzle
-    expect(duelTime(DUEL_PACE.normal, 7, 5)).toBeLessThan(36 + 7 * 4);
-  });
-});

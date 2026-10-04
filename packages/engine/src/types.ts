@@ -105,8 +105,8 @@ export interface Challenge {
   kind: ChallengeKind;
   siteId: string;
   seed: number;
-  /** Cable duel: the rival racing for the grid capacity and its seconds per cable piece. */
-  rival?: { playerId: PlayerId; pace: number };
+  /** Cable duel: the rival racing for the grid capacity and the seconds it needs for the whole puzzle. */
+  rival?: { playerId: PlayerId; seconds: number };
 }
 
 export type ChallengeStep = 'build' | 'retry' | 'connect' | 'repair';
