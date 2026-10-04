@@ -1,7 +1,7 @@
 /** Quarter end: port of legacy `endQuarter()` / `randomEvent()` with the same order of steps. */
 import { applyActionInPlace } from './actions.js';
 import { AI_DEF, CAPTURE, CO2, INTEREST, PLANTS, plantDef, PRICE_FOLLOW, PRICE_SEASON, TARGET_DRIFT } from './data.js';
-import { concerns, emit, eventsForViewer } from './events.js';
+import { concerns, emit, eventsForViewer, isConfrontation } from './events.js';
 import { clamp, createRng, gauss, nextUint, randomOf } from './rng.js';
 import {
   clone,
@@ -352,15 +352,14 @@ export async function endQuarter(
   checkSolvency(g, events);
   nextQuarter(g, events);
 
-  const tricks = rivals.events.filter(
-    (e) => e.type === 'trickSucceeded' || e.type === 'trickFailed' || e.type === 'spied' || e.type === 'gridDuel',
-  );
+  // confrontations by rivals concern their target as well
+  const confrontations = rivals.events.filter(isConfrontation);
   const report: QuarterReport = {
     year: reportYear,
     q: reportQ,
     lines,
     events: eventsForViewer(
-      [...events, ...tricks].filter((e) => concerns(e, human)),
+      [...events, ...confrontations].filter((e) => concerns(e, human)),
       human,
     ),
     gen: P.genLast,

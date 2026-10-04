@@ -30,6 +30,13 @@ function isNews(g: GameState, e: GameEvent): boolean {
   }
 }
 
+/**
+ * Confrontations between players (tricks, spies, cable duels): they concern the target too, and the web app
+ * shows them as complete sentences.
+ */
+export const isConfrontation = (e: GameEvent): boolean =>
+  e.type === 'trickSucceeded' || e.type === 'trickFailed' || e.type === 'spied' || e.type === 'gridDuel';
+
 /** Records an event and, if newsworthy, adds it to the news feed. */
 export function emit(g: GameState, out: GameEvent[], e: GameEvent): void {
   out.push(e);

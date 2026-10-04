@@ -17,7 +17,7 @@ import type {
   TrickType,
   WorldEventKey,
 } from '@power-tycoon/engine';
-import { REGIONS } from '@power-tycoon/engine';
+import { isConfrontation, REGIONS } from '@power-tycoon/engine';
 import { esc, eur, money, mwh } from './format.js';
 
 export const REGION_TEXT: Record<RegionKey, { name: string; desc: string }> = {
@@ -38,13 +38,20 @@ export const PLANT_NAME: Record<PlantType, string> = {
   hydro: 'Laufwasserkraftwerk',
   pump: 'Pumpspeicherwerk',
 };
-/** Name with indefinite article in the accusative ("einen Windpark"). */
-export const plantAcc = (t: PlantType): string => (t === 'hydro' || t === 'pump' ? 'ein ' : 'einen ') + PLANT_NAME[t];
+/** Name with indefinite article in the accusative ("einen Windpark", "einen großen Windpark"). */
+export function plantAcc(t: PlantType, size?: PlantSize): string {
+  const neuter = t === 'hydro' || t === 'pump';
+  const large = size === 'large' ? (neuter ? 'großes ' : 'großen ') : '';
+  return (neuter ? 'ein ' : 'einen ') + large + PLANT_NAME[t];
+}
 
 export const SIZE_NAME: Record<PlantSize, string> = { std: 'Standard', large: 'Groß' };
-/** "großen Windpark" style prefix for large plants (accusative, with article). */
-export const plantAccSized = (t: PlantType, size: PlantSize | undefined): string =>
-  size === 'large' ? (t === 'hydro' || t === 'pump' ? 'ein großes ' : 'einen großen ') + PLANT_NAME[t] : plantAcc(t);
+/** " · groß" after a plant name for large plants. */
+export const sizeSuffix = (size: PlantSize): string => (size === 'large' ? ' · groß' : '');
+
+/** A rival's detective agency from a spy report. */
+export const detectivesText = (d: { level: DetectiveLevel; left: number } | null): string =>
+  d ? `${DETECTIVE_TEXT[d.level].name}, noch ${d.left} Q` : 'keine Detektive';
 
 export const GAME_LENGTH_TEXT: Record<number, string> = {
   3: 'Kurz – 3 Jahre (12 Quartale)',
@@ -500,11 +507,13 @@ export function reportEventText(view: PlayerView, e: GameEvent): { kind: TextKin
 /** Rival action log in the report (legacy `clog()`), without the leading company name. */
 export function rivalActionText(view: PlayerView, e: GameEvent): string | null {
   const c = { view };
+  // confrontations are complete sentences from the news feed
+  if (isConfrontation(e)) return newsTexts(view, e)[0]?.text ?? null;
   switch (e.type) {
     case 'siteLeased':
       return `pachtet ${sn(c, e.siteId)} in ${regionOfSite(c, e.siteId)} für ${money(e.amount, true)}`;
     case 'permitApplied':
-      return `beantragt ${plantAccSized(e.plantType, e.size)} auf ${sn(c, e.siteId)}`;
+      return `beantragt ${plantAcc(e.plantType, e.size)} auf ${sn(c, e.siteId)}`;
     case 'plantTypeCleared':
       return `plant ${sn(c, e.siteId)} neu`;
     case 'buildStarted':
@@ -527,13 +536,6 @@ export function rivalActionText(view: PlayerView, e: GameEvent): string | null {
       return `reserviert ${e.mw} MW Netz in ${REGION_TEXT[e.region].name}`;
     case 'contractAccepted':
       return `schließt einen Liefervertrag mit ${e.buyer}`;
-    case 'trickSucceeded':
-    case 'trickFailed':
-    case 'spied':
-    case 'gridDuel': {
-      const n = newsTexts(view, e)[0];
-      return n ? n.text : null;
-    }
     default:
       return null;
   }

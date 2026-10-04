@@ -84,7 +84,8 @@ function mkPlayer(id: PlayerId, name: string, human: boolean): Player {
 /** Creates a new game. Port of legacy `newGame()`. */
 export function createGame(opts: CreateGameOptions): GameState {
   const name = opts.companyName.trim().slice(0, 40) || 'Mein Konzern';
-  const years = GAME_YEAR_OPTIONS.includes(opts.years ?? GAME_YEARS) ? (opts.years ?? GAME_YEARS) : GAME_YEARS;
+  const wanted = opts.years ?? GAME_YEARS;
+  const years = GAME_YEAR_OPTIONS.includes(wanted) ? wanted : GAME_YEARS;
   const players = [mkPlayer(0, name, true), ...AI_DEF.map((a, i) => mkPlayer(i + 1, a.name, false))];
   const g: GameState = {
     v: 1,

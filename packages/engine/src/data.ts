@@ -157,10 +157,12 @@ export const REPOWER_FACTOR = 1.3;
 /** Quarters a plant is offline while it is repowered. */
 export const REPOWER_QUARTERS = 1;
 
-/** Plant data for a size (`std` = the table above). */
+/** Plant data for a size (`std` = the table above); the large variants are built once. */
 export function plantDef(t: PlantType, size: PlantSize = 'std'): PlantDef {
-  const P = PLANTS[t];
-  if (size === 'std') return P;
+  return size === 'std' ? PLANTS[t] : (LARGE_DEFS[t] ??= largeDef(PLANTS[t]));
+}
+const LARGE_DEFS: Partial<Record<PlantType, PlantDef>> = {};
+function largeDef(P: PlantDef): PlantDef {
   return {
     ...P,
     mw: Math.round(P.mw * LARGE.mw),

@@ -20,7 +20,6 @@ import {
   SELF_REPAIR_COST,
   SPY_COST,
   SPY_QUARTERS,
-  TRICK_CAUGHT,
   TRICK_SUSPECTED,
   TRICKS,
 } from './data.js';
@@ -32,14 +31,14 @@ import {
   clone,
   consumeReserve,
   creditLimit,
-  detectivesOf,
   duelRivals,
   freeGrid,
   hasIntel,
   plantTypesFor,
   regionOk,
   repowerCost,
-  repowerGridCost,
+  repowerInvestment,
+  repowerMw,
   resetSite,
   retryCost,
   sellValue,
@@ -49,6 +48,7 @@ import {
   siteMw,
   sizeOf,
   surveyCost,
+  trickOdds,
   trickTargets,
 } from './rules.js';
 import type {
@@ -233,7 +233,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       const rival = duelRival(g, pid, x);
       if (rival === null) return startChallenge(g, pid, 'cable', x, 'connect', out);
       const pace = DUEL_PACE[g.settings.difficulty === 'hard' ? 'hard' : 'normal'];
-      startChallenge(g, pid, 'cableDuel', x, 'connect', out, { playerId: rival, pace });
+      startChallenge(g, pid, 'cable', x, 'connect', out, { playerId: rival, pace });
     },
   },
   repower: {
@@ -244,20 +244,16 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (err) return err;
       if (!x.type || !x.built || !x.grid || sizeOf(x) !== 'std' || x.fault || (x.offline ?? 0) > 0)
         return 'invalidState';
-      if (freeGrid(g, x.r, pid) < plantDef(x.type, 'large').mw - plantDef(x.type).mw) return 'noGridCapacity';
+      if (freeGrid(g, x.r, pid) < repowerMw(x.type)) return 'noGridCapacity';
       return null;
     },
     price: (c) => repowerCost(c.g, c.x.type!),
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
-      const extra = plantDef(x.type!, 'large').mw - siteMw(x);
       x.size = 'large';
-      // the book value counts the large grid connection and permit separately (`siteValue`); the permit
-      // difference was never paid, so it is taken out of the investment
-      const permitDiff = plantDef(x.type!, 'large').permit - plantDef(x.type!).permit;
-      x.invested += cost - repowerGridCost(x.type!) - permitDiff;
+      x.invested += repowerInvestment(x.type!, cost);
       x.offline = REPOWER_QUARTERS;
-      consumeReserve(g, x.r, pid, extra);
+      consumeReserve(g, x.r, pid, repowerMw(x.type!));
       emit(g, out, { type: 'repowered', playerId: pid, siteId: x.id, mw: siteMw(x), cost });
     },
   },
@@ -370,8 +366,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       p.trickUsed++;
       const targetId = x.owner as PlayerId;
       const target = g.players[targetId]!;
-      const det = detectivesOf(target);
-      const D = det ? DETECTIVES[det.level] : null;
+      const odds = trickOdds(a.trick, target.detectives?.level);
       // a caught actor pays the fine to the state and damages to the target (court)
       const court = (caught: boolean) => {
         if (!caught) return { caught, fine: 0, damages: 0 };
@@ -379,9 +374,9 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
         target.cash += T.damages;
         return { caught, fine: T.fine, damages: T.damages };
       };
-      if (r() < T.chance * (D?.shield ?? 1)) {
+      if (r() < odds.success) {
         applyTrick(g, a.trick, x);
-        const verdict = court(T.fine > 0 && !!D && r() < D.catchSucceeded);
+        const verdict = court(odds.caughtIfSucceeded > 0 && r() < odds.caughtIfSucceeded);
         const suspected = verdict.caught || r() < TRICK_SUSPECTED;
         emit(g, out, {
           type: 'trickSucceeded',
@@ -393,7 +388,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
           ...(verdict.caught ? verdict : {}),
         });
       } else {
-        const verdict = court(T.fine > 0 && r() < (D?.catchFailed ?? TRICK_CAUGHT));
+        const verdict = court(odds.caughtIfFailed > 0 && r() < odds.caughtIfFailed);
         emit(g, out, { type: 'trickFailed', actorId: pid, targetId, trick: a.trick, siteId: x.id, ...verdict });
       }
     },
@@ -406,17 +401,16 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     price: () => SPY_COST,
     execute({ g, p, pid, a }, cost, out) {
       p.cash -= cost;
-      const det = detectivesOf(g.players[a.targetId]!);
+      const det = g.players[a.targetId]!.detectives;
       const caught = !!det && randomOf(g)() < DETECTIVES[det.level].catchSpy;
-      const until = g.turn + SPY_QUARTERS - 1;
-      if (!caught) p.intel = { ...p.intel, [a.targetId]: until };
-      emit(g, out, { type: 'spied', playerId: pid, targetId: a.targetId, cost, caught, until: caught ? -1 : until });
+      if (!caught) p.intel = { ...p.intel, [a.targetId]: g.turn + SPY_QUARTERS - 1 };
+      emit(g, out, { type: 'spied', playerId: pid, targetId: a.targetId, cost, caught });
     },
   },
   hireDetectives: {
     validate({ p, a }) {
       if (!Object.hasOwn(DETECTIVES, a.level)) return 'invalidState';
-      const det = detectivesOf(p);
+      const det = p.detectives;
       // an upgrade to the better agency is allowed at any time
       return det && (det.level === 'pro' || a.level === 'basic') ? 'detectivesActive' : null;
     },

@@ -3,6 +3,7 @@ import {
   DIFFICULTY_KEYS,
   GAME_YEAR_OPTIONS,
   GAME_YEARS,
+  isConfrontation,
   operating,
   REGION_KEYS,
   rivalProfile,
@@ -68,8 +69,7 @@ function compLog(rivals: RivalActionLog[]): string {
     for (const e of r.events) {
       const t = rivalActionText(v, e);
       if (!t) continue;
-      const fromNews = ['trickSucceeded', 'trickFailed', 'spied', 'gridDuel'].includes(e.type);
-      L.push({ id: r.playerId, t: fromNews ? t : esc(v.players[r.playerId]!.name) + ' ' + t + '.' });
+      L.push({ id: r.playerId, t: isConfrontation(e) ? t : esc(v.players[r.playerId]!.name) + ' ' + t + '.' });
     }
   return `<details class="comp" ${L.length ? 'open' : ''}><summary><b>Züge der Konkurrenz</b> <span class="muted">${L.length ? L.length + ' Aktionen' : 'ruhiges Quartal'}</span></summary><ul class="list" id="compList">${L.map((c) => `<li class="rv" style="--oc:${playerColor(c.id)}">${portrait(c.id, 30)}<span>${c.t}</span></li>`).join('')}</ul></details>`;
 }

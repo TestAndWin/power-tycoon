@@ -38,6 +38,8 @@ export const tons = (n: number): string =>
 
 export const QN = ['Q1', 'Q2', 'Q3', 'Q4'];
 export const qStr = (y: number, q: number): string => QN[q] + ' ' + y;
+/** "Q3 2027" for a turn of a game that started in `startYear`. */
+export const turnStr = (startYear: number, turn: number): string => qStr(startYear + Math.floor(turn / 4), turn % 4);
 
 /** Chart label for history index i (index 0 = first quarter of the game). */
 export function quarterLabel(startYear: number, i: number): string {

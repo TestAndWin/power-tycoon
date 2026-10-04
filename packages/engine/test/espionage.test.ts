@@ -14,7 +14,8 @@ describe('spy reports', () => {
     expect(before.players[1]!.intel).toBeUndefined();
 
     const r = ok(g, { type: 'spy', targetId: 1 });
-    expect(r.events[0]).toMatchObject({ type: 'spied', playerId: 0, targetId: 1, caught: false, until: 3 });
+    expect(r.events[0]).toMatchObject({ type: 'spied', playerId: 0, targetId: 1, caught: false });
+    expect(r.state.players[0]!.intel).toEqual({ 1: 3 });
     expect(r.state.players[0]!.cash).toBe(30e6 - SPY_COST);
     const v = playerView(r.state, 0);
     expect(v.sites.find((s) => s.id === 'nd5')).toMatchObject({ known: true, wind: x.wind, intel: { eff: 1.07 } });

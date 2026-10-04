@@ -1,9 +1,9 @@
 /** Rivals tab: one board per company, ranking table and net worth history; the race of the overview. */
 import { REGION_KEYS, type PlayerSummary, type QuarterReport, type RivalActionLog } from '@power-tycoon/engine';
-import { esc, money, mwh, qStr, tons } from '../format.js';
+import { esc, money, mwh, qStr, tons, turnStr } from '../format.js';
 import { playerColor } from '../players.js';
 import { S } from '../state.js';
-import { DETECTIVE_TEXT, newsTexts, REGION_TEXT, rivalActionText, RIVAL_TEXT } from '../texts.js';
+import { detectivesText, newsTexts, REGION_TEXT, rivalActionText, RIVAL_TEXT } from '../texts.js';
 import { meP, V } from './common.js';
 import { crest, portrait, standing, trend } from './companies.js';
 
@@ -72,14 +72,10 @@ function intel(p: PlayerSummary): string {
     v = V();
   if (!I)
     return `<div class="moves"><span class="label">Spionage</span><p class="muted">Kein Bericht. <button class="linkish" data-act="tab" data-v="lobby">Spion schicken …</button></p></div>`;
-  const until = qStr(v.startYear + Math.floor(I.until / 4), I.until % 4);
   const contracts = I.contracts.length
     ? I.contracts.map((c) => `${esc(c.buyer)} (${mwh(c.vol)}/Q, noch ${c.left} Q)`).join(', ')
     : 'keine Lieferverträge';
-  const det = I.detectives
-    ? `${DETECTIVE_TEXT[I.detectives.level].name}, noch ${I.detectives.left} Q`
-    : 'keine Detektive';
-  return `<div class="moves"><span class="label">Spionagebericht · bis ${until}</span><ul><li>${contracts}</li><li>${det} · ${I.tricksLeft} Tricks in diesem Quartal frei</li></ul></div>`;
+  return `<div class="moves"><span class="label">Spionagebericht · bis ${turnStr(v.startYear, I.until)}</span><ul><li>${contracts}</li><li>${detectivesText(I.detectives)} · ${I.tricksLeft} Tricks in diesem Quartal frei</li></ul></div>`;
 }
 
 function board(p: PlayerSummary): string {

@@ -29,7 +29,7 @@ describe('cable duel', () => {
     const g = scarce(PLANTS.wind.mw * 2 - 1);
     g.settings.difficulty = 'hard';
     const r = ok(g, { type: 'connectGrid', siteId: 'nd0' });
-    expect(r.challenge).toMatchObject({ kind: 'cableDuel', rival: { playerId: 2, pace: DUEL_PACE.hard } });
+    expect(r.challenge).toMatchObject({ kind: 'cable', rival: { playerId: 2, pace: DUEL_PACE.hard } });
     expect(playerView(r.state, 0).challenge).toEqual(r.challenge);
   });
   it('no duel without a rival in the region', () => {

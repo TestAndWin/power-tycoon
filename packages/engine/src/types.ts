@@ -11,7 +11,7 @@ export type PlantSize = 'std' | 'large';
 export type DetectiveLevel = 'basic' | 'pro';
 export type PermitState = 'pending' | 'approved' | 'rejected' | null;
 export type GameOver = false | 'bankrupt' | 'time' | 'monopoly';
-export type ChallengeKind = 'layout' | 'rotor' | 'cable' | 'cableDuel' | 'frequency';
+export type ChallengeKind = 'layout' | 'rotor' | 'cable' | 'frequency';
 
 export interface Site {
   id: string;
@@ -290,7 +290,7 @@ export type GameEvent =
       /** Paid to the target (court). */
       damages?: number;
     }
-  | { type: 'spied'; playerId: PlayerId; targetId: PlayerId; cost: number; caught: boolean; until: number }
+  | { type: 'spied'; playerId: PlayerId; targetId: PlayerId; cost: number; caught: boolean }
   | { type: 'detectivesHired'; playerId: PlayerId; level: DetectiveLevel; quarters: number; cost: number }
   | { type: 'historicEvent'; key: 'ets2' | 'grid2030' | 'hydrogen' | 'coalExit' | 'eu2040' }
   | { type: 'detectivesExpired'; playerId: PlayerId }
@@ -398,7 +398,7 @@ export interface SiteView {
   /** Quarters the plant is offline for repowering. */
   offline: number;
   /** Details of a rival's site from a valid spy report. */
-  intel?: { eff: number; permitLeft: number; alt: { type: PlantType; left: number } | null };
+  intel?: { eff: number; permitLeft: number };
   /** Only for the viewer's own sites. */
   own?: {
     permitLeft: number;

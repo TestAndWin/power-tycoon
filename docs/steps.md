@@ -113,7 +113,7 @@ balance is measured with the simulation script (normal/hard) before merging.
 
 **Cable duel when grid capacity is scarce (E)**
 - [x] When free grid capacity in the region drops below a threshold (e.g. 2× the plant's MW), `connectGrid`
-      opens a `cableDuel` challenge against a random rival active in that region instead of the solo cable puzzle
+      opens a cable duel (`cable` challenge with `rival`) against a random rival active in that region instead of the solo cable puzzle
 - [x] Duel minigame: same cable puzzle, the rival solves its own board in parallel; its speed depends on
       difficulty (seeded from the challenge). Win → connected; lose → not connected, part of the cost is lost
 - [x] Rivals connecting under scarcity: resolved in the engine by a seeded roll (no minigame)

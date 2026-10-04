@@ -4,9 +4,9 @@ export { createRng, rand, randint, pick, shuffle, gauss, clamp, type Random } fr
 export { createGame, type CreateGameOptions } from './game.js';
 export { applyAction, validateAction } from './actions.js';
 export { actionOptions, legalActions } from './legal.js';
-export { optionsOf, playerView, trickTargetIds } from './view.js';
+export { costsFor, optionsOf, playerView, trickTargetIds } from './view.js';
 export { endQuarter, canEndQuarter, playTurn, rivalProfile, EngineError, MAX_ACTIONS_PER_TURN } from './quarter.js';
-export { eventForViewer, eventsForViewer } from './events.js';
-export { isStore, operating, plantTypesFor, worth } from './rules.js';
+export { eventForViewer, eventsForViewer, isConfrontation } from './events.js';
+export { isStore, operating, plantTypesFor, producing, repowerMw, worth } from './rules.js';
 export { SmartOpponent, SMART_PARAMS, type SmartLevel, type SmartParams } from './opponents/smart.js';
 export { opponentFor, opponentsFor } from './opponents/index.js';

@@ -55,7 +55,7 @@ Action types (TypeScript union exported by the engine):
 | `applyPermit` | `siteId`, `plantType`, `size?` (`std` \| `large`, default `std`) | `A.permit` |
 | `changePlantType` | `siteId` | `A.retype` |
 | `build` | `siteId` | `A.build` (returns challenge) |
-| `connectGrid` | `siteId` | `A.connect` (returns challenge; `cableDuel` with `rival` when capacity is scarce) |
+| `connectGrid` | `siteId` | `A.connect` (returns challenge; a `cable` challenge with `rival` is a duel when capacity is scarce) |
 | `repower` | `siteId` | new: upgrade a running standard plant to large |
 | `repairSelf` | `siteId` | `A.fixSelf` (returns challenge) |
 | `repairService` | `siteId` | `A.fixPro` |

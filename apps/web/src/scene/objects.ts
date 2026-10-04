@@ -1,5 +1,5 @@
 /** Objects on the plots: owner flags, hay bales and the plants in all their stages. */
-import { clamp, operating, PLANTS, SEASON, type PlantClass, type PlantType, type SiteView } from '@power-tycoon/engine';
+import { clamp, PLANTS, producing, SEASON, type PlantClass, type PlantType, type SiteView } from '@power-tycoon/engine';
 import { h1, mix } from './color.js';
 import type { Ctx, Frame, Plot } from './frame.js';
 import type { Quad } from './geometry.js';
@@ -598,7 +598,7 @@ export function drawObject(fr: Frame, { x, qd }: Plot): void {
   // large dams and basins are wider
   if (x.size === 'large' && sp.cls === 'hydro') sp.u = u * 1.15;
   if (x.size === 'large' && st === 'pump') sp.u = u * 1.12;
-  sp.op = operating(x) && !x.fault && !x.offline;
+  sp.op = producing(x);
   if (!x.built) return drawConstruction(fr, sp);
   if (sp.op && !mini && !still && d > 0.15) drawSparks(fr, sp);
   sp.spin = sp.op ? t * (1.2 + ((x.wind || 7) - 5) * 0.35) * SEASON.wind[q]! : 0;

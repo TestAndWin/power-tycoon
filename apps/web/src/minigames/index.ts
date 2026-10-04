@@ -12,7 +12,6 @@ const GAMES: Record<ChallengeKind, (x: SiteView, R: Random, ch: Challenge) => Pr
   layout: miniLayout,
   rotor: miniRotor,
   cable: miniCable,
-  cableDuel: miniCable,
   frequency: miniFreq,
 };
 

@@ -1,26 +1,16 @@
 /** Lobby tab: spy on rivals, choose a trick and a target, protect yourself with detectives. */
 import { DETECTIVE_KEYS, TRICK_KEYS, trickTargetIds, type PlayerSummary } from '@power-tycoon/engine';
-import { esc, money, qStr } from '../format.js';
+import { esc, money, turnStr } from '../format.js';
 import { UI } from '../state.js';
-import { DETECTIVE_TEXT, PLANT_NAME, siteName, TRICK_TEXT } from '../texts.js';
+import { DETECTIVE_TEXT, detectivesText, PLANT_NAME, siteName, TRICK_TEXT } from '../texts.js';
 import { disabledUnless, optionFor, V } from './common.js';
 import { crest } from './companies.js';
-
-/** "Q3 2027" for the last quarter of a report that is valid until `turn`. */
-const untilText = (turn: number): string => {
-  const v = V();
-  return qStr(v.startYear + Math.floor(turn / 4), turn % 4);
-};
 
 function spyRow(p: PlayerSummary): string {
   const v = V(),
     I = p.intel;
   const facts = I
-    ? `<span class="muted">Bericht bis ${untilText(I.until)} · ${I.contracts.length} Liefervertr${I.contracts.length === 1 ? 'ag' : 'äge'} · ${
-        I.detectives
-          ? `<b>${DETECTIVE_TEXT[I.detectives.level].name}</b> noch ${I.detectives.left} Q`
-          : 'keine Detektive'
-      } · ${I.tricksLeft} Tricks frei</span>`
+    ? `<span class="muted">Bericht bis ${turnStr(v.startYear, I.until)} · ${I.contracts.length} Liefervertr${I.contracts.length === 1 ? 'ag' : 'äge'} · ${detectivesText(I.detectives)} · ${I.tricksLeft} Tricks frei</span>`
     : '<span class="muted">Kein aktueller Bericht. Ohne Bericht keine Lobby-Aktion gegen diesen Konzern.</span>';
   const spy = { type: 'spy', targetId: p.id } as const;
   return `<li class="spyrow">${crest(p.id, 22)}<span class="stack" style="gap:2px"><b>${esc(p.name)}</b>${facts}</span>${
@@ -59,7 +49,8 @@ export function vLobby(): string {
     )
     .join('');
   const target = v.sites.find((s) => s.id === UI.target);
-  const noReport = !!target && !v.players[target.owner]?.intel;
+  const noReport =
+    !!target && optionFor({ type: 'lobby', trick: UI.trick, siteId: target.id })?.error === 'noSpyReport';
   const rivals = v.players.filter((p) => p.id !== v.playerId && !p.out);
   return `<div class="grid g2"><section class="panel stack">
     <div class="phead"><h2>Lobby & Tricks</h2><span class="muted">${v.me.tricksLeft} Aktionen in diesem Quartal übrig</span></div>

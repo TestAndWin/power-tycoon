@@ -8,7 +8,7 @@ import { clamp, nextUint, rand, randomOf } from './rng.js';
 import {
   autoMinigame,
   consumeReserve,
-  freeGrid,
+  unreservedGrid,
   myReserve,
   siteById,
   siteDef,
@@ -28,11 +28,12 @@ import type {
 
 const autoResolves = (g: GameState, pid: PlayerId): boolean => !g.players[pid]!.human || g.settings.autoMinigames;
 
-function autoOutcome(g: GameState, pid: PlayerId, kind: ChallengeKind): number | boolean {
+function autoOutcome(g: GameState, ch: OpenChallenge): number | boolean {
   const r = randomOf(g);
-  const M = autoMinigame(g.settings.difficulty, g.players[pid]!.human);
-  if (kind === 'layout') return Math.round(rand(r, M.layout[0], M.layout[1]) * 100) / 100;
-  return r() < M[kind];
+  const M = autoMinigame(g.settings.difficulty, g.players[ch.playerId]!.human);
+  if (ch.kind === 'layout') return Math.round(rand(r, M.layout[0], M.layout[1]) * 100) / 100;
+  // a cable duel against a rival is harder than the solo puzzle
+  return r() < (ch.rival ? M.cableDuel : M[ch.kind]);
 }
 
 /** Opens a challenge for `step` on site `x`; resolves it at once if the player does not play minigames. */
@@ -47,7 +48,7 @@ export function startChallenge(
 ): void {
   const ch: OpenChallenge = { id: g.nextId++, kind, siteId: x.id, seed: nextUint(g), playerId: pid, step };
   if (rival) ch.rival = rival;
-  if (autoResolves(g, pid)) resolveChallenge(g, ch, autoOutcome(g, pid, kind), out);
+  if (autoResolves(g, pid)) resolveChallenge(g, ch, autoOutcome(g, ch), out);
   else g.challenge = ch;
 }
 
@@ -121,9 +122,7 @@ function duelLost(g: GameState, rival: PlayerId, x: Site): number {
   const need = g.sites
     .filter((y) => y.r === x.r && y.owner === rival && waitingForGrid(y))
     .reduce((s, y) => s + siteMw(y), 0);
-  const have = myReserve(g, x.r, rival);
-  // `freeGrid` counts the rival's own reservations as free: only the rest is still available
-  const mw = Math.min(need - have, freeGrid(g, x.r, rival) - have);
+  const mw = Math.min(need - myReserve(g, x.r, rival), unreservedGrid(g, x.r));
   if (mw <= 0) return 0;
   g.res.push({ pid: rival, r: x.r, mw, left: DUEL_RESERVE_QUARTERS });
   return mw;

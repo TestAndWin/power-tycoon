@@ -1,11 +1,14 @@
 /** Sites tab: region selector, landscape with clickable plots and the detail panel of the selected site. */
 import {
+  costsFor,
   isStore,
+  LARGE,
   operating,
   PLANT_SIZE_KEYS,
   plantDef,
   REGION_KEYS,
   REGIONS,
+  repowerMw,
   SITES_PER_REGION,
   STORE_MARKET_SHARE,
   TRICK_KEYS,
@@ -17,7 +20,7 @@ import { esc, money, mwh, QN } from '../format.js';
 import { playerColor } from '../players.js';
 import { geo, quad, redrawStill } from '../scene/index.js';
 import { UI } from '../state.js';
-import { DUEL_HINT, PLANT_NAME, REGION_TEXT, siteName, siteQuality, SIZE_NAME } from '../texts.js';
+import { DUEL_HINT, PLANT_NAME, REGION_TEXT, siteName, siteQuality, SIZE_NAME, sizeSuffix } from '../texts.js';
 import { crest } from './companies.js';
 import { btn, disabledUnless, shortName, siteOptions, siteStatus, V } from './common.js';
 
@@ -140,7 +143,7 @@ function detail(): string {
   } else f += `<dt>Ertrag</dt><dd>unbekannt</dd>`;
   if (mine && x.type && x.own) {
     const P = plantDef(x.type, x.size);
-    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}${x.size === 'large' ? ' · groß' : ''}</dd><dt>Leistung</dt><dd>${P.mw} MW${P.mwh ? ' / ' + P.mwh + ' MWh' : ''}</dd>`;
+    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}${sizeSuffix(x.size)}</dd><dt>Leistung</dt><dd>${P.mw} MW${P.mwh ? ' / ' + P.mwh + ' MWh' : ''}</dd>`;
     if (x.offline > 0) f += `<dt>Repowering</dt><dd>noch ${x.offline} Q außer Betrieb</dd>`;
     if (x.own.alt) f += `<dt>Neuer Antrag</dt><dd>${PLANT_NAME[x.own.alt.type]} · noch ${x.own.alt.left} Q</dd>`;
     if (x.built) f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.own.eff * 100)} %</dd>`;
@@ -152,7 +155,7 @@ function detail(): string {
   }
   if (x.intel && x.type) {
     // from a spy report on the owner
-    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}${x.size === 'large' ? ' · groß' : ''} · ${x.mw} MW</dd>`;
+    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}${sizeSuffix(x.size)} · ${x.mw} MW</dd>`;
     if (x.built)
       f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.intel.eff * 100)} % <span class="chip sab">Spionage</span></dd>`;
     else if (x.permit === 'pending')
@@ -202,8 +205,8 @@ function detail(): string {
         a.push(
           `<p class="muted" style="font-size:12px;margin:0">${
             opt.error === 'noGridCapacity'
-              ? `Für das Repowering fehlen ${L.mw - x.mw} MW freie Netzkapazität.`
-              : `Größere Anlage auf derselben Fläche: +${L.mw - x.mw} MW, dafür ein Quartal Stillstand.`
+              ? `Für das Repowering fehlen ${repowerMw(x.type!)} MW freie Netzkapazität.`
+              : `Größere Anlage auf derselben Fläche: +${repowerMw(x.type!)} MW, dafür ein Quartal Stillstand.`
           }</p>`,
         );
         break;
@@ -245,7 +248,7 @@ function detail(): string {
           cls: t === regionTypes[0] ? 'primary' : '',
         }),
   );
-  const costs = UI.size === 'large' ? v.costsLarge : v.costs;
+  const costs = costsFor(v, UI.size);
   if (permits.length && !x.type)
     permitButtons.push(
       `<p class="muted" style="font-size:12px;margin:0">Bau ab ≈ ${permits.map(({ t }) => `${PLANT_NAME[t]} (${plantDef(t, UI.size).mw} MW) ${money(costs[t].build, true)}`).join(', ')}</p>`,
@@ -254,7 +257,7 @@ function detail(): string {
   // the size applies to all permit buttons
   if (siteOptions(x.id).some((o) => o.action.type === 'applyPermit'))
     a.unshift(
-      `<div class="sizes" role="group" aria-label="Anlagengröße">${PLANT_SIZE_KEYS.map((k) => `<button class="sizeopt" aria-pressed="${UI.size === k}" data-act="size" data-v="${k}"><b>${SIZE_NAME[k]}</b><span class="muted">${k === 'std' ? 'schnell genehmigt, später aufrüstbar' : '+50 % Leistung, etwas günstiger je MW – Genehmigung dauert länger, scheitert öfter'}</span></button>`).join('')}</div>`,
+      `<div class="sizes" role="group" aria-label="Anlagengröße">${PLANT_SIZE_KEYS.map((k) => `<button class="sizeopt" aria-pressed="${UI.size === k}" data-act="size" data-v="${k}"><b>${SIZE_NAME[k]}</b><span class="muted">${k === 'std' ? 'schnell genehmigt, später aufrüstbar' : `+${Math.round((LARGE.mw - 1) * 100)} % Leistung, etwas günstiger je MW – Genehmigung dauert länger, scheitert öfter`}</span></button>`).join('')}</div>`,
     );
   if (own && !mine) {
     const lt = TRICK_KEYS.find((k) => siteOptions(x.id).some((o) => o.action.type === 'lobby' && o.action.trick === k));

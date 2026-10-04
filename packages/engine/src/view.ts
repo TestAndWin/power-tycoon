@@ -26,7 +26,6 @@ import {
   buildCost,
   clone,
   creditLimit,
-  detectivesOf,
   duelRivals,
   freeGrid,
   genEstimate,
@@ -56,6 +55,7 @@ import type {
   GameState,
   GridView,
   NewsItem,
+  PlantSize,
   PlayerId,
   PlayerView,
   RegionKey,
@@ -69,6 +69,10 @@ export const optionsOf = <K extends ActionType>(
   type: K,
 ): (ActionOption & { action: Extract<Action, { type: K }> })[] =>
   v.options.filter((o) => o.action.type === type) as (ActionOption & { action: Extract<Action, { type: K }> })[];
+
+/** The viewer's current costs per plant type for a plant size. */
+export const costsFor = (v: PlayerView, size: PlantSize): PlayerView['costs'] =>
+  size === 'large' ? v.costsLarge : v.costs;
 
 /** Sites the viewer can target with a lobby trick (even if blocked by money or the quarterly limit). */
 export const trickTargetIds = (v: PlayerView, trick: TrickType): string[] =>
@@ -114,8 +118,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       mw: siteMw(x),
       offline: x.offline ?? 0,
     };
-    if (spied)
-      v.intel = { eff: x.eff, permitLeft: x.permitLeft, alt: x.alt ? { type: x.alt.type, left: x.alt.left } : null };
+    if (spied) v.intel = { eff: x.eff, permitLeft: x.permitLeft };
     if (mine)
       v.own = {
         permitLeft: x.permitLeft,
@@ -204,7 +207,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       tricksLeft: Math.max(0, MAX_TRICKS - me.trickUsed),
       nextGen: own.filter((x) => producing(x) && x.type && !isStore(x.type)).reduce((s, x) => s + genEstimate(g, x), 0),
       contractVolume: me.contracts.reduce((s, c) => s + c.vol, 0),
-      detectives: detectivesOf(me) ? { ...detectivesOf(me)! } : null,
+      detectives: me.detectives ? { ...me.detectives } : null,
     },
     players: g.players.map((p) => ({
       ...(p.id !== pid && hasIntel(g, pid, p.id)
@@ -212,7 +215,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
             intel: {
               until: me.intel![p.id]!,
               contracts: clone(p.contracts),
-              detectives: detectivesOf(p) ? { ...detectivesOf(p)! } : null,
+              detectives: p.detectives ? { ...p.detectives } : null,
               tricksLeft: Math.max(0, MAX_TRICKS - p.trickUsed),
             },
           }

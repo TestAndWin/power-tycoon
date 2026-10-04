@@ -3,6 +3,7 @@ import {
   AUTO_MINIGAME,
   AUTO_MINIGAME_HARD,
   BUYERS,
+  DETECTIVES,
   DUEL_SCARCITY,
   HOURS,
   MIN_CREDIT,
@@ -11,12 +12,15 @@ import {
   REPOWER_FACTOR,
   SEASON,
   STORE_MARKET_SHARE,
+  TRICK_CAUGHT,
+  TRICKS,
   plantDef,
   type AutoMinigameDef,
   type PlantDef,
 } from './data.js';
 import { pick, rand, randint, randomOf } from './rng.js';
 import type {
+  DetectiveLevel,
   Difficulty,
   GameState,
   Player,
@@ -49,11 +53,22 @@ export const sizeOf = (x: { size?: PlantSize }): PlantSize => x.size ?? 'std';
 export const siteDef = (x: { type: PlantType | null; size?: PlantSize }): PlantDef => plantDef(x.type!, sizeOf(x));
 /** Capacity of the (planned) plant on a site in MW (0 without type). */
 export const siteMw = (x: { type: PlantType | null; size?: PlantSize }): number => (x.type ? siteDef(x).mw : 0);
-/** Grid part of repowering: the bigger connection of the large plant. */
-export const repowerGridCost = (t: PlantType): number => plantDef(t, 'large').grid - PLANTS[t].grid;
+/** Extra capacity of a repowered plant (MW). */
+export const repowerMw = (t: PlantType): number => plantDef(t, 'large').mw - PLANTS[t].mw;
 /** Price of repowering a standard plant to large: extra build costs with a surcharge, plus the bigger grid connection. */
 export const repowerCost = (g: GameState, t: PlantType): number =>
-  Math.round(((buildCost(g, t, 'large') - buildCost(g, t)) * REPOWER_FACTOR) / 1e4) * 1e4 + repowerGridCost(t);
+  Math.round(((buildCost(g, t, 'large') - buildCost(g, t)) * REPOWER_FACTOR) / 1e4) * 1e4 +
+  plantDef(t, 'large').grid -
+  PLANTS[t].grid;
+/**
+ * The part of a repowering price that is booked as investment: `siteValue` counts the large plant's grid
+ * connection and permit on its own, and the permit difference was never paid.
+ */
+export const repowerInvestment = (t: PlantType, cost: number): number => {
+  const S = PLANTS[t],
+    L = plantDef(t, 'large');
+  return cost - (L.grid - S.grid) - (L.permit - S.permit);
+};
 export const surveyCost = (x: Site): number => (x.r === 'ns' ? 0.3e6 : 0.05e6);
 
 /** Owned, built and connected (a fault only pauses production). Works on sites and site views. */
@@ -138,6 +153,8 @@ export const myReserve = (g: GameState, r: RegionKey, pid: PlayerId): number =>
   g.res.filter((o) => o.r === r && o.pid === pid).reduce((s, o) => s + o.mw, 0);
 export const freeGrid = (g: GameState, r: RegionKey, pid: PlayerId): number =>
   g.grid[r] - usedGrid(g, r) - reserved(g, r, pid);
+/** Capacity that is neither used nor reserved by anybody. */
+export const unreservedGrid = (g: GameState, r: RegionKey): number => g.grid[r] - usedGrid(g, r) - reserved(g, r);
 
 /**
  * Other players that could race player `pid` for the grid connection of `x` in a cable duel: only when the free
@@ -258,8 +275,23 @@ export const siteById = (g: GameState, id: string): Site | undefined => g.sites.
 export const hasIntel = (g: GameState, pid: PlayerId, target: PlayerId): boolean =>
   (g.players[pid]?.intel?.[target] ?? -1) >= g.turn;
 
-/** Active detective agency of a player, if any. */
-export const detectivesOf = (p: Player): NonNullable<Player['detectives']> | null =>
-  p.detectives && p.detectives.left > 0 ? p.detectives : null;
+/**
+ * Odds of a lobby trick against a target with the given detective agency (null = none): success, and the chance
+ * that the actor is caught after a failure or after a success.
+ */
+export function trickOdds(
+  trick: TrickType,
+  detectives: DetectiveLevel | null | undefined,
+): { success: number; caughtIfFailed: number; caughtIfSucceeded: number } {
+  const T = TRICKS[trick],
+    D = detectives ? DETECTIVES[detectives] : null;
+  // a lawsuit is legal: nobody is caught
+  const catchable = T.fine > 0;
+  return {
+    success: T.chance * (D?.shield ?? 1),
+    caughtIfFailed: catchable ? (D?.catchFailed ?? TRICK_CAUGHT) : 0,
+    caughtIfSucceeded: catchable ? (D?.catchSucceeded ?? 0) : 0,
+  };
+}
 
 export const regionOk = (r: unknown): r is RegionKey => typeof r === 'string' && r in REGIONS;
