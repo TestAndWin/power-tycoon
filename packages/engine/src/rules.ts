@@ -3,6 +3,7 @@ import {
   AUTO_MINIGAME,
   AUTO_MINIGAME_HARD,
   BUYERS,
+  DUEL_SCARCITY,
   HOURS,
   MIN_CREDIT,
   PLANTS,
@@ -48,15 +49,21 @@ export const sizeOf = (x: { size?: PlantSize }): PlantSize => x.size ?? 'std';
 export const siteDef = (x: { type: PlantType | null; size?: PlantSize }): PlantDef => plantDef(x.type!, sizeOf(x));
 /** Capacity of the (planned) plant on a site in MW (0 without type). */
 export const siteMw = (x: { type: PlantType | null; size?: PlantSize }): number => (x.type ? siteDef(x).mw : 0);
+/** Grid part of repowering: the bigger connection of the large plant. */
+export const repowerGridCost = (t: PlantType): number => plantDef(t, 'large').grid - PLANTS[t].grid;
 /** Price of repowering a standard plant to large: extra build costs with a surcharge, plus the bigger grid connection. */
 export const repowerCost = (g: GameState, t: PlantType): number =>
-  Math.round(((buildCost(g, t, 'large') - buildCost(g, t)) * REPOWER_FACTOR) / 1e4) * 1e4 +
-  plantDef(t, 'large').grid -
-  PLANTS[t].grid;
+  Math.round(((buildCost(g, t, 'large') - buildCost(g, t)) * REPOWER_FACTOR) / 1e4) * 1e4 + repowerGridCost(t);
 export const surveyCost = (x: Site): number => (x.r === 'ns' ? 0.3e6 : 0.05e6);
 
 /** Owned, built and connected (a fault only pauses production). Works on sites and site views. */
 export const operating = (x: Pick<Site, 'owner' | 'built' | 'grid'>): boolean => x.owner >= 0 && x.built && x.grid;
+/** Operating and producing this quarter: no fault and not offline for repowering. */
+export const producing = (x: Pick<Site, 'owner' | 'built' | 'grid' | 'fault' | 'offline'>): boolean =>
+  operating(x) && !x.fault && !((x.offline ?? 0) > 0);
+/** A plant (or approved project) that will need a grid connection: built or approved, not connected. */
+export const waitingForGrid = (x: Pick<Site, 'type' | 'grid' | 'built' | 'permit'>): boolean =>
+  !!x.type && !x.grid && (x.built || x.permit === 'approved');
 export const isStore = (t: PlantType): boolean => PLANTS[t].cls === 'store';
 
 /** Plant types allowed on a site: the region's types, hydro and pump only with a (known) slope. */
@@ -131,6 +138,19 @@ export const myReserve = (g: GameState, r: RegionKey, pid: PlayerId): number =>
   g.res.filter((o) => o.r === r && o.pid === pid).reduce((s, o) => s + o.mw, 0);
 export const freeGrid = (g: GameState, r: RegionKey, pid: PlayerId): number =>
   g.grid[r] - usedGrid(g, r) - reserved(g, r, pid);
+
+/**
+ * Other players that could race player `pid` for the grid connection of `x` in a cable duel: only when the free
+ * capacity is scarce and the player's own reservations do not cover the plant; those with a project waiting
+ * for the grid in the region first, else everybody with a site there.
+ */
+export function duelRivals(g: GameState, pid: PlayerId, x: Site): PlayerId[] {
+  const mw = siteMw(x);
+  if (freeGrid(g, x.r, pid) >= DUEL_SCARCITY * mw || myReserve(g, x.r, pid) >= mw) return [];
+  const here = g.sites.filter((y) => y.r === x.r && y.owner >= 0 && y.owner !== pid && !g.players[y.owner]!.out);
+  const waiting = here.filter(waitingForGrid);
+  return [...new Set((waiting.length ? waiting : here).map((y) => y.owner))].sort((a, b) => a - b);
+}
 
 export function consumeReserve(g: GameState, r: RegionKey, pid: PlayerId, mw: number): void {
   for (const o of g.res) {

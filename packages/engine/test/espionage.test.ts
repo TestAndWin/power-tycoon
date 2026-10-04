@@ -127,3 +127,17 @@ describe('detectives', () => {
     expect(found).toBe(true);
   });
 });
+
+describe('detectives – review fixes', () => {
+  it('rivals hiring at the end of the quarter get four quarters against the human as well', async () => {
+    const g = newGame();
+    const r = applyAction(g, 1, { type: 'hireDetectives', level: 'basic' });
+    if (!r.ok) throw new Error(r.error);
+    let s = (await endQuarter(r.state, [])).state;
+    for (let i = 0; i < 4; i++) {
+      expect(s.players[1]!.detectives?.left ?? 0).toBeGreaterThan(0);
+      s = (await endQuarter(s, [])).state;
+    }
+    expect(s.players[1]!.detectives).toBeNull();
+  });
+});

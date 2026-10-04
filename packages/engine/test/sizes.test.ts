@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { endQuarter, LARGE, PLANTS, plantDef, playerView, REPOWER_FACTOR } from '../src/index.js';
+import { endQuarter, LARGE, PLANTS, plantDef, playerView, REPOWER_FACTOR, worth } from '../src/index.js';
 import { fails, newGame, ok, setupSite, site } from './helpers.js';
 
 describe('plant sizes', () => {
@@ -76,7 +76,12 @@ describe('repowering', () => {
     const r = ok(g, { type: 'repower', siteId: 'nd0' });
     expect(r.events[0]).toMatchObject({ type: 'repowered', mw: PLANTS.wind.mw + extra, cost: opt.cost });
     const y = site(r.state, 'nd0');
-    expect(y).toMatchObject({ size: 'large', offline: 1, invested: x.invested + opt.cost });
+    const L = plantDef('wind', 'large');
+    // grid and permit of the large plant are booked by `siteValue`, not as investment
+    const invested = x.invested + opt.cost - (L.grid - PLANTS.wind.grid) - (L.permit - PLANTS.wind.permit);
+    expect(y).toMatchObject({ size: 'large', offline: 1, invested });
+    // the net worth does not grow by more than the money spent
+    expect(worth(r.state, r.state.players[0]!)).toBeLessThanOrEqual(worth(g, g.players[0]!));
     expect(playerView(r.state, 0).grid.nd.used).toBe(PLANTS.wind.mw + extra);
     fails(r.state, { type: 'repower', siteId: 'nd0' }, 'invalidState');
 
@@ -102,5 +107,18 @@ describe('repowering', () => {
     fails(g, { type: 'repower', siteId: 'nd1' }, 'invalidState');
     setupSite(g, 'nd2', 1, 'operating', 'wind');
     fails(g, { type: 'repower', siteId: 'nd2' }, 'notOwner');
+  });
+});
+
+describe('repowering – review fixes', () => {
+  it('the forecast leaves out a plant that is offline for repowering', () => {
+    const g = newGame();
+    setupSite(g, 'nd0', 0, 'operating', 'wind');
+    const before = playerView(g, 0);
+    expect(before.me.nextGen).toBeGreaterThan(0);
+    const r = ok(g, { type: 'repower', siteId: 'nd0' });
+    const v = playerView(r.state, 0);
+    expect(v.me.nextGen).toBe(0);
+    expect(v.sites.find((s) => s.id === 'nd0')!.own!.genEstimate).toBe(0);
   });
 });

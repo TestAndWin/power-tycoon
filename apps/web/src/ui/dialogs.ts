@@ -27,7 +27,7 @@ import {
   RIVAL_TEXT,
   DUEL_HINT,
 } from '../texts.js';
-import { disabledUnless, LOGO, V } from './common.js';
+import { disabledUnless, LOGO, optionFor, V } from './common.js';
 import { crest, portrait } from './companies.js';
 import { byRank } from './rivals.js';
 
@@ -125,8 +125,9 @@ export function showBuilt(x: SiteView): void {
   if (!x.type) return;
   const free = v.grid[x.r].free,
     connect = { type: 'connectGrid', siteId: x.id } as const,
-    duel = free >= x.mw && free < v.constants.duelScarcity * x.mw;
+    duel = !!x.own?.duelRisk,
+    price = optionFor(connect)?.cost ?? 0;
   openModal(
-    `<h2>${PLANT_NAME[x.type]} steht</h2><p style="margin:0">Jetzt fehlt nur noch der Netzanschluss (${x.mw} MW, frei in ${REGION_TEXT[x.r].name}: ${free} MW).${duel ? ' ' + DUEL_HINT : ''}</p><div class="foot"><button class="btn" data-act="closeModal">Später</button><button class="btn primary" data-act="connectNow" data-v="${x.id}" ${disabledUnless(connect)}>Anschließen · ${money(v.costs[x.type].grid, true)}</button></div>`,
+    `<h2>${PLANT_NAME[x.type]} steht</h2><p style="margin:0">Jetzt fehlt nur noch der Netzanschluss (${x.mw} MW, frei in ${REGION_TEXT[x.r].name}: ${free} MW).${duel ? ' ' + DUEL_HINT : ''}</p><div class="foot"><button class="btn" data-act="closeModal">Später</button><button class="btn primary" data-act="connectNow" data-v="${x.id}" ${disabledUnless(connect)}>Anschließen · ${money(price, true)}</button></div>`,
   );
 }

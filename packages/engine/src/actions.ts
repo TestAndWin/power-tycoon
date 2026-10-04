@@ -8,7 +8,6 @@ import {
   DETECTIVE_QUARTERS,
   DETECTIVES,
   DUEL_PACE,
-  DUEL_SCARCITY,
   MAX_CONTRACTS,
   MAX_TRICKS,
   PLANT_SIZE_KEYS,
@@ -34,11 +33,13 @@ import {
   consumeReserve,
   creditLimit,
   detectivesOf,
+  duelRivals,
   freeGrid,
   hasIntel,
   plantTypesFor,
   regionOk,
   repowerCost,
+  repowerGridCost,
   resetSite,
   retryCost,
   sellValue,
@@ -97,15 +98,9 @@ const repayAmount = (p: Player, amount: number | 'all'): number =>
 const rivalOk = (g: GameState, pid: PlayerId, target: unknown): target is PlayerId =>
   typeof target === 'number' && target !== pid && !!g.players[target] && !g.players[target]!.out;
 
-/**
- * The rival that races player `pid` for the grid connection of `x`: only when the free capacity is scarce,
- * one of the other players with a site in the region (those with a project waiting for the grid first).
- */
+/** The rival that races player `pid` for the grid connection of `x` (see `duelRivals`), or null. */
 function duelRival(g: GameState, pid: PlayerId, x: Site): PlayerId | null {
-  if (freeGrid(g, x.r, pid) >= DUEL_SCARCITY * siteMw(x)) return null;
-  const here = g.sites.filter((y) => y.r === x.r && y.owner >= 0 && y.owner !== pid && !g.players[y.owner]!.out);
-  const waiting = here.filter((y) => y.type && !y.grid && (y.built || y.permit === 'approved'));
-  const ids = [...new Set((waiting.length ? waiting : here).map((y) => y.owner))].sort((a, b) => a - b);
+  const ids = duelRivals(g, pid, x);
   return ids.length ? pick(randomOf(g), ids) : null;
 }
 
@@ -151,19 +146,19 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (err) return err;
       if (!plantTypesFor(x).includes(a.plantType)) return 'invalidPlantType';
       if (a.size !== undefined && !PLANT_SIZE_KEYS.includes(a.size)) return 'invalidPlantType';
-      const size = a.size ?? 'std';
+      const size = sizeOf(a);
       if (!x.type) return null;
       if (x.permit === 'rejected') return x.type !== a.plantType ? 'invalidPlantType' : null;
       // change of mind: a running application is replaced, an approved permit stays until the new one is decided
       if (x.built) return 'invalidState';
-      const same = (t: PlantType | undefined, s: PlantSize | undefined) => t === a.plantType && (s ?? 'std') === size;
-      if (same(x.type, x.size) || (x.alt && same(x.alt.type, x.alt.size))) return 'invalidState';
+      const same = (o: { type: PlantType | null; size?: PlantSize }) => o.type === a.plantType && sizeOf(o) === size;
+      if (same(x) || (x.alt && same(x.alt))) return 'invalidState';
       return null;
     },
     price: (c) => plantDef(c.a.plantType, c.a.size).permit,
     execute({ g, p, pid, x, a }, cost, out) {
       p.cash -= cost;
-      const size = a.size ?? 'std';
+      const size = sizeOf(a);
       const left = randint(randomOf(g), ...plantDef(a.plantType, size).permitQ);
       if (x.type && x.permit === 'approved') {
         x.alt = { type: a.plantType, left, size };
@@ -257,7 +252,10 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       p.cash -= cost;
       const extra = plantDef(x.type!, 'large').mw - siteMw(x);
       x.size = 'large';
-      x.invested += cost;
+      // the book value counts the large grid connection and permit separately (`siteValue`); the permit
+      // difference was never paid, so it is taken out of the investment
+      const permitDiff = plantDef(x.type!, 'large').permit - plantDef(x.type!).permit;
+      x.invested += cost - repowerGridCost(x.type!) - permitDiff;
       x.offline = REPOWER_QUARTERS;
       consumeReserve(g, x.r, pid, extra);
       emit(g, out, { type: 'repowered', playerId: pid, siteId: x.id, mw: siteMw(x), cost });
@@ -425,7 +423,8 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     price: (c) => DETECTIVES[c.a.level].cost,
     execute({ g, p, pid, a }, cost, out) {
       p.cash -= cost;
-      p.detectives = { level: a.level, left: DETECTIVE_QUARTERS };
+      // rivals act at the end of the quarter, after the human: their term starts with the next quarter
+      p.detectives = { level: a.level, left: DETECTIVE_QUARTERS + (p.human ? 0 : 1) };
       emit(g, out, { type: 'detectivesHired', playerId: pid, level: a.level, quarters: DETECTIVE_QUARTERS, cost });
     },
   },

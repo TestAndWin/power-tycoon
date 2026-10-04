@@ -416,6 +416,8 @@ export interface SiteView {
     storeOwnMwh: number;
     /** MWh the storage can shift per quarter. */
     storeCapacity: number;
+    /** Connecting this built plant now would be a cable duel against a rival. */
+    duelRisk: boolean;
   };
 }
 
@@ -504,7 +506,6 @@ export interface PlayerView {
     spyCost: number;
     spyQuarters: number;
     detectiveQuarters: number;
-    duelScarcity: number;
   };
   challenge: Challenge | null;
   news: NewsItem[];

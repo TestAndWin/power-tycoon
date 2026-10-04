@@ -5,7 +5,16 @@
 import { DUEL_REFUND, DUEL_RESERVE_QUARTERS, LAYOUT_RANGE, PLANTS, SELF_REPAIR_COST } from './data.js';
 import { emit } from './events.js';
 import { clamp, nextUint, rand, randomOf } from './rng.js';
-import { autoMinigame, consumeReserve, freeGrid, siteById, siteDef, siteMw } from './rules.js';
+import {
+  autoMinigame,
+  consumeReserve,
+  freeGrid,
+  myReserve,
+  siteById,
+  siteDef,
+  siteMw,
+  waitingForGrid,
+} from './rules.js';
 import type {
   Challenge,
   ChallengeKind,
@@ -110,10 +119,11 @@ export function resolveChallenge(g: GameState, ch: OpenChallenge, outcome: numbe
  */
 function duelLost(g: GameState, rival: PlayerId, x: Site): number {
   const need = g.sites
-    .filter((y) => y.r === x.r && y.owner === rival && y.type && !y.grid && (y.built || y.permit === 'approved'))
+    .filter((y) => y.r === x.r && y.owner === rival && waitingForGrid(y))
     .reduce((s, y) => s + siteMw(y), 0);
-  const have = g.res.filter((o) => o.r === x.r && o.pid === rival).reduce((s, o) => s + o.mw, 0);
-  const mw = Math.min(need - have, freeGrid(g, x.r, rival));
+  const have = myReserve(g, x.r, rival);
+  // `freeGrid` counts the rival's own reservations as free: only the rest is still available
+  const mw = Math.min(need - have, freeGrid(g, x.r, rival) - have);
   if (mw <= 0) return 0;
   g.res.push({ pid: rival, r: x.r, mw, left: DUEL_RESERVE_QUARTERS });
   return mw;

@@ -2,7 +2,6 @@ import {
   DETECTIVE_KEYS,
   DETECTIVE_QUARTERS,
   DETECTIVES,
-  DUEL_SCARCITY,
   historicFor,
   INTEREST,
   MAX_CONTRACTS,
@@ -28,13 +27,14 @@ import {
   clone,
   creditLimit,
   detectivesOf,
+  duelRivals,
   freeGrid,
   genEstimate,
   hasIntel,
   isStore,
   mwOf,
   myReserve,
-  operating,
+  producing,
   rankOf,
   reserved,
   retryCost,
@@ -82,9 +82,9 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
   if (!me) throw new Error('unknown player');
   // expected storage income of the viewer's own storages (same split as in the quarter, without faults)
   const myGen = new Map<string, number>();
-  const myStores = g.sites.filter((x) => x.owner === pid && operating(x) && x.type && isStore(x.type));
+  const myStores = g.sites.filter((x) => x.owner === pid && producing(x) && x.type && isStore(x.type));
   for (const x of g.sites)
-    if (x.owner === pid && operating(x) && !x.fault && x.type && !isStore(x.type)) myGen.set(x.id, genEstimate(g, x));
+    if (x.owner === pid && producing(x) && x.type && !isStore(x.type)) myGen.set(x.id, genEstimate(g, x));
   const myStore = storeIncome(g, myGen, myStores);
   const sites: SiteView[] = g.sites.map((x) => {
     const mine = x.owner === pid;
@@ -125,10 +125,11 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
         age: x.age,
         value: Math.round(siteValue(x)),
         sellValue: sellValue(x),
-        genEstimate: operating(x) && !x.fault ? genEstimate(g, x) : 0,
+        genEstimate: producing(x) ? genEstimate(g, x) : 0,
         storeRevenue: Math.round((myStore.get(x.id)?.own ?? 0) + (myStore.get(x.id)?.market ?? 0)),
         storeOwnMwh: Math.round(myStore.get(x.id)?.ownMwh ?? 0),
         storeCapacity: x.type && isStore(x.type) ? Math.round(storeCapacity(x)) : 0,
+        duelRisk: x.built && !x.grid && duelRivals(g, pid, x).length > 0,
       };
     return v;
   });
@@ -201,9 +202,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       genLast: me.genLast,
       contracts: clone(me.contracts),
       tricksLeft: Math.max(0, MAX_TRICKS - me.trickUsed),
-      nextGen: own
-        .filter((x) => operating(x) && !x.fault && x.type && !isStore(x.type))
-        .reduce((s, x) => s + genEstimate(g, x), 0),
+      nextGen: own.filter((x) => producing(x) && x.type && !isStore(x.type)).reduce((s, x) => s + genEstimate(g, x), 0),
       contractVolume: me.contracts.reduce((s, c) => s + c.vol, 0),
       detectives: detectivesOf(me) ? { ...detectivesOf(me)! } : null,
     },
@@ -252,7 +251,6 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       spyCost: SPY_COST,
       spyQuarters: SPY_QUARTERS,
       detectiveQuarters: DETECTIVE_QUARTERS,
-      duelScarcity: DUEL_SCARCITY,
     },
     challenge: g.challenge && g.challenge.playerId === pid ? publicChallenge(g.challenge) : null,
     news,

@@ -833,7 +833,7 @@ class Planner {
     let gen = 0;
     let val = 0;
     for (const x of this.mine()) {
-      if (!x.type || !x.grid || !x.built || PLANTS[x.type].cls === 'store') continue;
+      if (!x.type || !x.grid || !x.built || PLANTS[x.type].cls === 'store' || x.offline > 0) continue;
       const cls = PLANTS[x.type].cls as Cls;
       const e = x.mw * capFactor(x, x.type) * SEASON[cls][q]!;
       gen += e;

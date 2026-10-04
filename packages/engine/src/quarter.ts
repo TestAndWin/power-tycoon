@@ -12,6 +12,7 @@ import {
   operating,
   resetSite,
   siteDef,
+  sizeOf,
   storeIncome,
   updateSpread,
   worth,
@@ -108,7 +109,7 @@ function decidePermits(g: GameState, out: GameEvent[]): void {
         if (ok)
           Object.assign(x, {
             type: alt.type,
-            size: alt.size ?? 'std',
+            size: sizeOf(alt),
             permit: 'approved',
             permitLeft: 0,
             killed: false,

@@ -194,8 +194,7 @@ function detail(): string {
           a.push(
             `<p class="muted" style="font-size:12px;margin:0">Nicht genug freie Netzkapazität (${x.mw} MW nötig). Warte auf Netzausbau oder reserviere rechtzeitig.</p>`,
           );
-        else if (v.grid[x.r].free < v.constants.duelScarcity * x.mw)
-          a.push(`<p class="duelhint" style="font-size:12px;margin:0">⚔ ${DUEL_HINT}</p>`);
+        else if (x.own?.duelRisk) a.push(`<p class="duelhint" style="font-size:12px;margin:0">⚔ ${DUEL_HINT}</p>`);
         break;
       case 'repower': {
         const L = plantDef(x.type!, 'large');

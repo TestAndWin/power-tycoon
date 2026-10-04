@@ -486,9 +486,11 @@ export function reportEventText(view: PlayerView, e: GameEvent): { kind: TextKin
     case 'trickSucceeded':
     case 'trickFailed': {
       const n = newsTexts(view, e)[0];
-      // a culprit caught by the viewer's detectives is good news
-      const good = e.caught && e.targetId === view.playerId && e.type === 'trickFailed';
-      return n ? { kind: good ? 'good' : 'bad', text: n.text } : null;
+      // a culprit of a trick on the viewer caught by the detectives: good news if the trick failed, mixed
+      // news (plant hit, but damages paid) if it succeeded
+      const caughtOnMe = !!e.caught && e.targetId === view.playerId;
+      const kind: TextKind = caughtOnMe ? (e.type === 'trickFailed' ? 'good' : 'warn') : 'bad';
+      return n ? { kind, text: n.text } : null;
     }
     default:
       return null;

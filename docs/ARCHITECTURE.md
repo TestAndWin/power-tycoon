@@ -100,8 +100,9 @@ Modules of `packages/engine/src`:
   `plantDef(t, size)` scales capacity, storage volume and costs (`LARGE`); large permits take a quarter longer
   and are rejected more often. `repower` upgrades a running standard plant (`repowerCost`, needs the extra grid
   capacity) and takes it offline for `REPOWER_QUARTERS` (`Site.offline`).
-- Cable duel: when the free grid capacity is below `DUEL_SCARCITY` × the plant's MW and another player has a
-  site in the region, `connectGrid` opens a `cableDuel` challenge with `rival: { playerId, pace }`. Lost:
+- Cable duel: when the free grid capacity is below `DUEL_SCARCITY` × the plant's MW, the player's own
+  reservations do not cover the plant and another player has a site in the region (`duelRivals`; the view
+  flags it as `own.duelRisk`), `connectGrid` opens a `cableDuel` challenge with `rival: { playerId, pace }`. Lost:
   `DUEL_REFUND` of the costs back, the rival reserves capacity for its own waiting project
   (`DUEL_RESERVE_QUARTERS`). Rivals and `autoMinigames` roll `AUTO_MINIGAME.cableDuel`.
 - Game length: `createGame({ years })` with `GAME_YEAR_OPTIONS`; `historicFor(startYear, endYear)` squeezes
@@ -249,10 +250,10 @@ interface OpponentStrategy {
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
 - `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds;
   `--skilled` lets seat 0 win every minigame like a good human player, `--years` sets the game length.
-  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 182 M€, hard ≈ 323 M€.
-  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 330 M€ and
-  wins 20 %, rivals ≈ 346 M€ (before the hard minigame odds and `bigProjects`: seat 0 won 70 %; before phase 7:
-  13 %). A good human plays better than the bot, so this is the target range for "about even" on `hard`.
+  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 176 M€, hard ≈ 301 M€.
+  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 307 M€ and
+  wins 26 %, rivals ≈ 314 M€ and 25 % each (before the hard minigame odds and `bigProjects`: seat 0 won 70 %;
+  before phase 7: 13 %). A good human plays better than the bot, so this is the target range for "about even" on `hard`.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `SmartOpponent` (`normal`) on timeout/error. Details are decided when step 2 starts.
 

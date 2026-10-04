@@ -84,3 +84,29 @@ describe('cable duel', () => {
     expect(won).toBeLessThan(72);
   });
 });
+
+describe('cable duel – review fixes', () => {
+  it('an own reservation that covers the plant prevents the duel', () => {
+    const g = scarce(PLANTS.wind.mw);
+    g.res.push({ pid: 0, r: 'nd', mw: PLANTS.wind.mw, left: 2 });
+    expect(playerView(g, 0).sites.find((s) => s.id === 'nd0')!.own!.duelRisk).toBe(false);
+    expect(ok(g, { type: 'connectGrid', siteId: 'nd0' }).challenge).toMatchObject({ kind: 'cable' });
+  });
+  it('the view flags a connection that would be a duel', () => {
+    expect(playerView(scarce(PLANTS.wind.mw), 0).sites.find((s) => s.id === 'nd0')!.own!.duelRisk).toBe(true);
+    expect(playerView(scarce(PLANTS.wind.mw * 2), 0).sites.find((s) => s.id === 'nd0')!.own!.duelRisk).toBe(false);
+  });
+  it('the winning rival never reserves more than is really free', () => {
+    const g = scarce(PLANTS.wind.mw + 30);
+    // the rival already holds 30 MW and waits with three parks (72 MW): only 24 MW are really free
+    setupSite(g, 'nd2', 2, 'built', 'wind');
+    setupSite(g, 'nd3', 2, 'built', 'wind');
+    g.res.push({ pid: 2, r: 'nd', mw: 30, left: 3 });
+    const r = ok(g, { type: 'connectGrid', siteId: 'nd0' });
+    const l = ok(r.state, { type: 'minigameResult', challengeId: r.challenge!.id, outcome: false });
+    const reserved = l.state.res.filter((o) => o.r === 'nd').reduce((s, o) => s + o.mw, 0);
+    expect(reserved).toBe(PLANTS.wind.mw + 30);
+    expect(playerView(l.state, 0).grid.nd.free).toBe(0);
+    expect(playerView(l.state, 1).grid.nd.free).toBe(0);
+  });
+});
