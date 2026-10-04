@@ -154,7 +154,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (same(x) || (x.alt && same(x.alt))) return 'invalidState';
       return null;
     },
-    price: (c) => plantDef(c.a.plantType, c.a.size).permit,
+    price: (c) => plantDef(c.a.plantType, c.a.size ?? 'std').permit,
     execute({ g, p, pid, x, a }, cost, out) {
       p.cash -= cost;
       const size = a.size ?? 'std';

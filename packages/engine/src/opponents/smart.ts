@@ -314,12 +314,12 @@ class Planner {
   }
 
   /** Expected revenue of one operating quarter, averaged over the seasons (without foresight). */
-  private quarterRevenue(x: SiteView, t: PlantType, eff = 1, size: PlantSize = 'std'): number {
+  private quarterRevenue(x: SiteView, t: PlantType, size: PlantSize, eff = 1): number {
     const P = plantDef(t, size);
     if (P.cls === 'store') {
       // spread grows with the share of renewables; assume a bit more than today on average
       const spread = this.v.market.spread * 1.1;
-      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff * this.storeShare(x, t, eff, size);
+      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff * this.storeShare(x, t, size, eff);
     }
     const cls = P.cls as Cls;
     let s = 0;
@@ -328,12 +328,12 @@ class Planner {
   }
 
   /** Expected revenue in quarter `k` from now (0 = this quarter, incl. its world event). */
-  private revenueAt(x: SiteView, t: PlantType, k: number, eff = 1, size: PlantSize = 'std'): number {
-    if (!this.p.foresight) return this.quarterRevenue(x, t, eff, size);
+  private revenueAt(x: SiteView, t: PlantType, size: PlantSize, k: number, eff = 1): number {
+    if (!this.p.foresight) return this.quarterRevenue(x, t, size, eff);
     if (k >= this.left) return 0;
     const P = plantDef(t, size);
     if (P.cls === 'store')
-      return (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff * this.storeShare(x, t, eff, size);
+      return (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff * this.storeShare(x, t, size, eff);
     const cls = P.cls as Cls;
     const q = this.qAt(k);
     const fx = k === 0 ? this.fxNow[cls] : 1;
@@ -345,7 +345,7 @@ class Planner {
    * in the region (planned ones included), `STORE_MARKET_SHARE` for the rest. Other own storages there take
    * their capacity first.
    */
-  private storeShare(x: SiteView, t: PlantType, eff: number, size: PlantSize = 'std'): number {
+  private storeShare(x: SiteView, t: PlantType, size: PlantSize, eff: number): number {
     // the same for every quarter of a valuation: computed once per plan (until a site is sold)
     const key = `${x.id}|${t}|${eff}|${size}`;
     let share = this.shares.get(key);
@@ -372,7 +372,7 @@ class Planner {
     return own + (1 - own) * STORE_MARKET_SHARE;
   }
 
-  private runningCost(x: SiteView, t: PlantType, size: PlantSize = 'std'): number {
+  private runningCost(x: SiteView, t: PlantType, size: PlantSize): number {
     return plantDef(t, size).opex + x.lease * 0.02;
   }
 
@@ -392,7 +392,7 @@ class Planner {
    * Expected change of net worth until the end of the game if the project is pursued from its
    * current stage; costs of earlier stages are sunk.
    */
-  private projectValue(x: SiteView, t: PlantType, stage: Stage, size: PlantSize = 'std'): number {
+  private projectValue(x: SiteView, t: PlantType, size: PlantSize, stage: Stage): number {
     return this.p.foresight ? this.forecastValue(x, t, stage, size) : this.simpleValue(x, t, stage, size);
   }
 
@@ -415,7 +415,7 @@ class Planner {
     capex += P.grid / this.mg.cable;
     wait += (1 - this.mg.cable) / this.mg.cable;
     const ops = Math.max(0, left - wait);
-    const margin = this.quarterRevenue(x, t, 1, size) * 0.97 - this.runningCost(x, t, size); // ~3 % fault losses
+    const margin = this.quarterRevenue(x, t, size, 1) * 0.97 - this.runningCost(x, t, size); // ~3 % fault losses
     const invested = stage === 'built' ? (x.own?.invested ?? c.build) : c.build;
     const book = siteValue({
       lease: x.lease,
@@ -468,7 +468,7 @@ class Planner {
     let rev = 0;
     for (let k = 0; k < left; k++) {
       const w = Math.min(1, Math.max(0, k + 1 - tc));
-      if (w > 0) rev += w * (this.revenueAt(x, t, k, 1, size) * 0.97 - running); // ~3 % fault losses
+      if (w > 0) rev += w * (this.revenueAt(x, t, size, k, 1) * 0.97 - running); // ~3 % fault losses
     }
     const waiting = Math.min(left, tc);
     const idle = x.lease * 0.02 * waiting + (built ? P.opex * Math.max(0, waiting - tb) : 0);
@@ -529,7 +529,7 @@ class Planner {
         const capex = costsFor(this.v, size)[t].build + P.grid + P.permit + (stage === 'new' ? x.lease : 0);
         // cheap checks before the valuation
         if (size === 'large' && (!pick || capex > room)) continue;
-        const value = this.projectValue(x, t, stage, size);
+        const value = this.projectValue(x, t, size, stage);
         if (size === 'large' && value / capex < (pick!.value / pick!.capex) * 1.1) continue;
         if (!pick || value / capex > pick.value / pick.capex) pick = { size, value, capex };
       }
@@ -590,7 +590,7 @@ class Planner {
       c -= x.lease * 0.02;
       if (!x.type || !x.built) continue;
       c -= plantDef(x.type, x.size).opex;
-      if (x.grid) c += this.quarterRevenue(x, x.type, x.own?.eff ?? 1, x.size);
+      if (x.grid) c += this.quarterRevenue(x, x.type, x.size, x.own?.eff ?? 1);
     }
     return Math.max(0, c);
   }
@@ -637,7 +637,7 @@ class Planner {
       const keep =
         stage === 'leased'
           ? (this.bestType(x, 'leased')?.value ?? -Infinity)
-          : this.projectValue(x, x.type!, stage, x.size);
+          : this.projectValue(x, x.type!, x.size, stage);
       const idle = -(x.lease * 0.02 + (x.built && x.type ? plantDef(x.type, x.size).opex : 0)) * this.left;
       const sell = x.own.sellValue - x.own.value;
       if (sell <= Math.max(keep, idle)) continue;
@@ -652,7 +652,7 @@ class Planner {
   private repairs(): void {
     for (const x of this.mine()) {
       if (!x.fault || !x.type || !x.grid) continue;
-      const loss = this.revenueAt(x, x.type, 0, x.own?.eff ?? 1, x.size);
+      const loss = this.revenueAt(x, x.type, x.size, 0, x.own?.eff ?? 1);
       if (loss < this.v.constants.selfRepairCost * 2) continue;
       // cheap self repair first; if it fails the service team is still sent (rejected if fixed)
       if (this.cash > this.v.constants.selfRepairCost + 1e6)
@@ -678,11 +678,11 @@ class Planner {
     }
     const approved = mine
       .filter((x) => x.type && x.permit === 'approved' && !x.built)
-      .sort((a, b) => this.revenueAt(b, b.type!, 1, 1, b.size) - this.revenueAt(a, a.type!, 1, 1, a.size));
+      .sort((a, b) => this.revenueAt(b, b.type!, b.size, 1, 1) - this.revenueAt(a, a.type!, a.size, 1, 1));
     for (const x of approved) {
       const t = x.type!;
       const c = x.fail ? costsFor(this.v, x.size)[t].retry : costsFor(this.v, x.size)[t].build;
-      if ((!x.fail || this.p.lateGame) && this.projectValue(x, t, 'approved', x.size) < 0) continue;
+      if ((!x.fail || this.p.lateGame) && this.projectValue(x, t, x.size, 'approved') < 0) continue;
       if (this.afford(c)) {
         this.spend({ type: 'build', siteId: x.id }, c);
         this.builtNow.add(x.id);
@@ -711,10 +711,10 @@ class Planner {
       const extra = repowerMw(t);
       if (!x.own || this.free[x.r] < extra) continue;
       const eff = x.own.eff;
-      const opexDiff = plantDef(t, 'large').opex - plantDef(t).opex;
-      let gain = -this.revenueAt(x, t, 0, eff); // offline this quarter
+      const opexDiff = plantDef(t, 'large').opex - plantDef(t, 'std').opex;
+      let gain = -this.revenueAt(x, t, 'std', 0, eff); // offline this quarter
       for (let k = 1; k < this.left; k++)
-        gain += (this.revenueAt(x, t, k, eff, 'large') - this.revenueAt(x, t, k, eff)) * 0.97 - opexDiff;
+        gain += (this.revenueAt(x, t, 'large', k, eff) - this.revenueAt(x, t, 'std', k, eff)) * 0.97 - opexDiff;
       // book value at the end, as the engine books the repowering
       const end = { lease: x.lease, type: t, permit: 'approved' as const, built: true, grid: true };
       const age = x.own.age + this.left;
@@ -902,7 +902,7 @@ class Planner {
   private harm(trick: TrickType, x: SiteView): number {
     if (!x.type) return 0;
     if (this.p.trickTiming) return this.timedHarm(trick, x);
-    const rev = this.quarterRevenue(x, x.type, x.intel?.eff ?? 1, x.size);
+    const rev = this.quarterRevenue(x, x.type, x.size, x.intel?.eff ?? 1);
     const c = costsFor(this.v, x.size)[x.type];
     if (trick === 'klage') return rev * 2 + plantDef(x.type, x.size).permit * 0.15 + c.build * 0.15 * 0.1;
     if (trick === 'bi') return rev * 0.5 * 2;
@@ -917,7 +917,7 @@ class Planner {
    */
   private timedHarm(trick: TrickType, x: SiteView): number {
     const t = x.type!;
-    const rev = (k: number) => this.revenueAt(x, t, k, x.intel?.eff ?? 1, x.size);
+    const rev = (k: number) => this.revenueAt(x, t, x.size, k, x.intel?.eff ?? 1);
     if (trick === 'klage') {
       // an approved but unbuilt plant would start next quarter; a pending one about a quarter later
       const start = x.permit === 'approved' ? 1 : 2;
@@ -1012,7 +1012,7 @@ class Planner {
     if (!attacked) return;
     const operatingRevenue = this.mine()
       .filter((x) => x.type && x.built && x.grid)
-      .reduce((s, x) => s + this.quarterRevenue(x, x.type!, x.own?.eff ?? 1, x.size), 0);
+      .reduce((s, x) => s + this.quarterRevenue(x, x.type!, x.size, x.own?.eff ?? 1), 0);
     // the agency protects four quarters of revenue against a few more attacks
     const cost = this.v.detectives[level].cost;
     if (operatingRevenue * 2 < cost) return;

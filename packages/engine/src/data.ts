@@ -158,7 +158,7 @@ export const REPOWER_FACTOR = 1.3;
 export const REPOWER_QUARTERS = 1;
 
 /** Plant data for a size (`std` = the table above); the large variants are built once. */
-export function plantDef(t: PlantType, size: PlantSize = 'std'): PlantDef {
+export function plantDef(t: PlantType, size: PlantSize): PlantDef {
   return size === 'std' ? PLANTS[t] : (LARGE_DEFS[t] ??= largeDef(PLANTS[t]));
 }
 const LARGE_DEFS: Partial<Record<PlantType, PlantDef>> = {};

@@ -40,11 +40,11 @@ export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 export const yearsIn = (g: GameState): number => g.year - g.startYear + g.q / 4;
 export const learnF = (g: GameState, t: PlantType): number => Math.pow(1 - PLANTS[t].learn, yearsIn(g));
-export const buildCost = (g: GameState, t: PlantType, size: PlantSize = 'std'): number =>
+export const buildCost = (g: GameState, t: PlantType, size: PlantSize): number =>
   Math.round((plantDef(t, size).build * learnF(g, t)) / 1e4) * 1e4;
-export const retryCost = (g: GameState, t: PlantType, size: PlantSize = 'std'): number =>
+export const retryCost = (g: GameState, t: PlantType, size: PlantSize): number =>
   Math.round((buildCost(g, t, size) * 0.1) / 1e4) * 1e4;
-export const serviceCost = (t: PlantType, size: PlantSize = 'std'): number =>
+export const serviceCost = (t: PlantType, size: PlantSize): number =>
   Math.round((plantDef(t, size).build * 0.04) / 1e4) * 1e4;
 
 /** Plant data of a site with a type, for its size. */
@@ -55,7 +55,7 @@ export const siteMw = (x: { type: PlantType | null; size: PlantSize }): number =
 export const repowerMw = (t: PlantType): number => plantDef(t, 'large').mw - PLANTS[t].mw;
 /** Price of repowering a standard plant to large: extra build costs with a surcharge, plus the bigger grid connection. */
 export const repowerCost = (g: GameState, t: PlantType): number =>
-  Math.round(((buildCost(g, t, 'large') - buildCost(g, t)) * REPOWER_FACTOR) / 1e4) * 1e4 +
+  Math.round(((buildCost(g, t, 'large') - buildCost(g, t, 'std')) * REPOWER_FACTOR) / 1e4) * 1e4 +
   plantDef(t, 'large').grid -
   PLANTS[t].grid;
 /**

@@ -5,14 +5,14 @@ import { fails, newGame, ok, setupSite, site } from './helpers.js';
 describe('plant sizes', () => {
   it('large plants have more capacity for a bit less than proportional costs', () => {
     for (const t of Object.keys(PLANTS) as (keyof typeof PLANTS)[]) {
-      const S = plantDef(t),
+      const S = plantDef(t, 'std'),
         L = plantDef(t, 'large');
       expect(L.mw).toBe(Math.round(S.mw * LARGE.mw));
       expect(L.build / L.mw).toBeLessThan(S.build / S.mw);
       expect(L.grid).toBeGreaterThan(S.grid);
       if (S.mwh) expect(L.mwh).toBe(Math.round(S.mwh * LARGE.mw));
     }
-    expect(plantDef('wind')).toBe(PLANTS.wind);
+    expect(plantDef('wind', 'std')).toBe(PLANTS.wind);
   });
   it('the size is chosen with the permit and carried through build and grid connection', () => {
     let g = newGame(42, true);
