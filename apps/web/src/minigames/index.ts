@@ -8,13 +8,14 @@ import { miniFreq } from './frequency.js';
 import { miniLayout } from './layout.js';
 import { miniRotor } from './rotor.js';
 
-const GAMES: Record<ChallengeKind, (x: SiteView, R: Random) => Promise<number | boolean>> = {
+const GAMES: Record<ChallengeKind, (x: SiteView, R: Random, ch: Challenge) => Promise<number | boolean>> = {
   layout: miniLayout,
   rotor: miniRotor,
   cable: miniCable,
+  cableDuel: miniCable,
   frequency: miniFreq,
 };
 
 /** Plays the minigame for a challenge and resolves with the outcome to report. */
 export const playChallenge = (ch: Challenge, x: SiteView): Promise<number | boolean> =>
-  GAMES[ch.kind](x, createRng(ch.seed));
+  GAMES[ch.kind](x, createRng(ch.seed), ch);

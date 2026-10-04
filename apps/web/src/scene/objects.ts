@@ -343,18 +343,26 @@ function drawSparks(fr: Frame, sp: Spot): void {
 function drawWind(fr: Frame, sp: Spot): void {
   const { x, st, u, bx, by, spin } = sp;
   const h = u * (st === 'off' ? 0.9 : 0.68);
+  const large = x.size === 'large';
   if (st === 'wind') {
+    // a large park has a third turbine in the back
+    if (large) turbine(fr, bx - u * 0.36, by - u * 0.14, h * 0.75, spin * 0.94 + 2, false);
     turbine(fr, bx - u * 0.18, by - u * 0.08, h * 0.85, spin + h1(x.i), false);
     turbine(fr, bx + u * 0.2, by, h, spin * 1.07 + 1, false);
+  } else if (large) {
+    turbine(fr, bx - u * 0.2, by - u * 0.06, h * 0.85, spin + h1(x.i), true);
+    turbine(fr, bx + u * 0.18, by, h, spin * 1.05 + 1, true);
   } else turbine(fr, bx, by, h, spin, true);
 }
 
 /** Three rows of panels with a light reflex running over them. */
 function drawSolar(fr: Frame, sp: Spot): void {
   const { ctx, g, t, d } = fr;
-  const { qd, op } = sp;
-  for (let k = 0; k < 3; k++) {
-    const y = qd.y0 + (qd.y1 - qd.y0) * (0.28 + k * 0.25),
+  const { x, qd, op } = sp;
+  // a large park has a fourth row
+  const rows = x.size === 'large' ? 4 : 3;
+  for (let k = 0; k < rows; k++) {
+    const y = qd.y0 + (qd.y1 - qd.y0) * (0.28 + (k * 0.75) / rows),
       x0 = g.X(qd.u0 + 0.02, y) + 2,
       x1 = g.X(qd.u1 - 0.02, y) - 2,
       ph = (qd.y1 - qd.y0) * 0.14;
@@ -404,10 +412,12 @@ function storeLevel(p: number): { lvl: number; charging: boolean } {
 function drawBattery(fr: Frame, sp: Spot): void {
   const { ctx, t, d, colors, lights } = fr;
   const { x, u, bx, by, op } = sp;
-  for (let k = 0; k < 2; k++) {
-    const w = u * 0.3,
+  // a large storage has a third container
+  const n = x.size === 'large' ? 3 : 2;
+  for (let k = 0; k < n; k++) {
+    const w = (u * 0.6) / n,
       h = u * 0.14,
-      x0 = bx - u * 0.34 + k * u * 0.36,
+      x0 = bx - u * 0.34 + (k * u * 0.72) / n,
       y0 = by - h;
     ctx.fillStyle = 'rgba(0,0,0,.15)';
     ctx.fillRect(x0 + 3, by - 2, w, 4);
@@ -585,7 +595,10 @@ export function drawObject(fr: Frame, { x, qd }: Plot): void {
   if (x.permit === 'pending' || x.permit === 'rejected') return drawPermitSign(fr, sp);
   sp.st = st;
   sp.cls = PLANTS[st].cls;
-  sp.op = operating(x) && !x.fault;
+  // large dams and basins are wider
+  if (x.size === 'large' && sp.cls === 'hydro') sp.u = u * 1.15;
+  if (x.size === 'large' && st === 'pump') sp.u = u * 1.12;
+  sp.op = operating(x) && !x.fault && !x.offline;
   if (!x.built) return drawConstruction(fr, sp);
   if (sp.op && !mini && !still && d > 0.15) drawSparks(fr, sp);
   sp.spin = sp.op ? t * (1.2 + ((x.wind || 7) - 5) * 0.35) * SEASON.wind[q]! : 0;

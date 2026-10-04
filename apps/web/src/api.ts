@@ -75,8 +75,8 @@ export interface QuarterResponse {
 }
 
 export const api = {
-  create: (companyName: string, autoMinigames: boolean, difficulty: Difficulty) =>
-    call<StoredGame & { view: PlayerView }>('POST', '/games', null, { companyName, autoMinigames, difficulty }),
+  create: (companyName: string, autoMinigames: boolean, difficulty: Difficulty, years: number) =>
+    call<StoredGame & { view: PlayerView }>('POST', '/games', null, { companyName, autoMinigames, difficulty, years }),
   load: (g: StoredGame) => call<{ view: PlayerView }>('GET', '/games/' + encodeURIComponent(g.gameId), g.token),
   action: (g: StoredGame, action: Action) =>
     call<ActionResponse>('POST', '/games/' + encodeURIComponent(g.gameId) + '/actions', g.token, { action }),

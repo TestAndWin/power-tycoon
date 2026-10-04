@@ -86,6 +86,26 @@ Modules of `packages/engine/src`:
   with an approved permit it runs as `Site.alt` next to it – granted, it replaces type and permit, rejected,
   the approved permit stays (`permitDecided.previous`). Starting the build drops it.
 - Lobby tricks: max 2 per player per quarter (legacy only limited the human; apply it to all).
+
+### Phase 7 additions (ideas from Oil Imperium)
+
+- Espionage: `spy` buys a report on a rival, valid `SPY_QUARTERS` (current one included, `Player.intel`).
+  The view then shows that rival's site data (`SiteView.intel`, resource values) and `PlayerSummary.intel`
+  (contracts, detectives, tricks left). Lobby tricks need a valid report on the target's owner (`noSpyReport`).
+- Detectives (`hireDetectives`, `basic`/`pro`, `DETECTIVE_QUARTERS`, `Player.detectives`): tricks against the
+  client succeed less often (`shield`), failed culprits are caught more often, successful ones sometimes
+  afterwards, spies may be caught (no report, the target is told). Hidden from other players.
+- Court: a caught culprit pays the fine and `damages` to the victim (`TRICKS`).
+- Plant sizes: `Site.size` (`std`/`large`, missing in old games = `std`), chosen with `applyPermit`.
+  `plantDef(t, size)` scales capacity, storage volume and costs (`LARGE`); large permits take a quarter longer
+  and are rejected more often. `repower` upgrades a running standard plant (`repowerCost`, needs the extra grid
+  capacity) and takes it offline for `REPOWER_QUARTERS` (`Site.offline`).
+- Cable duel: when the free grid capacity is below `DUEL_SCARCITY` × the plant's MW and another player has a
+  site in the region, `connectGrid` opens a `cableDuel` challenge with `rival: { playerId, pace }`. Lost:
+  `DUEL_REFUND` of the costs back, the rival reserves capacity for its own waiting project
+  (`DUEL_RESERVE_QUARTERS`). Rivals and `autoMinigames` roll `AUTO_MINIGAME.cableDuel`.
+- Game length: `createGame({ years })` with `GAME_YEAR_OPTIONS`; `historicFor(startYear, endYear)` squeezes
+  the milestones into the game.
 - PPA contracts: legacy stores `G.contracts` globally for the human only. Store contracts **per player**
   so rivals can use them; `SmartOpponent` accepts contracts.
 
@@ -216,10 +236,14 @@ interface OpponentStrategy {
     spreads over regions and raises its project limits with uncommitted financing room,
   - values tricks by the target's real loss (season, timing, end of game), may use both tricks of a quarter
     and strikes back at a human who was caught or suspected tricking it.
+  Both levels spy on a target before tricking it, hire detectives after an attack (`normal` basic, `hard` pro),
+  choose the plant size by return per invested euro (large only if it is financeable now and clearly better)
+  and repower running plants when the extra margin pays for the upgrade and the quarter offline.
   Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly.
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
 - `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds.
-  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 181 M€, hard ≈ 292 M€.
+  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 192 M€, hard ≈ 304 M€ (before phase 7:
+  177 / 268 M€; win shares unchanged at 5 % / 61 %).
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `SmartOpponent` (`normal`) on timeout/error. Details are decided when step 2 starts.
 

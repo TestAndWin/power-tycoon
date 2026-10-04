@@ -1,9 +1,9 @@
 /** Dialogs: quarterly report, end of game, start screen and "plant built". */
 import {
   DIFFICULTY_KEYS,
+  GAME_YEAR_OPTIONS,
   GAME_YEARS,
   operating,
-  PLANTS,
   REGION_KEYS,
   rivalProfile,
   type Difficulty,
@@ -18,12 +18,14 @@ import { SND } from '../sound.js';
 import { RMO, UI } from '../state.js';
 import {
   DIFFICULTY_TEXT,
+  GAME_LENGTH_TEXT,
   PLANT_NAME,
   REGION_TEXT,
   reportEventText,
   reportLineText,
   rivalActionText,
   RIVAL_TEXT,
+  DUEL_HINT,
 } from '../texts.js';
 import { disabledUnless, LOGO, V } from './common.js';
 import { crest, portrait } from './companies.js';
@@ -39,9 +41,7 @@ export function showReport(rep: QuarterReport, rivals: RivalActionLog[]): void {
     .join('');
   const big = REGION_KEYS.map((r) => ({
     r,
-    mw: v.sites
-      .filter((x) => x.r === r && x.owner === v.playerId && operating(x))
-      .reduce((a, x) => a + PLANTS[x.type!].mw, 0),
+    mw: v.sites.filter((x) => x.r === r && x.owner === v.playerId && operating(x)).reduce((a, x) => a + x.mw, 0),
   })).sort((a, b) => b.mw - a.mw)[0]!;
   const br = big.mw ? big.r : UI.region;
   const evs = rep.events.map((e) => reportEventText(v, e)).filter((e) => !!e);
@@ -68,7 +68,7 @@ function compLog(rivals: RivalActionLog[]): string {
     for (const e of r.events) {
       const t = rivalActionText(v, e);
       if (!t) continue;
-      const fromNews = e.type === 'trickSucceeded' || e.type === 'trickFailed';
+      const fromNews = ['trickSucceeded', 'trickFailed', 'spied', 'gridDuel'].includes(e.type);
       L.push({ id: r.playerId, t: fromNews ? t : esc(v.players[r.playerId]!.name) + ' ' + t + '.' });
     }
   return `<details class="comp" ${L.length ? 'open' : ''}><summary><b>Züge der Konkurrenz</b> <span class="muted">${L.length ? L.length + ' Aktionen' : 'ruhiges Quartal'}</span></summary><ul class="list" id="compList">${L.map((c) => `<li class="rv" style="--oc:${playerColor(c.id)}">${portrait(c.id, 30)}<span>${c.t}</span></li>`).join('')}</ul></details>`;
@@ -99,14 +99,20 @@ export function showEnd(): void {
 }
 // The links live once in index.html (page footer); the start dialog covers that footer.
 const legalLinks = (): string => [...document.querySelectorAll('.foot-legal a')].map((a) => a.outerHTML).join('');
-export function showStart(canContinue: boolean, name = 'Deichwatt AG', difficulty: Difficulty = 'normal'): void {
+export function showStart(
+  canContinue: boolean,
+  name = 'Deichwatt AG',
+  difficulty: Difficulty = 'normal',
+  years = GAME_YEARS,
+): void {
   openModal(
-    `<div class="banner start"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">2026 – 2035 · ${GAME_YEARS} Jahre · ${GAME_YEARS * 4} Quartale</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
+    `<div class="banner start"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Ab 2026 · 3, 5 oder 10 Jahre Energiewende</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
     <p class="intro">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
     <div class="foes"><span class="label">Deine Gegner</span><div class="foe-row">${[1, 2, 3].map((id) => `<div class="foe" style="--oc:var(--c${id})">${portrait(id, 44)}<span><b>${esc(RIVAL_TEXT[id]!.ceo)}</b><span class="muted">${esc(rivalProfile(id).name)}</span><i>„${esc(RIVAL_TEXT[id]!.motto)}“</i></span></div>`).join('')}</div></div>
     <div class="field-grid">
       <label for="sName">Konzernname<input type="text" id="sName" value="${esc(name)}" maxlength="24"></label>
       <label for="sDiff">Konkurrenz<select id="sDiff">${DIFFICULTY_KEYS.map((d) => `<option value="${d}" ${d === difficulty ? 'selected' : ''}>${DIFFICULTY_TEXT[d]}</option>`).join('')}</select></label>
+      <label for="sYears">Spieldauer<select id="sYears">${GAME_YEAR_OPTIONS.map((y) => `<option value="${y}" ${y === years ? 'selected' : ''}>${GAME_LENGTH_TEXT[y]}</option>`).join('')}</select></label>
     </div>
     <label class="check"><input type="checkbox" id="sAuto"> Minispiele überspringen (Ergebnis wird ausgewürfelt)</label>
     <p class="muted fine">Alle Firmen und Personen im Spiel sind frei erfunden. Ereignisse nach 2026 sind fiktive Szenarien. Dein Spielstand liegt auf dem Server; nur dieser Browser kennt den Zugangsschlüssel.</p>
@@ -117,10 +123,10 @@ export function showStart(canContinue: boolean, name = 'Deichwatt AG', difficult
 export function showBuilt(x: SiteView): void {
   const v = V();
   if (!x.type) return;
-  const P = PLANTS[x.type],
-    free = v.grid[x.r].free,
-    connect = { type: 'connectGrid', siteId: x.id } as const;
+  const free = v.grid[x.r].free,
+    connect = { type: 'connectGrid', siteId: x.id } as const,
+    duel = free >= x.mw && free < v.constants.duelScarcity * x.mw;
   openModal(
-    `<h2>${PLANT_NAME[x.type]} steht</h2><p style="margin:0">Jetzt fehlt nur noch der Netzanschluss (${P.mw} MW, frei in ${REGION_TEXT[x.r].name}: ${free} MW).</p><div class="foot"><button class="btn" data-act="closeModal">Später</button><button class="btn primary" data-act="connectNow" data-v="${x.id}" ${disabledUnless(connect)}>Anschließen · ${money(v.costs[x.type].grid, true)}</button></div>`,
+    `<h2>${PLANT_NAME[x.type]} steht</h2><p style="margin:0">Jetzt fehlt nur noch der Netzanschluss (${x.mw} MW, frei in ${REGION_TEXT[x.r].name}: ${free} MW).${duel ? ' ' + DUEL_HINT : ''}</p><div class="foot"><button class="btn" data-act="closeModal">Später</button><button class="btn primary" data-act="connectNow" data-v="${x.id}" ${disabledUnless(connect)}>Anschließen · ${money(v.costs[x.type].grid, true)}</button></div>`,
   );
 }

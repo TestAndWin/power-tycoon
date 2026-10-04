@@ -18,12 +18,13 @@ player may know about the rivals. Add `GET /api/games/:id/rivals` only if the vi
 
 ```json
 // request
-{ "companyName": "Deichwatt AG", "autoMinigames": false, "difficulty": "normal" }
+{ "companyName": "Deichwatt AG", "autoMinigames": false, "difficulty": "normal", "years": 10 }
 // 201 response
 { "gameId": "q3Jb0…", "token": "x9F…(43 chars)", "view": { … } }
 ```
 
-`difficulty` (`normal` | `hard`) is optional, default `normal`. Stored games without a difficulty (or with
+`years` (`3` | `5` | `10`) is the game length, optional, default `10`; the historic milestones are squeezed into
+it. `difficulty` (`normal` | `hard`) is optional, default `normal`. Stored games without a difficulty (or with
 the removed `easy`) play against `normal`.
 The token is returned **only here**. The client stores `{ gameId, token }` in `localStorage`.
 Rate limit: 10 new games per IP per hour.
@@ -51,10 +52,11 @@ Action types (TypeScript union exported by the engine):
 |---|---|---|
 | `survey` | `siteId` | `A.survey` |
 | `lease` | `siteId` | `A.lease` |
-| `applyPermit` | `siteId`, `plantType` | `A.permit` |
+| `applyPermit` | `siteId`, `plantType`, `size?` (`std` \| `large`, default `std`) | `A.permit` |
 | `changePlantType` | `siteId` | `A.retype` |
 | `build` | `siteId` | `A.build` (returns challenge) |
-| `connectGrid` | `siteId` | `A.connect` (returns challenge) |
+| `connectGrid` | `siteId` | `A.connect` (returns challenge; `cableDuel` with `rival` when capacity is scarce) |
+| `repower` | `siteId` | new: upgrade a running standard plant to large |
 | `repairSelf` | `siteId` | `A.fixSelf` (returns challenge) |
 | `repairService` | `siteId` | `A.fixPro` |
 | `sellSite` | `siteId` | `A.sellSite` |
@@ -62,7 +64,9 @@ Action types (TypeScript union exported by the engine):
 | `acceptContract` | `offerId` | `A.accept` |
 | `borrow` | `amount` | `A.borrow` |
 | `repay` | `amount` or `"all"` | `A.repay` |
-| `lobby` | `trick`, `siteId` | `A.doTrick` |
+| `lobby` | `trick`, `siteId` | `A.doTrick` (needs a valid spy report on the owner) |
+| `spy` | `targetId` | new: spy report on a rival |
+| `hireDetectives` | `level` (`basic` \| `pro`) | new: protection against tricks and spies |
 | `minigameResult` | `challengeId`, `outcome` | result of `mini*()` |
 
 The confirmation step of `sellSite` is pure UI and stays in the client.
@@ -77,7 +81,8 @@ to re-implement rules to decide which buttons to show:
 ```
 
 `error` is `null` if the action is allowed now, or a code that only blocks it for the moment
-(`insufficientFunds`, `noGridCapacity`, `creditLimit`, `contractLimit`, `trickLimit`). Actions that do not
+(`insufficientFunds`, `noGridCapacity`, `creditLimit`, `contractLimit`, `trickLimit`, `noSpyReport`,
+`detectivesActive`). Actions that do not
 apply at all (e.g. `build` on a site without permit) are not listed. The client shows a button for every
 option and disables it while `error` is set; the server still validates every request.
 

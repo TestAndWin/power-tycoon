@@ -1,7 +1,18 @@
 /** Boot, event delegation and action handlers (legacy `A`), now calling the API. */
 import './fonts.css';
 import './styles.css';
-import type { Action, Challenge, Difficulty, GameEvent, PlantType, RegionKey, TrickType } from '@power-tycoon/engine';
+import type {
+  Action,
+  Challenge,
+  DetectiveLevel,
+  Difficulty,
+  GameEvent,
+  PlantSize,
+  PlantType,
+  PlayerView,
+  RegionKey,
+  TrickType,
+} from '@power-tycoon/engine';
 import { api, ApiError, loadStored, saveStored } from './api.js';
 import { money } from './format.js';
 import { playChallenge } from './minigames/index.js';
@@ -9,9 +20,12 @@ import { closeModal, modalLocked, openModal, toast } from './modal.js';
 import { registerScenes, setHover } from './scene/index.js';
 import { SND, toggleSound } from './sound.js';
 import { $, S, UI } from './state.js';
-import { errorText, newsTexts, REGION_TEXT, siteName, siteQuality } from './texts.js';
+import { DETECTIVE_TEXT, errorText, newsTexts, REGION_TEXT, siteName, siteQuality } from './texts.js';
 import { redrawCharts, render, renderTop, selectSite, showBuilt, showEnd, showReport, showStart } from './ui/index.js';
 import { recordRivalMoves } from './ui/rivals.js';
+
+/** Game length in years of a running game (for the "new game" dialog). */
+const yearsOf = (v: PlayerView | null): number | undefined => (v ? v.endYear - v.startYear : undefined);
 
 function handleError(e: unknown): void {
   if (e instanceof ApiError) {
@@ -55,6 +69,26 @@ function react(events: GameEvent[]): void {
       case 'gridConnectFailed':
         toast('Anschluss gescheitert.');
         break;
+      case 'gridDuel':
+        // played duels show their own result; automatic ones get a toast
+        if (v.settings.autoMinigames) toast(newsTexts(v, e)[0]!.text);
+        break;
+      case 'repowered':
+        SND.clank();
+        toast(`Repowering läuft: ${siteName(v.sites.find((s) => s.id === e.siteId)!)} ist ein Quartal vom Netz.`);
+        break;
+      case 'spied':
+        openModal(
+          `<h2>${e.caught ? 'Spion enttarnt' : 'Spionagebericht'}</h2><p style="margin:0">${
+            e.caught
+              ? `Die Detektive von ${v.players[e.targetId]!.name} haben deinen Spion erwischt. Kein Bericht – das Geld ist weg.`
+              : `Dein Spion hat geliefert: Standortdaten, Wirkungsgrade, Genehmigungen und Verträge von ${v.players[e.targetId]!.name} siehst du jetzt bis zum Ende des Berichts.`
+          }</p><div class="foot"><button class="btn primary" data-act="closeModal">OK</button></div>`,
+        );
+        break;
+      case 'detectivesHired':
+        toast(`${DETECTIVE_TEXT[e.level].name} schützt dich ${e.quarters} Quartale lang.`);
+        break;
       case 'repaired':
         if (e.method === 'service') toast('Der Servicetrupp hat die Störung behoben.');
         break;
@@ -79,7 +113,7 @@ function react(events: GameEvent[]): void {
       }
       case 'trickFailed':
         openModal(
-          `<h2>Hat nicht geklappt</h2><p style="margin:0">${e.caught ? 'Die Presse hat Wind davon bekommen. Das kostet dich ' + money(e.fine) + '.' : e.trick === 'klage' ? 'Das Gericht hat die Klage abgewiesen.' : 'Niemand weiß, wer dahintersteckt.'}</p><div class="foot"><button class="btn primary" data-act="closeModal">OK</button></div>`,
+          `<h2>Hat nicht geklappt</h2><p style="margin:0">${e.caught ? 'Du bist aufgeflogen. Das kostet dich ' + money(e.fine) + ' Strafe' + (e.damages ? ' und ' + money(e.damages) + ' Schadensersatz an ' + v.players[e.targetId]!.name : '') + '.' : e.trick === 'klage' ? 'Das Gericht hat die Klage abgewiesen.' : 'Niemand weiß, wer dahintersteckt.'}</p><div class="foot"><button class="btn primary" data-act="closeModal">OK</button></div>`,
         );
         break;
       default:
@@ -138,8 +172,9 @@ async function startGame(): Promise<void> {
   const name = ($<HTMLInputElement>('#sName')?.value.trim() || 'Deichwatt AG').slice(0, 24);
   const auto = !!$<HTMLInputElement>('#sAuto')?.checked;
   const diff = ($<HTMLSelectElement>('#sDiff')?.value || 'normal') as Difficulty;
+  const years = Number($<HTMLSelectElement>('#sYears')?.value || 10);
   try {
-    const res = await api.create(name, auto, diff);
+    const res = await api.create(name, auto, diff, years);
     S.game = { gameId: res.gameId, token: res.token };
     saveStored(S.game);
     S.view = res.view;
@@ -195,7 +230,7 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
     if (S.view?.over) showEnd();
   },
   closeModal: () => closeModal(),
-  newGameDlg: () => showStart(false, S.view?.me.name, S.view?.settings.difficulty),
+  newGameDlg: () => showStart(false, S.view?.me.name, S.view?.settings.difficulty, yearsOf(S.view)),
   start: () => void startGame(),
   continue: () => {
     closeModal();
@@ -205,9 +240,16 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
   survey: (v) => void run({ type: 'survey', siteId: v }),
   lease: (v) => void run({ type: 'lease', siteId: v }),
   permit: (v) => {
-    const [siteId, t] = v.split('|');
-    void run({ type: 'applyPermit', siteId: siteId!, plantType: t as PlantType });
+    const [siteId, t, size] = v.split('|');
+    void run({ type: 'applyPermit', siteId: siteId!, plantType: t as PlantType, size: (size || 'std') as PlantSize });
   },
+  size: (v) => {
+    UI.size = v as PlantSize;
+    render();
+  },
+  repower: (v) => void run({ type: 'repower', siteId: v }),
+  spy: (v) => void run({ type: 'spy', targetId: +v }),
+  hire: (v) => void run({ type: 'hireDetectives', level: v as DetectiveLevel }),
   retype: (v) => void run({ type: 'changePlantType', siteId: v }),
   build: (v) => void run({ type: 'build', siteId: v }),
   connect: (v) => void run({ type: 'connectGrid', siteId: v }),
@@ -303,7 +345,7 @@ async function boot(): Promise<void> {
     if (S.view.over) showEnd();
     else if (S.view.challenge) void resolveChallenge(S.view.challenge);
     else if (!(location.search === '?continue' && S.view.turn > 0))
-      showStart(true, S.view.me.name, S.view.settings.difficulty);
+      showStart(true, S.view.me.name, S.view.settings.difficulty, yearsOf(S.view));
   } catch (e) {
     if (e instanceof ApiError && (e.status === 401 || e.status === 404)) saveStored(null);
     showStart(false);

@@ -1,4 +1,4 @@
-import type { PlayerView, TrickType } from '@power-tycoon/engine';
+import type { PlantSize, PlayerView, TrickType } from '@power-tycoon/engine';
 import type { StoredGame } from './api.js';
 
 /** UI state (legacy `UI`). */
@@ -7,6 +7,8 @@ export const UI = {
   region: 'nd' as PlayerView['sites'][number]['r'],
   sel: null as string | null,
   trick: 'klage' as TrickType,
+  /** Plant size for new permits. */
+  size: 'std' as PlantSize,
   target: '',
   confirm: null as string | null,
 };

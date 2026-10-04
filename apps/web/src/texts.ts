@@ -3,10 +3,12 @@
  * error messages and report lines. The engine only emits structured events and codes.
  */
 import type {
+  DetectiveLevel,
   Difficulty,
   GameEvent,
   HistoricDef,
   HistoricKey,
+  PlantSize,
   PlantType,
   PlayerView,
   RegionKey,
@@ -38,6 +40,32 @@ export const PLANT_NAME: Record<PlantType, string> = {
 };
 /** Name with indefinite article in the accusative ("einen Windpark"). */
 export const plantAcc = (t: PlantType): string => (t === 'hydro' || t === 'pump' ? 'ein ' : 'einen ') + PLANT_NAME[t];
+
+export const SIZE_NAME: Record<PlantSize, string> = { std: 'Standard', large: 'Groß' };
+/** "großen Windpark" style prefix for large plants (accusative, with article). */
+export const plantAccSized = (t: PlantType, size: PlantSize | undefined): string =>
+  size === 'large' ? (t === 'hydro' || t === 'pump' ? 'ein großes ' : 'einen großen ') + PLANT_NAME[t] : plantAcc(t);
+
+export const GAME_LENGTH_TEXT: Record<number, string> = {
+  3: 'Kurz – 3 Jahre (12 Quartale)',
+  5: 'Mittel – 5 Jahre (20 Quartale)',
+  10: 'Lang – 10 Jahre (40 Quartale)',
+};
+
+/** Shown before a grid connection that will turn into a cable duel. */
+export const DUEL_HINT =
+  'Die Kapazität ist knapp: Der Anschluss wird zum Kabel-Duell gegen einen Konkurrenten aus der Region. Wer schneller verkabelt, bekommt das Netz.';
+
+export const DETECTIVE_TEXT: Record<DetectiveLevel, { name: string; desc: string }> = {
+  basic: {
+    name: 'Detektei Spürnase',
+    desc: 'Zwei Ermittler beobachten deine Anlagen. Tricks gegen dich gelingen seltener, Täter fliegen öfter auf.',
+  },
+  pro: {
+    name: 'Sicherheitsfirma Argus',
+    desc: 'Rund um die Uhr, mit Kameras und IT-Forensik. Deutlich besserer Schutz – auch gegen Spione.',
+  },
+};
 
 export const DIFFICULTY_TEXT: Record<Difficulty, string> = {
   normal: 'Normal – rechnende Konkurrenz',
@@ -153,6 +181,8 @@ export const ERROR_TEXT: Record<string, string> = {
   invalidAmount: 'Ungültiger Betrag.',
   trickLimit: 'Mehr als zwei Lobby-Aktionen pro Quartal sind nicht drin.',
   invalidTarget: 'Dieses Ziel kommt gerade nicht infrage.',
+  noSpyReport: 'Erst einen Spion schicken: Ohne Spionagebericht über den Konzern kein Auftrag.',
+  detectivesActive: 'Du hast schon eine Detektei unter Vertrag.',
   unknownTrick: 'Unbekannte Lobby-Aktion.',
   unknownSite: 'Unbekannte Fläche.',
   unknownRegion: 'Unbekannte Region.',
@@ -184,6 +214,7 @@ export type SiteStatusCode =
   | 'noGrid'
   | 'fault'
   | 'curtailed'
+  | 'repowering'
   | 'operating';
 
 export function siteStatusText(code: SiteStatusCode, x: SiteView): string {
@@ -206,6 +237,8 @@ export function siteStatusText(code: SiteStatusCode, x: SiteView): string {
       return 'Störung!';
     case 'curtailed':
       return 'Auflage −50 %';
+    case 'repowering':
+      return 'Repowering';
     case 'operating':
       return 'In Betrieb';
   }
@@ -274,6 +307,32 @@ function trickText(c: Ctx, e: Extract<GameEvent, { type: 'trickSucceeded' }>): s
   return `Hackerangriff auf die Leitwarte von ${x} (${tgt}). Das Kraftwerk ist vom Netz.`;
 }
 
+/** Court verdict after a caught culprit: fine and damages. */
+const courtText = (c: Ctx, actor: number | null, fine: number, damages: number | undefined, me: number): string =>
+  damages
+    ? actor === me
+      ? ` Strafe ${money(fine)}, dazu ${money(damages)} Schadensersatz.`
+      : ` Das Gericht verurteilt ${nameOf(c, actor)}: ${money(fine)} Strafe und ${money(damages)} Schadensersatz.`
+    : ` Strafe ${money(fine)}.`;
+
+/** One-line description of a cable duel from the viewer's perspective. */
+function duelText(c: Ctx, e: Extract<GameEvent, { type: 'gridDuel' }>, me: number): string {
+  const x = sn(c, e.siteId),
+    region = regionOfSite(c, e.siteId);
+  const grab = e.reservedMw ? ` und sichert sich ${e.reservedMw} MW` : '';
+  if (e.playerId === me)
+    return e.won
+      ? `Kabel-Duell um ${region} gewonnen: ${x} ist am Netz, ${nameOf(c, e.rivalId)} hat das Nachsehen.`
+      : `Kabel-Duell um ${region} verloren: ${nameOf(c, e.rivalId)} war schneller${grab}. ${money(e.refund)} der Anschlusskosten kommen zurück.`;
+  if (e.rivalId === me)
+    return e.won
+      ? `${nameOf(c, e.playerId)} gewinnt das Kabel-Duell um ${region} gegen dich.`
+      : `Du gewinnst das Kabel-Duell um ${region} gegen ${nameOf(c, e.playerId)}${e.reservedMw ? ` und bekommst ${e.reservedMw} MW reserviert` : ''}.`;
+  return e.won
+    ? `${nameOf(c, e.playerId)} gewinnt ein Kabel-Duell um ${region} gegen ${nameOf(c, e.rivalId)}.`
+    : `${nameOf(c, e.rivalId)} gewinnt ein Kabel-Duell um ${region} gegen ${nameOf(c, e.playerId)}${grab}.`;
+}
+
 /** News feed entries (legacy `news()` texts). */
 export function newsTexts(view: PlayerView, e: GameEvent): { kind: NewsKind; text: string }[] {
   const c = { view };
@@ -324,20 +383,47 @@ export function newsTexts(view: PlayerView, e: GameEvent): { kind: NewsKind; tex
           ];
     case 'trickSucceeded': {
       const t = trickText(c, e);
+      if (e.caught) {
+        const court = courtText(c, e.actorId, e.fine ?? 0, e.damages, me);
+        if (e.actorId === me)
+          return [{ kind: 'bad', text: `Lobby-Erfolg, aber die Detektive haben dich erwischt: ${t}${court}` }];
+        return [
+          {
+            kind: e.targetId === me ? 'bad' : 'sab',
+            text: `${t} Detektive überführen ${nameOf(c, e.actorId)}.${court}`,
+          },
+        ];
+      }
       if (e.actorId === me) return [{ kind: 'sab', text: 'Lobby-Erfolg: ' + t }];
       const sus = e.suspected && e.actorId != null ? ` Verdacht fällt auf ${nameOf(c, e.actorId)}.` : '';
       return [{ kind: e.targetId === me ? 'bad' : 'sab', text: t + sus }];
     }
-    case 'trickFailed':
+    case 'trickFailed': {
       if (!e.caught) return [];
+      const court = courtText(c, e.actorId, e.fine, e.damages, me);
       return e.actorId === me
-        ? [{ kind: 'bad', text: `Deine Aktion „${TRICK_TEXT[e.trick].name}“ flog auf. Kosten: ${money(e.fine)}.` }]
-        : [
-            {
-              kind: 'sab',
-              text: `${nameOf(c, e.actorId)} fliegt auf: ${TRICK_TEXT[e.trick].name}. Strafe ${money(e.fine)}.`,
-            },
-          ];
+        ? [{ kind: 'bad', text: `Deine Aktion „${TRICK_TEXT[e.trick].name}“ flog auf.${court}` }]
+        : [{ kind: 'sab', text: `${nameOf(c, e.actorId)} fliegt auf: ${TRICK_TEXT[e.trick].name}.${court}` }];
+    }
+    case 'spied':
+      if (e.playerId === me)
+        return e.caught
+          ? [{ kind: 'bad', text: `Dein Spion bei ${nameOf(c, e.targetId)} ist aufgeflogen. Kein Bericht.` }]
+          : [{ kind: 'sab', text: `Spionagebericht über ${nameOf(c, e.targetId)} liegt vor.` }];
+      if (!e.caught) return [];
+      return [
+        {
+          kind: e.targetId === me ? 'info' : 'sab',
+          text:
+            e.targetId === me
+              ? `Deine Detektive haben einen Spion von ${nameOf(c, e.playerId)} gestellt.`
+              : `Spion von ${nameOf(c, e.playerId)} bei ${nameOf(c, e.targetId)} enttarnt.`,
+        },
+      ];
+    case 'gridDuel':
+      return [{ kind: e.playerId === me || e.rivalId === me ? 'info' : 'comp', text: duelText(c, e, me) }];
+    case 'repowered':
+      return [{ kind: 'info', text: `Repowering auf ${sn(c, e.siteId)}: künftig ${e.mw} MW.` }];
     case 'historicEvent':
       return [{ kind: 'world', text: HIST_TEXT[e.key]! }];
     case 'worldEvent':
@@ -384,12 +470,25 @@ export function reportEventText(view: PlayerView, e: GameEvent): { kind: TextKin
       return e.emergency
         ? { kind: 'warn', text: `Kasse leer: Die Bank gewährt einen Notkredit über ${money(e.amount)}.` }
         : null;
+    case 'detectivesExpired':
+      return { kind: 'warn', text: 'Der Vertrag mit deiner Detektei ist ausgelaufen.' };
+    case 'spied': {
+      const n = newsTexts(view, e)[0];
+      return n ? { kind: 'good', text: n.text } : null;
+    }
+    case 'gridDuel': {
+      const n = newsTexts(view, e)[0];
+      const lost = (e.playerId === view.playerId) !== e.won;
+      return n ? { kind: lost ? 'bad' : 'good', text: n.text } : null;
+    }
     case 'playerBankrupt':
       return { kind: 'good', text: `${nameOf(c, e.playerId)} ist insolvent!` };
     case 'trickSucceeded':
     case 'trickFailed': {
       const n = newsTexts(view, e)[0];
-      return n ? { kind: 'bad', text: n.text } : null;
+      // a culprit caught by the viewer's detectives is good news
+      const good = e.caught && e.targetId === view.playerId && e.type === 'trickFailed';
+      return n ? { kind: good ? 'good' : 'bad', text: n.text } : null;
     }
     default:
       return null;
@@ -403,7 +502,7 @@ export function rivalActionText(view: PlayerView, e: GameEvent): string | null {
     case 'siteLeased':
       return `pachtet ${sn(c, e.siteId)} in ${regionOfSite(c, e.siteId)} für ${money(e.amount, true)}`;
     case 'permitApplied':
-      return `beantragt ${plantAcc(e.plantType)} auf ${sn(c, e.siteId)}`;
+      return `beantragt ${plantAccSized(e.plantType, e.size)} auf ${sn(c, e.siteId)}`;
     case 'plantTypeCleared':
       return `plant ${sn(c, e.siteId)} neu`;
     case 'buildStarted':
@@ -418,6 +517,8 @@ export function rivalActionText(view: PlayerView, e: GameEvent): string | null {
       return `scheitert beim Netzanschluss von ${sn(c, e.siteId)}`;
     case 'repaired':
       return `repariert die Störung an ${sn(c, e.siteId)}`;
+    case 'repowered':
+      return `rüstet ${sn(c, e.siteId)} auf ${e.mw} MW auf (Repowering)`;
     case 'siteSold':
       return `verkauft ${sn(c, e.siteId)}`;
     case 'gridReserved':
@@ -425,7 +526,9 @@ export function rivalActionText(view: PlayerView, e: GameEvent): string | null {
     case 'contractAccepted':
       return `schließt einen Liefervertrag mit ${e.buyer}`;
     case 'trickSucceeded':
-    case 'trickFailed': {
+    case 'trickFailed':
+    case 'spied':
+    case 'gridDuel': {
       const n = newsTexts(view, e)[0];
       return n ? n.text : null;
     }

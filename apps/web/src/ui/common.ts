@@ -24,6 +24,7 @@ const STATUS_KIND: Record<SiteStatusCode, Kind> = {
   noGrid: 'warn',
   fault: 'bad',
   curtailed: 'warn',
+  repowering: 'warn',
   operating: 'good',
 };
 
@@ -35,6 +36,7 @@ function statusCode(x: SiteView): SiteStatusCode {
   if (!x.built) return x.fail ? 'assemblyFailed' : 'ready';
   if (!x.grid) return 'noGrid';
   if (x.fault) return 'fault';
+  if (x.offline > 0) return 'repowering';
   if (x.curtail > 0) return 'curtailed';
   return 'operating';
 }

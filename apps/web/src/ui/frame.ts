@@ -50,7 +50,7 @@ const TABS = [
   ['sites', 'Standorte'],
   ['market', 'Strommarkt'],
   ['bank', 'Bank'],
-  ['lobby', 'Lobby & Tricks'],
+  ['lobby', 'Lobby & Spionage'],
   ['rivals', 'Konkurrenz'],
   ['news', 'Nachrichten'],
 ] as const;

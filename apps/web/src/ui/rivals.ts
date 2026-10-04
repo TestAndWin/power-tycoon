@@ -3,7 +3,7 @@ import { REGION_KEYS, type PlayerSummary, type QuarterReport, type RivalActionLo
 import { esc, money, mwh, qStr, tons } from '../format.js';
 import { playerColor } from '../players.js';
 import { S } from '../state.js';
-import { newsTexts, REGION_TEXT, rivalActionText, RIVAL_TEXT } from '../texts.js';
+import { DETECTIVE_TEXT, newsTexts, REGION_TEXT, rivalActionText, RIVAL_TEXT } from '../texts.js';
 import { meP, V } from './common.js';
 import { crest, portrait, standing, trend } from './companies.js';
 
@@ -65,6 +65,23 @@ function moves(pid: number): string[] {
   return list.slice(0, MOVES).map((m) => `<span class="mono muted">${m.d}</span> ${m.text}`);
 }
 
+/** What the viewer's spy report says about a rival. */
+function intel(p: PlayerSummary): string {
+  if (p.out) return '';
+  const I = p.intel,
+    v = V();
+  if (!I)
+    return `<div class="moves"><span class="label">Spionage</span><p class="muted">Kein Bericht. <button class="linkish" data-act="tab" data-v="lobby">Spion schicken …</button></p></div>`;
+  const until = qStr(v.startYear + Math.floor(I.until / 4), I.until % 4);
+  const contracts = I.contracts.length
+    ? I.contracts.map((c) => `${esc(c.buyer)} (${mwh(c.vol)}/Q, noch ${c.left} Q)`).join(', ')
+    : 'keine Lieferverträge';
+  const det = I.detectives
+    ? `${DETECTIVE_TEXT[I.detectives.level].name}, noch ${I.detectives.left} Q`
+    : 'keine Detektive';
+  return `<div class="moves"><span class="label">Spionagebericht · bis ${until}</span><ul><li>${contracts}</li><li>${det} · ${I.tricksLeft} Tricks in diesem Quartal frei</li></ul></div>`;
+}
+
 function board(p: PlayerSummary): string {
   const v = V(),
     me = meP(),
@@ -84,6 +101,7 @@ function board(p: PlayerSummary): string {
       <span class="btok"><span class="label">Kredit</span><b>${money(p.loan, true)}</b></span>
     </div>
     <div class="turf"><span class="label">Reviere</span>${regions.map((x) => `<span class="tr"><span>${REGION_TEXT[x.r].name}</span><i style="width:${(x.n / maxN) * 100}%"></i><b>${x.n}</b></span>`).join('')}</div>
+    ${intel(p)}
     <div class="moves"><span class="label">Letzte Züge</span>${m.length ? `<ul>${m.map((t) => `<li>${t}</li>`).join('')}</ul>` : '<p class="muted">Noch keine öffentlichen Züge.</p>'}</div>
   </article>`;
 }

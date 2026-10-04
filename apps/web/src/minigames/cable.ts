@@ -1,9 +1,15 @@
-/** Minigame 3 – grid connection: rotate cable pieces until power flows from the plant to the substation. */
-import { PLANTS, pick, randint, shuffle, type Random, type SiteView } from '@power-tycoon/engine';
+/**
+ * Minigame 3 – grid connection: rotate cable pieces until power flows from the plant to the substation.
+ * With scarce grid capacity it is a duel: a rival lays its own line and wins if its bar is full first.
+ */
+import { pick, randint, shuffle, type Challenge, type Random, type SiteView } from '@power-tycoon/engine';
+import { esc } from '../format.js';
 import { openModal } from '../modal.js';
+import { playerColor } from '../players.js';
 import { SND } from '../sound.js';
-import { $ } from '../state.js';
+import { $, S } from '../state.js';
 import { PLANT_NAME, siteName } from '../texts.js';
+import { crest } from '../ui/companies.js';
 import { resultBox } from './common.js';
 
 /** Connection bits of a cable piece. */
@@ -123,20 +129,33 @@ function pieceSvg(m: number, on: boolean): string {
   return s + `<circle cx="30" cy="30" r="8" fill="#2b3430"/><circle cx="30" cy="30" r="3.5" fill="${col}"/></svg>`;
 }
 
-export function miniCable(x: SiteView, R: Random): Promise<boolean> {
+/** Seconds the rival needs for the whole board in a duel. */
+export const duelTime = (pace: number, cols: number, rows: number): number => Math.round(pace * cols * rows);
+
+export function miniCable(x: SiteView, R: Random, ch?: Challenge): Promise<boolean> {
   return new Promise((res) => {
     const p = createCablePuzzle(R, x.r === 'ns' ? 7 : 6);
     const { cols: C, rows: Rows, grid, from: rs, to: rt } = p;
-    const T = 36 + C * 4;
+    const rival = ch?.rival;
+    const rivalName = rival ? esc(S.view?.players[rival.playerId]?.name ?? 'Konkurrenz') : '';
+    const T = rival ? duelTime(rival.pace, C, Rows) : 36 + C * 4;
     let left = T,
       won = false,
       over = false;
-    const mw = x.type ? PLANTS[x.type].mw : 0;
+    const mw = x.mw;
+    const hud = rival
+      ? `<div class="duelbar" style="--oc:${playerColor(rival.playerId)}">${crest(rival.playerId, 26)}<span class="stack" style="gap:3px"><b>${rivalName} verlegt mit</b><div class="timebar"><i id="pBar" style="width:0%"></i></div></span><span class="mono" id="pT">${T} s</span></div>
+        <div class="hud"><span>Du</span><span id="pS">Kein Kontakt</span></div>`
+      : `<div class="hud"><span id="pT">${T} s</span><span id="pS">Kein Kontakt</span></div>
+      <div class="timebar"><i id="pBar" style="width:100%"></i></div>`;
     openModal(
-      `<h2>Netzanschluss · ${siteName(x)}</h2>
-      <p class="muted" style="margin:0">Dreh die Kabelstücke per Klick, bis Strom vom ${x.type ? PLANT_NAME[x.type] : ''} (links) zum Umspannwerk (rechts) fließt.</p>
-      <div class="hud"><span id="pT">${T} s</span><span id="pS">Kein Kontakt</span></div>
-      <div class="timebar"><i id="pBar" style="width:100%"></i></div>
+      `<h2>${rival ? 'Kabel-Duell' : 'Netzanschluss'} · ${siteName(x)}</h2>
+      <p class="muted" style="margin:0">${
+        rival
+          ? `Die Netzkapazität ist knapp. ${rivalName} will dasselbe Umspannwerk. Dreh die Kabelstücke schneller richtig, als die Konkurrenz ihre Leitung legt!`
+          : `Dreh die Kabelstücke per Klick, bis Strom vom ${x.type ? PLANT_NAME[x.type] : ''} (links) zum Umspannwerk (rechts) fließt.`
+      }</p>
+      ${hud}
       <div class="pipegrid cablegrid ${x.r === 'ns' ? 'seabed' : ''}" id="pg" style="grid-template-columns:repeat(${C + 2},minmax(0,1fr))"></div>`,
       { locked: true, wide: true },
     );
@@ -171,7 +190,7 @@ export function miniCable(x: SiteView, R: Random): Promise<boolean> {
         return;
       }
       left -= 0.25;
-      $('#pBar')!.style.width = (left / T) * 100 + '%';
+      $('#pBar')!.style.width = (rival ? 1 - left / T : left / T) * 100 + '%';
       $('#pT')!.textContent = Math.ceil(left) + ' s';
       if (left <= 0) end(false);
     }, 250);
@@ -181,14 +200,24 @@ export function miniCable(x: SiteView, R: Random): Promise<boolean> {
       clearInterval(iv);
       setTimeout(
         () =>
-          resultBox(
-            ok,
-            ok ? 'Am Netz' : 'Zeit abgelaufen',
-            ok
-              ? 'Das Kraftwerk speist ab jetzt jedes Quartal ein.'
-              : 'Der Netzbetreiber hat das Zeitfenster geschlossen. Die Anschlusskosten sind weg, du kannst es erneut versuchen.',
-            () => res(ok),
-          ),
+          rival
+            ? resultBox(
+                ok,
+                ok ? 'Duell gewonnen' : rivalName + ' war schneller',
+                ok
+                  ? 'Du hast das Umspannwerk zuerst erreicht. Das Kraftwerk speist ab jetzt jedes Quartal ein.'
+                  : 'Die Konkurrenz hat sich die Kapazität gesichert. Die Hälfte der Anschlusskosten bekommst du zurück.',
+                () => res(ok),
+                ok ? 'Sieg' : 'Niederlage',
+              )
+            : resultBox(
+                ok,
+                ok ? 'Am Netz' : 'Zeit abgelaufen',
+                ok
+                  ? 'Das Kraftwerk speist ab jetzt jedes Quartal ein.'
+                  : 'Der Netzbetreiber hat das Zeitfenster geschlossen. Die Anschlusskosten sind weg, du kannst es erneut versuchen.',
+                () => res(ok),
+              ),
         ok ? 500 : 100,
       );
     }

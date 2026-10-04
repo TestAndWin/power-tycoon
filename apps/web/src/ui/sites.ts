@@ -2,7 +2,8 @@
 import {
   isStore,
   operating,
-  PLANTS,
+  PLANT_SIZE_KEYS,
+  plantDef,
   REGION_KEYS,
   REGIONS,
   SITES_PER_REGION,
@@ -16,7 +17,7 @@ import { esc, money, mwh, QN } from '../format.js';
 import { playerColor } from '../players.js';
 import { geo, quad, redrawStill } from '../scene/index.js';
 import { UI } from '../state.js';
-import { PLANT_NAME, REGION_TEXT, siteName, siteQuality } from '../texts.js';
+import { DUEL_HINT, PLANT_NAME, REGION_TEXT, siteName, siteQuality, SIZE_NAME } from '../texts.js';
 import { crest } from './companies.js';
 import { btn, disabledUnless, shortName, siteOptions, siteStatus, V } from './common.js';
 
@@ -138,8 +139,9 @@ function detail(): string {
     if (x.r === 'al') f += `<dt>Gefälle für Wasserkraft</dt><dd>${x.hydro ? 'ja' : 'nein'}</dd>`;
   } else f += `<dt>Ertrag</dt><dd>unbekannt</dd>`;
   if (mine && x.type && x.own) {
-    const P = PLANTS[x.type];
-    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}</dd><dt>Leistung</dt><dd>${P.mw} MW${P.mwh ? ' / ' + P.mwh + ' MWh' : ''}</dd>`;
+    const P = plantDef(x.type, x.size);
+    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}${x.size === 'large' ? ' · groß' : ''}</dd><dt>Leistung</dt><dd>${P.mw} MW${P.mwh ? ' / ' + P.mwh + ' MWh' : ''}</dd>`;
+    if (x.offline > 0) f += `<dt>Repowering</dt><dd>noch ${x.offline} Q außer Betrieb</dd>`;
     if (x.own.alt) f += `<dt>Neuer Antrag</dt><dd>${PLANT_NAME[x.own.alt.type]} · noch ${x.own.alt.left} Q</dd>`;
     if (x.built) f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.own.eff * 100)} %</dd>`;
     if (operating(x))
@@ -148,11 +150,22 @@ function detail(): string {
         : `<dt>Erzeugung ${QN[v.q]}</dt><dd>≈ ${mwh(x.own.genEstimate)}</dd>`;
     f += `<dt>Wert</dt><dd>${money(x.own.value, true)}</dd>`;
   }
+  if (x.intel && x.type) {
+    // from a spy report on the owner
+    f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}${x.size === 'large' ? ' · groß' : ''} · ${x.mw} MW</dd>`;
+    if (x.built)
+      f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.intel.eff * 100)} % <span class="chip sab">Spionage</span></dd>`;
+    else if (x.permit === 'pending')
+      f += `<dt>Genehmigung</dt><dd>noch ${Math.max(1, x.intel.permitLeft)} Q <span class="chip sab">Spionage</span></dd>`;
+  }
   const storeNote =
     mine && x.type && isStore(x.type)
       ? `<p class="muted" style="font-size:12px;margin:8px 0 0">${storeFeeders(x.r)}</p>`
       : '';
   const regionTypes = REGIONS[x.r].types;
+  // permit buttons carry the chosen size
+  const pv = (t: PlantType) => `${x.id}|${t}|${UI.size}`;
+  const pname = (t: PlantType) => `${PLANT_NAME[t]} · ${plantDef(t, UI.size).mw} MW`;
   const permits: { t: PlantType; opt: ActionOption }[] = [];
   const a: string[] = [];
   for (const opt of siteOptions(x.id)) {
@@ -165,7 +178,7 @@ function detail(): string {
         a.push(btn('lease', x.id, 'Fläche pachten', opt, { cls: 'primary' }));
         break;
       case 'applyPermit':
-        permits.push({ t: act.plantType, opt });
+        if ((act.size ?? 'std') === UI.size) permits.push({ t: act.plantType, opt });
         break;
       case 'changePlantType':
         a.push(btn('retype', x.id, 'Anderen Anlagentyp wählen', opt));
@@ -179,9 +192,23 @@ function detail(): string {
         a.push(btn('connect', x.id, 'Ans Netz anschließen', opt, { cls: 'primary' }));
         if (opt.error === 'noGridCapacity')
           a.push(
-            `<p class="muted" style="font-size:12px;margin:0">Nicht genug freie Netzkapazität (${PLANTS[x.type!].mw} MW nötig). Warte auf Netzausbau oder reserviere rechtzeitig.</p>`,
+            `<p class="muted" style="font-size:12px;margin:0">Nicht genug freie Netzkapazität (${x.mw} MW nötig). Warte auf Netzausbau oder reserviere rechtzeitig.</p>`,
           );
+        else if (v.grid[x.r].free < v.constants.duelScarcity * x.mw)
+          a.push(`<p class="duelhint" style="font-size:12px;margin:0">⚔ ${DUEL_HINT}</p>`);
         break;
+      case 'repower': {
+        const L = plantDef(x.type!, 'large');
+        a.push(btn('repower', x.id, `Repowering auf ${L.mw} MW`, opt));
+        a.push(
+          `<p class="muted" style="font-size:12px;margin:0">${
+            opt.error === 'noGridCapacity'
+              ? `Für das Repowering fehlen ${L.mw - x.mw} MW freie Netzkapazität.`
+              : `Größere Anlage auf derselben Fläche: +${L.mw - x.mw} MW, dafür ein Quartal Stillstand.`
+          }</p>`,
+        );
+        break;
+      }
       case 'repairSelf':
         a.push(btn('fixSelf', x.id, 'Netz selbst stabilisieren', opt, { cls: 'primary' }));
         break;
@@ -208,22 +235,28 @@ function detail(): string {
           ? `Umplanen: Die Genehmigung für ${PLANT_NAME[x.type!]} bleibt gültig, bis über den neuen Antrag entschieden ist.${x.own?.alt ? ' Bauen verwirft den laufenden Antrag.' : ''}`
           : 'Umplanen: Ein neuer Antrag ersetzt den laufenden – dessen Kosten sind verloren.'
       }</p>`,
-      ...permits.map(({ t, opt }) => btn('permit', x.id + '|' + t, 'Stattdessen beantragen: ' + PLANT_NAME[t], opt)),
+      ...permits.map(({ t, opt }) => btn('permit', pv(t), 'Stattdessen beantragen: ' + pname(t), opt)),
     );
     permits.length = 0;
   }
   const permitButtons = permits.map(({ t, opt }) =>
     x.type
-      ? btn('permit', x.id + '|' + t, 'Erneut beantragen: ' + PLANT_NAME[t], opt, { cls: 'primary' })
-      : btn('permit', x.id + '|' + t, 'Genehmigung: ' + PLANT_NAME[t], opt, {
+      ? btn('permit', pv(t), 'Erneut beantragen: ' + pname(t), opt, { cls: 'primary' })
+      : btn('permit', pv(t), 'Genehmigung: ' + pname(t), opt, {
           cls: t === regionTypes[0] ? 'primary' : '',
         }),
   );
+  const costs = UI.size === 'large' ? v.costsLarge : v.costs;
   if (permits.length && !x.type)
     permitButtons.push(
-      `<p class="muted" style="font-size:12px;margin:0">Bau ab ≈ ${permits.map(({ t }) => PLANT_NAME[t] + ' ' + money(v.costs[t].build, true)).join(', ')}</p>`,
+      `<p class="muted" style="font-size:12px;margin:0">Bau ab ≈ ${permits.map(({ t }) => `${PLANT_NAME[t]} (${plantDef(t, UI.size).mw} MW) ${money(costs[t].build, true)}`).join(', ')}</p>`,
     );
   a.unshift(...permitButtons);
+  // the size applies to all permit buttons
+  if (siteOptions(x.id).some((o) => o.action.type === 'applyPermit'))
+    a.unshift(
+      `<div class="sizes" role="group" aria-label="Anlagengröße">${PLANT_SIZE_KEYS.map((k) => `<button class="sizeopt" aria-pressed="${UI.size === k}" data-act="size" data-v="${k}"><b>${SIZE_NAME[k]}</b><span class="muted">${k === 'std' ? 'schnell genehmigt, später aufrüstbar' : '+50 % Leistung, etwas günstiger je MW – Genehmigung dauert länger, scheitert öfter'}</span></button>`).join('')}</div>`,
+    );
   if (own && !mine) {
     const lt = TRICK_KEYS.find((k) => siteOptions(x.id).some((o) => o.action.type === 'lobby' && o.action.trick === k));
     if (lt)

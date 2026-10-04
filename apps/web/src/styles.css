@@ -1557,10 +1557,77 @@ input[type='checkbox'] {
   transform: translateY(-1px);
   box-shadow: 0 4px 0 var(--edge);
 }
+.sabopt:disabled {
+  cursor: default;
+  opacity: 0.6;
+  transform: none;
+}
 .sabopt[aria-pressed='true'] {
   background: color-mix(in srgb, var(--gold) 28%, var(--surface));
   transform: translateY(2px);
   box-shadow: 0 1px 0 var(--edge);
+}
+
+/* espionage and detectives */
+.chip.sab {
+  background: color-mix(in srgb, var(--c1) 14%, var(--surface));
+  color: var(--c1);
+}
+.spylist li.spyrow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+/* plant size choice */
+.sizes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.sizeopt {
+  border: 2px solid var(--edge);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  font-size: 12px;
+  background: var(--surface2);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.sizeopt b {
+  font-size: 13.5px;
+}
+.sizeopt[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--gold) 28%, var(--surface));
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--edge);
+}
+.duelhint {
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* cable duel: the rival's progress next to the own timer */
+.duelbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 2px solid var(--edge);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--oc) 10%, var(--surface));
+}
+.duelbar .timebar i {
+  background: var(--oc);
+}
+.duelbar b {
+  font-size: 13px;
 }
 
 /* ---------- charts ---------- */
@@ -2233,6 +2300,13 @@ svg.live .pulse {
   .sab,
   .field-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .spylist li.spyrow {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .spylist li.spyrow > :last-child {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
   .foe-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));

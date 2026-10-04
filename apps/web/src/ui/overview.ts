@@ -1,5 +1,5 @@
 /** Overview tab: region previews, key figures, open tasks, latest news and charts. */
-import { operating, PLANTS, REGION_KEYS } from '@power-tycoon/engine';
+import { operating, REGION_KEYS } from '@power-tycoon/engine';
 import { money, mwh, QN, tons } from '../format.js';
 import { REGION_TEXT } from '../texts.js';
 import { meP, todo, V } from './common.js';
@@ -15,7 +15,7 @@ export function vOverview(): string {
     mine = v.sites.filter((x) => x.owner === v.playerId);
   const minis = REGION_KEYS.map((r) => {
     const m = v.sites.filter((x) => x.r === r && x.owner === v.playerId),
-      mw2 = m.filter(operating).reduce((a, x) => a + PLANTS[x.type!].mw, 0);
+      mw2 = m.filter(operating).reduce((a, x) => a + x.mw, 0);
     return `<button class="mini" data-act="goRegion" data-v="${r}"><canvas data-scene="${r}" data-mini="1"></canvas><span class="mcap"><b>${REGION_TEXT[r].name}</b><span>${m.length ? m.length + ' Fläche' + (m.length > 1 ? 'n' : '') + ' · ' + mw2 + ' MW' : 'noch nicht vertreten'}</span>${ownBar(r)}</span></button>`;
   }).join('');
   const news = newsList().slice(0, 4);
