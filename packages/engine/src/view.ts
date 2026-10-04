@@ -55,6 +55,7 @@ import type {
   GridView,
   NewsItem,
   PlantSize,
+  Player,
   PlayerId,
   PlayerView,
   RegionKey,
@@ -78,6 +79,10 @@ export const trickTargetIds = (v: PlayerView, trick: TrickType): string[] =>
   optionsOf(v, 'lobby')
     .filter((o) => o.action.trick === trick)
     .map((o) => o.action.siteId);
+
+/** A player's detective agency with the quarters it still protects (the current one included). */
+const detectivesView = (g: GameState, p: Player): PlayerView['me']['detectives'] =>
+  p.detectives ? { level: p.detectives.level, left: p.detectives.until - g.turn + 1 } : null;
 
 /** Everything player `pid` may know about the game (hidden information removed). */
 export function playerView(g: GameState, pid: PlayerId): PlayerView {
@@ -206,7 +211,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       tricksLeft: Math.max(0, MAX_TRICKS - me.trickUsed),
       nextGen: own.filter((x) => producing(x) && x.type && !isStore(x.type)).reduce((s, x) => s + genEstimate(g, x), 0),
       contractVolume: me.contracts.reduce((s, c) => s + c.vol, 0),
-      detectives: me.detectives ? { ...me.detectives } : null,
+      detectives: detectivesView(g, me),
     },
     players: g.players.map((p) => ({
       ...(p.id !== pid && hasIntel(g, pid, p.id)
@@ -214,7 +219,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
             intel: {
               until: me.intel![p.id]!,
               contracts: clone(p.contracts),
-              detectives: p.detectives ? { ...p.detectives } : null,
+              detectives: detectivesView(g, p),
               tricksLeft: Math.max(0, MAX_TRICKS - p.trickUsed),
             },
           }

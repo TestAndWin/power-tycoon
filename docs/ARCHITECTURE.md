@@ -95,6 +95,9 @@ Modules of `packages/engine/src`:
 - Detectives (`hireDetectives`, `basic`/`pro`, `DETECTIVE_QUARTERS`, `Player.detectives`): tricks against the
   client succeed less often (`shield`), failed culprits are caught more often, successful ones sometimes
   afterwards, spies may be caught (no report, the target is told). Hidden from other players.
+  The term is stored as the last protected turn (`until`). It starts with `termStart`: the current turn, or the
+  next one when hired during `endQuarter` (`GameState.phase = 'quarterEnd'`), because the rivals act after the
+  human – so both sides get `DETECTIVE_QUARTERS` turns of the others covered.
 - Court: a caught culprit pays the fine and `damages` to the victim (`TRICKS`).
 - Plant sizes: `Site.size` (`std`/`large`), chosen with `applyPermit`.
   `plantDef(t, size)` scales capacity, storage volume and costs (`LARGE`); large permits take a quarter longer

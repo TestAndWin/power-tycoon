@@ -109,7 +109,7 @@ describe('SmartOpponent', () => {
     });
     expect(await hires('hard')).toEqual([{ type: 'hireDetectives', level: 'pro' }]);
     expect(await hires('normal')).toEqual([{ type: 'hireDetectives', level: 'basic' }]);
-    g.players[1]!.detectives = { level: 'basic', left: 2 };
+    g.players[1]!.detectives = { level: 'basic', until: 1 };
     expect(await hires('hard')).toEqual([]);
   });
 

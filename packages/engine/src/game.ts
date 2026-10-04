@@ -113,6 +113,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     news: [],
     nextId: 1,
     over: false,
+    phase: 'players',
     settings: { autoMinigames: !!opts.autoMinigames, difficulty: opts.difficulty ?? 'normal' },
     challenge: null,
   };

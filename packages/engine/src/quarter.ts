@@ -294,7 +294,7 @@ function nextQuarter(g: GameState, out: GameEvent[]): void {
   g.turn++;
   for (const p of g.players) {
     p.trickUsed = 0;
-    if (p.detectives && --p.detectives.left <= 0) {
+    if (p.detectives && p.detectives.until < g.turn) {
       p.detectives = null;
       out.push({ type: 'detectivesExpired', playerId: p.id });
     }
@@ -339,7 +339,9 @@ export async function endQuarter(
   const price = g.price * g.fx!.price;
   decidePermits(g, events);
   expireReservations(g);
+  g.phase = 'quarterEnd';
   const rivals = await rivalTurns(g, opponents, human);
+  g.phase = 'players';
   const output = produce(g, price, events);
   let lines: ReportLine[] = [];
   for (const p of g.players) {

@@ -41,7 +41,7 @@ describe('spy reports', () => {
     let caught = 0;
     for (let seed = 1; seed <= 80; seed++) {
       const g = newGame(seed);
-      g.players[1]!.detectives = { level: 'pro', left: 4 };
+      g.players[1]!.detectives = { level: 'pro', until: 3 };
       const r = ok(g, { type: 'spy', targetId: 1 });
       const e = r.events[0]!;
       if (e.type !== 'spied') throw new Error('spied expected');
@@ -86,7 +86,7 @@ describe('detectives', () => {
       for (let seed = 1; seed <= N; seed++) {
         const g = giveIntel(newGame(seed), 1, 0);
         setupSite(g, 'nd0', 0, 'operating', 'wind');
-        if (guard) g.players[0]!.detectives = { level: 'pro', left: 4 };
+        if (guard) g.players[0]!.detectives = { level: 'pro', until: 3 };
         const r = applyAction(g, 1, { type: 'lobby', trick: 'hack', siteId: 'nd0' });
         if (!r.ok) throw new Error(r.error);
         const e = r.events[0]!;
@@ -110,7 +110,7 @@ describe('detectives', () => {
     for (let seed = 1; seed <= 200 && !found; seed++) {
       const g = giveIntel(newGame(seed), 1, 0);
       setupSite(g, 'nd0', 0, 'operating', 'wind');
-      g.players[0]!.detectives = { level: 'pro', left: 4 };
+      g.players[0]!.detectives = { level: 'pro', until: 3 };
       const r = applyAction(g, 1, { type: 'lobby', trick: 'bi', siteId: 'nd0' });
       if (!r.ok) throw new Error(r.error);
       const e = r.events[0]!;
@@ -131,14 +131,18 @@ describe('detectives', () => {
 
 describe('detectives – review fixes', () => {
   it('rivals hiring at the end of the quarter get four quarters against the human as well', async () => {
-    const g = newGame();
-    const r = applyAction(g, 1, { type: 'hireDetectives', level: 'basic' });
-    if (!r.ok) throw new Error(r.error);
-    let s = (await endQuarter(r.state, [])).state;
+    // the rival hires in its turn at the end of quarter 0, after the human has acted
+    const hire = { decide: async () => [{ type: 'hireDetectives', level: 'basic' } as const] };
+    let s = (await endQuarter(newGame(), [hire])).state;
     for (let i = 0; i < 4; i++) {
-      expect(s.players[1]!.detectives?.left ?? 0).toBeGreaterThan(0);
+      // the human's turns 1 … 4 are covered
+      expect(playerView(s, 1).me.detectives).toEqual({ level: 'basic', left: 4 - i });
       s = (await endQuarter(s, [])).state;
     }
     expect(s.players[1]!.detectives).toBeNull();
+    // the human hiring in its own turn is covered for the rivals' turns 0 … 3
+    const own = applyAction(newGame(), 0, { type: 'hireDetectives', level: 'basic' });
+    if (!own.ok) throw new Error(own.error);
+    expect(own.state.players[0]!.detectives).toEqual({ level: 'basic', until: 3 });
   });
 });

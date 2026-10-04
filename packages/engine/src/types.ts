@@ -80,8 +80,8 @@ export interface Player {
   trickUsed: number;
   /** Spy reports: rival id → last turn the report is valid. */
   intel: Record<string, number>;
-  /** Hired detective agency, `left` quarters including the current one. */
-  detectives: { level: DetectiveLevel; left: number } | null;
+  /** Hired detective agency, protecting until the end of turn `until`. */
+  detectives: { level: DetectiveLevel; until: number } | null;
 }
 
 export interface Reservation {
@@ -148,6 +148,8 @@ export interface GameState {
   news: NewsItem[];
   nextId: number;
   over: GameOver;
+  /** `players`: the human acts; `quarterEnd`: `endQuarter` runs and the rivals act, after the human. */
+  phase: 'players' | 'quarterEnd';
   settings: { autoMinigames: boolean; difficulty: Difficulty };
   challenge: OpenChallenge | null;
 }

@@ -47,6 +47,7 @@ import {
   siteDef,
   siteMw,
   surveyCost,
+  termStart,
   trickOdds,
   trickTargets,
 } from './rules.js';
@@ -415,8 +416,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     price: (c) => DETECTIVES[c.a.level].cost,
     execute({ g, p, pid, a }, cost, out) {
       p.cash -= cost;
-      // rivals act at the end of the quarter, after the human: their term starts with the next quarter
-      p.detectives = { level: a.level, left: DETECTIVE_QUARTERS + (p.human ? 0 : 1) };
+      p.detectives = { level: a.level, until: termStart(g) + DETECTIVE_QUARTERS - 1 };
       emit(g, out, { type: 'detectivesHired', playerId: pid, level: a.level, quarters: DETECTIVE_QUARTERS, cost });
     },
   },

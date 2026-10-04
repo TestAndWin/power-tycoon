@@ -269,6 +269,12 @@ export function trickTargets(g: GameState, type: TrickType, pid: PlayerId): Site
 
 export const siteById = (g: GameState, id: string): Site | undefined => g.sites.find((s) => s.id === id);
 
+/**
+ * First turn of a term that protects against the other players: the current one, or the next if the term
+ * begins at the quarter end, where the human has already acted.
+ */
+export const termStart = (g: GameState): number => g.turn + (g.phase === 'quarterEnd' ? 1 : 0);
+
 /** Does player `pid` hold a valid spy report on player `target`? */
 export const hasIntel = (g: GameState, pid: PlayerId, target: PlayerId): boolean =>
   (g.players[pid]?.intel[target] ?? -1) >= g.turn;
