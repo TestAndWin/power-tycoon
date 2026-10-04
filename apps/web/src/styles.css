@@ -1726,6 +1726,25 @@ input[type='checkbox'] {
 .mcard.wide {
   max-width: 720px;
 }
+/* one frame for all minigames: same width, minimum height and top edge, so a flow does not jump */
+.mcard.mg {
+  position: relative;
+  min-height: min(720px, calc(100dvh - 48px));
+  margin-block: 0 auto;
+}
+/* the outcome lies over the playing field instead of growing the dialog */
+.mgresult {
+  position: absolute;
+  inset: auto 16px 16px;
+  padding: 16px 18px;
+  background: var(--grain), var(--surface);
+  border: 2px solid var(--edge);
+  border-radius: 16px;
+  box-shadow:
+    0 5px 0 var(--edge),
+    0 18px 40px rgba(0, 0, 0, 0.3);
+  animation: pop 0.22s ease-out;
+}
 .mcard .foot {
   display: flex;
   justify-content: flex-end;

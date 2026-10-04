@@ -128,6 +128,8 @@ async function run(action: Action): Promise<boolean> {
   S.busy = true;
   try {
     const res = await api.action(S.game, action);
+    // the minigame dialog stays open while a flow goes on with the next minigame
+    if (action.type === 'minigameResult' && !res.challenge) closeModal();
     S.view = res.view;
     UI.confirm = null;
     S.busy = false;
@@ -136,6 +138,7 @@ async function run(action: Action): Promise<boolean> {
     if (res.challenge) await resolveChallenge(res.challenge);
     return true;
   } catch (e) {
+    if (action.type === 'minigameResult') closeModal();
     S.busy = false;
     render();
     handleError(e);

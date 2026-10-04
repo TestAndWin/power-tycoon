@@ -134,7 +134,7 @@ export function miniLayout(x: SiteView, R: Random): Promise<number> {
       <div class="laywrap ${solar ? 'sunny' : 'windy'}"><div class="lay" id="lay" style="grid-template-columns:repeat(${C},minmax(0,1fr))"></div></div>
       <div class="legend"><span><i class="lg" style="background:${col(0.75)}"></i>${solar ? 'wenig Sonne' : 'schwacher Wind'}</span><span><i class="lg" style="background:${col(1.1)}"></i>${solar ? 'viel Sonne' : 'starker Wind'}</span>${solar ? '<span><i class="lg" style="background:#7f9a7c"></i>Schatten</span>' : ''}${off ? '' : `<span><i class="lg block"></i>${solar ? 'Schutzgebiet' : 'Siedlung'}</span>`}${solar ? '' : '<span><i class="lg wakeL"></i>Nachlauf</span>'}</div>
       <div class="foot"><button class="btn primary big" id="lOk" disabled>Layout übernehmen</button></div>`,
-      { locked: true, wide: true },
+      { locked: true, minigame: true },
     );
     const lay = $('#lay')!;
     const icon = (t: LayoutCell) =>
@@ -164,7 +164,7 @@ export function miniLayout(x: SiteView, R: Random): Promise<number> {
     });
     $<HTMLButtonElement>('#lOk')!.onclick = () => {
       const s = Math.round(field.score() * 100) / 100;
-      $('#lOk')!.parentElement!.remove();
+      $('#lOk')!.parentElement!.style.visibility = 'hidden';
       resultBox(
         s >= 1,
         'Wirkungsgrad ' + Math.round(s * 100) + ' %',

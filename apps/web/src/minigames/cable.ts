@@ -163,7 +163,7 @@ export function miniCable(x: SiteView, R: Random, ch?: Challenge): Promise<boole
       }</p>
       ${hud}
       <div class="pipegrid cablegrid ${x.r === 'ns' ? 'seabed' : ''}" id="pg" style="grid-template-columns:repeat(${C + 2},minmax(0,1fr))"></div>`,
-      { locked: true, wide: true },
+      { locked: true, minigame: true },
     );
     const pg = $('#pg')!;
     function draw(): void {

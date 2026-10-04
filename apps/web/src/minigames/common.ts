@@ -1,5 +1,4 @@
 /** Building blocks shared by the minigames: canvas setup, animation loop, key handling, result box. */
-import { closeModal } from '../modal.js';
 import { SND } from '../sound.js';
 import { $ } from '../state.js';
 
@@ -43,10 +42,13 @@ export function listenKeys(handlers: {
   };
 }
 
-/** Appends the outcome to the open minigame dialog; "Weiter" closes it and calls `done`. */
+/**
+ * Shows the outcome as a card over the minigame, so the dialog keeps its height. "Weiter" calls `done`; the
+ * dialog stays open until the server answered (it closes it, or the next minigame replaces the content).
+ */
 export function resultBox(ok: boolean, title: string, text: string, done: () => void, label?: string): void {
   const box = document.createElement('div');
-  box.className = 'stack';
+  box.className = 'stack mgresult';
   if (ok) SND.ok();
   else SND.fail();
   box.innerHTML =
@@ -63,14 +65,14 @@ export function resultBox(ok: boolean, title: string, text: string, done: () => 
   const b = $<HTMLButtonElement>('#mgDone')!;
   b.focus();
   b.onclick = () => {
-    closeModal();
+    b.disabled = true;
     done();
   };
 }
 
 /**
- * Ends an animated minigame: removes the controls (`#mgCtl`), lets the last frames play for `delay` ms,
- * then stops the animation and shows the result.
+ * Ends an animated minigame: hides the controls (`#mgCtl`, keeping their space), lets the last frames play
+ * for `delay` ms, then stops the animation and shows the result.
  */
 export function finishAnimated(
   loop: { stop: () => void },
@@ -80,7 +82,7 @@ export function finishAnimated(
   text: string,
   done: () => void,
 ): void {
-  $('#mgCtl')!.remove();
+  $('#mgCtl')!.style.visibility = 'hidden';
   setTimeout(() => {
     loop.stop();
     resultBox(ok, title, text, done);

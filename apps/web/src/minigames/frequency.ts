@@ -106,7 +106,7 @@ export function miniFreq(x: SiteView, R: Random): Promise<boolean> {
       <div class="timebar"><i id="fBar" style="width:0%;background:var(--good)"></i></div>
       <div class="game-wrap"><canvas id="mg"></canvas></div>
       <div class="row" style="justify-content:center" id="mgCtl"><button class="btn big" id="fDn">− Leistung</button><button class="btn primary big" id="fGo">Start</button><button class="btn big" id="fUp">+ Leistung</button></div>`,
-      { locked: true },
+      { locked: true, minigame: true },
     );
     const ctx = setupCanvas($<HTMLCanvasElement>('#mg')!, W, H);
     const m = new FrequencyControl(R);

@@ -255,7 +255,7 @@ export function miniRotor(x: SiteView, R: Random): Promise<boolean> {
       <div class="hud"><span id="rB">Blätter 0/3</span><span id="rM">Fehlversuche 0/3</span></div>
       <div class="game-wrap"><canvas id="mg"></canvas></div>
       <div class="row" style="justify-content:center" id="mgCtl"><button class="btn primary big" id="bSet">Absetzen</button></div>`,
-      { locked: true },
+      { locked: true, minigame: true },
     );
     const ctx = setupCanvas($<HTMLCanvasElement>('#mg')!, W, H);
     const m = new RotorAssembly(off, R);
