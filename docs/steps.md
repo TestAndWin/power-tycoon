@@ -84,6 +84,47 @@ Quick wins before any LLM, measured with bot-vs-bot simulations over many seeds:
 - [x] Hard: market/grid forecast, end-of-game accounting, value-based surveys, selling dead projects,
       diversification, timed lobby tricks and revenge on the human; historic milestones spread over the game
 
+## Phase 7 – More game fun (ideas from Oil Imperium, reLINE 1989)
+
+Each feature goes through actions/events like everything else, the rivals use it too, and the effect on
+balance is measured with the simulation script (normal/hard) before merging.
+
+**Espionage, detectives and court (A/B/C)**
+- [ ] `spy` action on a rival: costs money, produces a spy report valid for some quarters. The report
+      reveals hidden information about that rival (site resource values, efficiency, contracts, pending permits)
+- [ ] Lobby tricks against a rival need a valid spy report on that rival (`noSpyReport`)
+- [ ] `hireDetectives` action: duration (e.g. 4 quarters), 2 quality levels. Active detectives lower the
+      success chance of tricks against the player and raise the chance to catch the culprit
+- [ ] Caught culprit pays the fine **and** damages to the victim (court); new events for the report
+- [ ] Rivals: spy before tricks, hire detectives when they were targeted; hard rivals weigh it by value
+- [ ] Web: espionage panel (report view), detective status, German texts
+
+**Selectable game length (D)**
+- [ ] `createGame` option `years` (3 / 5 / 10, default 10) → `endYear`; stored games keep 10
+- [ ] Historic milestones and the hard rivals' end-of-game accounting scale with the game length
+- [ ] Start dialog: choose the game length
+
+**Cable duel when grid capacity is scarce (E)**
+- [ ] When free grid capacity in the region drops below a threshold (e.g. 2× the plant's MW), `connectGrid`
+      opens a `cableDuel` challenge against a random rival active in that region instead of the solo cable puzzle
+- [ ] Duel minigame: same cable puzzle, the rival solves its own board in parallel; its speed depends on
+      difficulty (seeded from the challenge). Win → connected; lose → not connected, part of the cost is lost
+- [ ] Rivals connecting under scarcity: resolved in the engine by a seeded roll (no minigame)
+- [ ] `autoMinigames`: duel is resolved like the other auto-played challenges
+
+**Plant sizes and repowering (F)**
+- [ ] Two sizes per plant type: standard (today's values) and large (more MW, higher build cost, needs more
+      grid capacity); size is chosen with `applyPermit`
+- [ ] `repower` action: upgrade a standard plant to large later (surcharge + free grid capacity needed;
+      plant is offline for a quarter)
+- [ ] Rivals choose the size by expected return; hard rivals repower when grid capacity allows
+- [ ] Web: size choice in the permit dialog, repower button, larger sprites in the scene
+
+**Not now**
+- Price spikes (H): electricity cannot be held back like oil. Possible later as short spikes during dark
+  doldrums and negative prices in solar surplus, which reward storage and PPAs
+- Time budget per quarter, hot-seat multiplayer: too large for the fun they add in solo play
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)
