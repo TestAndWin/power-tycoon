@@ -87,6 +87,11 @@ export interface SmartParams {
    * grudges against each other: feuds between them would only help the human.
    */
   revenge: boolean;
+  /**
+   * Go for big projects (offshore) as soon as they can be financed: count the operating cash flow until the
+   * plant is built, and do not prefer small projects while the financing room covers the big one.
+   */
+  bigProjects: boolean;
 }
 
 export type SmartLevel = 'normal' | 'hard';
@@ -113,6 +118,7 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     diversify: false,
     trickTiming: false,
     revenge: false,
+    bigProjects: false,
   },
   hard: {
     maxPending: 5,
@@ -135,6 +141,7 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     diversify: true,
     trickTiming: true,
     revenge: true,
+    bigProjects: true,
   },
 };
 
@@ -529,6 +536,26 @@ class Planner {
     return c;
   }
 
+  /** Expected operating cash flow per quarter of the own plants (after running costs and interest). */
+  private cashFlow(): number {
+    let c = -this.loan * this.v.constants.interest;
+    for (const x of this.mine()) {
+      c -= x.lease * 0.02;
+      if (!x.type || !x.built) continue;
+      c -= PLANTS[x.type].opex;
+      if (x.grid) c += this.quarterRevenue(x, x.type, x.own?.eff ?? 1);
+    }
+    return Math.max(0, c);
+  }
+
+  /**
+   * Investment a project is ranked by. With `bigProjects` a large project (offshore) is not ranked below a
+   * small one as long as half of the free financing room covers it: idle money earns nothing.
+   */
+  private rankCapex(capex: number): number {
+    return this.p.bigProjects ? Math.max(capex, 0.5 * Math.max(0, this.freeRoom())) : capex;
+  }
+
   /** Financing room that is neither spent nor needed for the projects under way. */
   private freeRoom(): number {
     return this.me.creditLimit * this.p.debtRatio - this.loan + this.cash - this.buffer() - this.committed();
@@ -656,7 +683,10 @@ class Planner {
       .map((x) => ({ x, b: this.bestType(x, 'new') }))
       .filter((s): s is { x: SiteView; b: NonNullable<ReturnType<Planner['bestType']>> } => !!s.b)
       .filter((s) => s.b.value > s.b.capex * this.p.minRoi)
-      .map((s) => ({ ...s, score: (s.b.value / s.b.capex) * this.spreadFactor(s.x.r, PLANTS[s.b.t].mw) }))
+      .map((s) => ({
+        ...s,
+        score: (s.b.value / this.rankCapex(s.b.capex)) * this.spreadFactor(s.x.r, PLANTS[s.b.t].mw),
+      }))
       .sort((a, b) => b.score - a.score);
     let leases = 0;
     for (const { x, b } of scored) {
@@ -664,7 +694,8 @@ class Planner {
       if (leases >= lim.leases || pending >= lim.pending) break;
       // the whole project should be financeable within the next quarters
       const room = this.me.creditLimit * this.p.debtRatio - this.loan + this.cash - this.buffer();
-      if (b.capex > room * 1.2) continue;
+      const inflow = this.p.bigProjects ? this.cashFlow() * avgPermitQ(b.t) : 0;
+      if (b.capex > room * 1.2 + inflow) continue;
       if (!this.afford(x.lease + PLANTS[b.t].permit)) continue;
       this.spend({ type: 'lease', siteId: x.id }, x.lease);
       this.spend({ type: 'applyPermit', siteId: x.id, plantType: b.t }, PLANTS[b.t].permit);

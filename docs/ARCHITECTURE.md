@@ -217,15 +217,18 @@ interface OpponentStrategy {
     others, announced expansions); a project is valued along its timeline, only finished parts count at the end,
   - surveys the unknown sites with the best expected return first (offshore too), sells dead projects,
     spreads over regions and raises its project limits with uncommitted financing room,
+  - goes for big projects (offshore) as soon as they can be financed (`bigProjects`): counts the operating
+    cash flow until the plant is built and does not prefer small projects while its financing room covers
+    the big one,
   - values tricks by the target's real loss (season, timing, end of game), may use both tricks of a quarter
     and strikes back at a human who was caught or suspected tricking it.
   Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly.
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
 - `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds;
   `--skilled` lets seat 0 win every minigame like a good human player.
-  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 177 M€, hard ≈ 268 M€.
-  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 241 M€ and
-  wins 20 %, rivals ≈ 277 M€ (before the hard minigame odds: seat 0 won 70 %). A good human plays better than
+  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 183 M€, hard ≈ 316 M€.
+  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 235 M€ and
+  wins 13 %, rivals ≈ 292 M€ (before the hard minigame odds and `bigProjects`: seat 0 won 70 %). A good human plays better than
   the bot, so this is the target range for "about even" on `hard`.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `SmartOpponent` (`normal`) on timeout/error. Details are decided when step 2 starts.
