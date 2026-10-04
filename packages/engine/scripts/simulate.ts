@@ -6,9 +6,25 @@
  * `--rivals mixed` (default): seats 1–3 get normal / hard, rotated over the games so that
  * the regional preferences of the rivals do not favour one strategy. `--rivals hard` etc. gives all
  * three rivals the same strategy. Seat 0 (the "human") is played by `--seat0`
- * (normal | hard | idle) with automatic minigames. `--years 3|5|10` sets the game length (default 10).
+ * (normal | hard | idle) with automatic minigames, or with `--skilled` like a practised human who wins
+ * every minigame (layout 1.15, no failed assembly or connection).
+ *
+ * The game difficulty (it sets the rivals' automatic minigame outcomes) is `hard` with `--rivals hard`, else
+ * `normal`, so that mixed strategies are compared on equal terms.
+ * `--years 3|5|10` sets the game length (default 10).
  */
-import { createGame, endQuarter, opponentFor, playTurn, playerView, type OpponentStrategy } from '../src/index.js';
+import {
+  applyAction,
+  createGame,
+  createRng,
+  endQuarter,
+  opponentFor,
+  playTurn,
+  playerView,
+  rivalProfile,
+  type GameState,
+  type OpponentStrategy,
+} from '../src/index.js';
 
 type Name = 'normal' | 'hard';
 const STRATS: Name[] = ['normal', 'hard'];
@@ -23,6 +39,26 @@ const seed0 = Number(arg('seed', '1000'));
 const seat0 = arg('seat0', 'normal') as Name | 'idle';
 const rivalsArg = arg('rivals', 'mixed') as Name | 'mixed';
 const years = Number(arg('years', '10'));
+const skilled = process.argv.includes('--skilled');
+
+/** Seat 0's turn with every minigame won. */
+async function skilledTurn(g: GameState, strategy: OpponentStrategy, seed: number): Promise<GameState> {
+  const ctx = { playerId: 0 as const, profile: rivalProfile(0), random: createRng(seed) };
+  for (const a of await strategy.decide(playerView(g, 0), [], ctx)) {
+    let r = applyAction(g, 0, a);
+    while (r.ok) {
+      g = r.state;
+      const ch = r.challenge;
+      if (!ch) break;
+      r = applyAction(g, 0, {
+        type: 'minigameResult',
+        challengeId: ch.id,
+        outcome: ch.kind === 'layout' ? 1.15 : true,
+      });
+    }
+  }
+  return g;
+}
 
 interface Stat {
   worth: number;
@@ -42,18 +78,25 @@ const add = (k: string, worth: number, win: boolean, out: boolean) => {
 
 const t0 = performance.now();
 for (let i = 0; i < games; i++) {
-  let g = createGame({ companyName: 'Sim', autoMinigames: true, seed: seed0 + i, years });
+  let g = createGame({
+    companyName: 'Sim',
+    autoMinigames: !skilled,
+    seed: seed0 + i,
+    difficulty: rivalsArg === 'hard' ? 'hard' : 'normal',
+    years,
+  });
   const names: Name[] = [0, 1, 2].map((k) => (rivalsArg === 'mixed' ? STRATS[(i + k) % 2]! : rivalsArg));
   const rivals: OpponentStrategy[] = names.map((n) => opponentFor(n));
   const human = seat0 === 'idle' ? null : opponentFor(seat0);
   while (!g.over) {
-    if (human) g = (await playTurn(g, 0, human)).state;
+    if (human && skilled) g = await skilledTurn(g, human, g.seed + g.turn);
+    else if (human) g = (await playTurn(g, 0, human)).state;
     g = (await endQuarter(g, rivals)).state;
   }
   const v = playerView(g, 0);
   const worths = v.players.map((p) => (p.out ? 0 : p.worth));
   const best = Math.max(...worths);
-  add('seat0:' + seat0, worths[0]!, worths[0] === best, g.over === 'bankrupt');
+  add('seat0:' + seat0 + (skilled ? '+skill' : ''), worths[0]!, worths[0] === best, g.over === 'bankrupt');
   names.forEach((n, k) => add(n, worths[k + 1]!, worths[k + 1] === best, v.players[k + 1]!.out));
 }
 

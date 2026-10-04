@@ -9,7 +9,6 @@
  * end-of-game accounting, selling of dead projects, diversification and sharper lobby tricks.
  */
 import {
-  AUTO_MINIGAME,
   CAPTURE,
   historicFor,
   HOURS,
@@ -24,11 +23,12 @@ import {
   TARGET_DRIFT,
   TRICKS,
   WORLD_EVENTS,
+  type AutoMinigameDef,
   type HistoricDef,
   type PlantDef,
 } from '../data.js';
 import { clamp, type Random } from '../rng.js';
-import { capFactor as siteCapFactor, plantTypesFor, siteValue, spreadFor } from '../rules.js';
+import { autoMinigame, capFactor as siteCapFactor, plantTypesFor, siteValue, spreadFor } from '../rules.js';
 import { trickTargetIds } from '../view.js';
 import type {
   Action,
@@ -97,6 +97,11 @@ export interface SmartParams {
   largePlants: boolean;
   /** Repower standard plants to large when it pays off. */
   repower: boolean;
+  /**
+   * Go for big projects (offshore) as soon as they can be financed: count the operating cash flow until the
+   * plant is built, and do not prefer small projects while the financing room covers the big one.
+   */
+  bigProjects: boolean;
 }
 
 export type SmartLevel = 'normal' | 'hard';
@@ -126,6 +131,7 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     detectives: 'basic',
     largePlants: true,
     repower: true,
+    bigProjects: false,
   },
   hard: {
     maxPending: 5,
@@ -151,6 +157,7 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     detectives: 'pro',
     largePlants: true,
     repower: true,
+    bigProjects: true,
   },
 };
 
@@ -211,6 +218,8 @@ class Planner {
   private readonly leasedNow: { x: SiteView; t: PlantType; size: PlantSize }[] = [];
   /** Milestones of this game (squeezed into its length). */
   private readonly hist: HistoricDef[];
+  /** Expected outcomes of the own (automatic) minigames. */
+  private readonly mg: AutoMinigameDef;
 
   constructor(
     private readonly v: PlayerView,
@@ -218,6 +227,7 @@ class Planner {
     private readonly p: SmartParams,
   ) {
     this.me = v.me;
+    this.mg = autoMinigame(v.settings.difficulty, !!v.players[v.me.id]?.human);
     this.cash = v.me.cash;
     this.loan = v.me.loan;
     this.R = ctx.random;
@@ -396,11 +406,11 @@ class Planner {
     }
     if (stage !== 'built') {
       const wind = P.cls === 'wind';
-      capex += c.build + (wind ? (1 - AUTO_MINIGAME.rotor) * c.retry : 0);
-      wait += wind ? 1 - AUTO_MINIGAME.rotor : 0;
+      capex += c.build + (wind ? (1 - this.mg.rotor) * c.retry : 0);
+      wait += wind ? 1 - this.mg.rotor : 0;
     }
-    capex += P.grid / AUTO_MINIGAME.cable;
-    wait += (1 - AUTO_MINIGAME.cable) / AUTO_MINIGAME.cable;
+    capex += P.grid / this.mg.cable;
+    wait += (1 - this.mg.cable) / this.mg.cable;
     const ops = Math.max(0, left - wait);
     const margin = this.quarterRevenue(x, t, 1, size) * 0.97 - this.runningCost(x, t, size); // ~3 % fault losses
     const invested = stage === 'built' ? (x.own?.invested ?? c.build) : c.build;
@@ -443,11 +453,11 @@ class Planner {
     let build = 0;
     let invested = x.own?.invested || c.build;
     if (stage !== 'built') {
-      build = x.fail ? c.retry / AUTO_MINIGAME.rotor : c.build + (wind ? (1 - AUTO_MINIGAME.rotor) * c.retry : 0);
+      build = x.fail ? c.retry / this.mg.rotor : c.build + (wind ? (1 - this.mg.rotor) * c.retry : 0);
       if (!x.fail) invested = c.build;
-      tb += x.fail || wind ? (1 - AUTO_MINIGAME.rotor) / AUTO_MINIGAME.rotor : 0;
+      tb += x.fail || wind ? (1 - this.mg.rotor) / this.mg.rotor : 0;
     }
-    const tc = tb + (1 - AUTO_MINIGAME.cable) / AUTO_MINIGAME.cable + this.gridDelay(x, P.mw, tb);
+    const tc = tb + (1 - this.mg.cable) / this.mg.cable + this.gridDelay(x, P.mw, tb);
     const built = tb < left;
     const connected = tc < left;
     const ops = connected ? left - tc : 0;
@@ -459,7 +469,7 @@ class Planner {
     }
     const waiting = Math.min(left, tc);
     const idle = x.lease * 0.02 * waiting + (built ? P.opex * Math.max(0, waiting - tb) : 0);
-    const capex = spent + (built ? build : 0) + (connected ? P.grid / AUTO_MINIGAME.cable : 0);
+    const capex = spent + (built ? build : 0) + (connected ? P.grid / this.mg.cable : 0);
     const end = siteValue({
       lease: x.lease,
       type: t,
@@ -567,6 +577,26 @@ class Planner {
     }
     for (const n of this.leasedNow) c += this.cost(n.t, n.size).build + this.def(n.t, n.size).grid;
     return c;
+  }
+
+  /** Expected operating cash flow per quarter of the own plants (after running costs and interest). */
+  private cashFlow(): number {
+    let c = -this.loan * this.v.constants.interest;
+    for (const x of this.mine()) {
+      c -= x.lease * 0.02;
+      if (!x.type || !x.built) continue;
+      c -= this.def(x.type, x.size).opex;
+      if (x.grid) c += this.quarterRevenue(x, x.type, x.own?.eff ?? 1, x.size);
+    }
+    return Math.max(0, c);
+  }
+
+  /**
+   * Investment a project is ranked by. With `bigProjects` a large project (offshore) is not ranked below a
+   * small one as long as half of the free financing room covers it: idle money earns nothing.
+   */
+  private rankCapex(capex: number): number {
+    return this.p.bigProjects ? Math.max(capex, 0.5 * Math.max(0, this.freeRoom())) : capex;
   }
 
   /** Financing room that is neither spent nor needed for the projects under way. */
@@ -729,7 +759,10 @@ class Planner {
       .map((x) => ({ x, b: this.bestType(x, 'new') }))
       .filter((s): s is { x: SiteView; b: NonNullable<ReturnType<Planner['bestType']>> } => !!s.b)
       .filter((s) => s.b.value > s.b.capex * this.p.minRoi)
-      .map((s) => ({ ...s, score: (s.b.value / s.b.capex) * this.spreadFactor(s.x.r, this.def(s.b.t, s.b.size).mw) }))
+      .map((s) => ({
+        ...s,
+        score: (s.b.value / this.rankCapex(s.b.capex)) * this.spreadFactor(s.x.r, this.def(s.b.t, s.b.size).mw),
+      }))
       .sort((a, b) => b.score - a.score);
     let leases = 0;
     for (const { x, b } of scored) {
@@ -737,7 +770,8 @@ class Planner {
       if (leases >= lim.leases || pending >= lim.pending) break;
       // the whole project should be financeable within the next quarters
       const room = this.me.creditLimit * this.p.debtRatio - this.loan + this.cash - this.buffer();
-      if (b.capex > room * 1.2) continue;
+      const inflow = this.p.bigProjects ? this.cashFlow() * avgPermitQ(this.def(b.t, b.size)) : 0;
+      if (b.capex > room * 1.2 + inflow) continue;
       const permit = this.def(b.t, b.size).permit;
       if (!this.afford(x.lease + permit)) continue;
       this.spend({ type: 'lease', siteId: x.id }, x.lease);

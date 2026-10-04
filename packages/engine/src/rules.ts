@@ -1,5 +1,7 @@
 /** Rule helpers ported from legacy/src/core.js. All functions are pure or mutate only the given state. */
 import {
+  AUTO_MINIGAME,
+  AUTO_MINIGAME_HARD,
   BUYERS,
   HOURS,
   MIN_CREDIT,
@@ -9,10 +11,25 @@ import {
   SEASON,
   STORE_MARKET_SHARE,
   plantDef,
+  type AutoMinigameDef,
   type PlantDef,
 } from './data.js';
 import { pick, rand, randint, randomOf } from './rng.js';
-import type { GameState, Player, PlantSize, PlantType, PlayerId, RegionKey, Site, TrickType } from './types.js';
+import type {
+  Difficulty,
+  GameState,
+  Player,
+  PlantSize,
+  PlantType,
+  PlayerId,
+  RegionKey,
+  Site,
+  TrickType,
+} from './types.js';
+
+/** Automatic minigame outcomes for a rival (`human` false) or a player with `autoMinigames`. */
+export const autoMinigame = (difficulty: Difficulty | 'easy' | undefined, human: boolean): AutoMinigameDef =>
+  !human && difficulty === 'hard' ? AUTO_MINIGAME_HARD : AUTO_MINIGAME;
 
 export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 

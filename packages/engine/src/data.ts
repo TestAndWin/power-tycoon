@@ -258,14 +258,31 @@ export const DETECTIVES: Record<DetectiveLevel, DetectiveDef> = {
   pro: { cost: 1.5e6, shield: 0.55, catchFailed: 0.85, catchSucceeded: 0.4, catchSpy: 0.55 },
 };
 
-/** Automatic minigame outcomes (rivals always, the player with `autoMinigames`). */
-export const AUTO_MINIGAME = {
-  layout: [0.9, 1.08] as [number, number],
+export interface AutoMinigameDef {
+  /** Range of the layout efficiency. */
+  layout: [number, number];
+  /** Success chances. */
+  rotor: number;
+  cable: number;
+  /** A cable duel against a rival is harder than the solo puzzle. */
+  cableDuel: number;
+  frequency: number;
+}
+/** Automatic minigame outcomes (rivals on `normal`, the player with `autoMinigames`). */
+export const AUTO_MINIGAME: AutoMinigameDef = {
+  layout: [0.9, 1.08],
   rotor: 0.8,
   cable: 0.85,
-  frequency: 0.62,
-  /** A cable duel against a rival is harder than the solo puzzle. */
   cableDuel: 0.55,
+  frequency: 0.62,
+};
+/** Rivals on `hard` play the minigames like a practised player (a good human reaches 1.15 and never fails). */
+export const AUTO_MINIGAME_HARD: AutoMinigameDef = {
+  layout: [1.0, 1.15],
+  rotor: 0.95,
+  cable: 0.95,
+  cableDuel: 0.7,
+  frequency: 0.85,
 };
 
 /**
