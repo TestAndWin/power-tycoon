@@ -37,7 +37,7 @@ import {
   plantTypesFor,
   regionOk,
   repowerCost,
-  repowerInvestment,
+  repowerGridCost,
   repowerMw,
   resetSite,
   retryCost,
@@ -175,6 +175,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       }
       x.type = a.plantType;
       x.size = size;
+      x.permitPaid = cost;
       x.permit = 'pending';
       x.killed = false;
       x.permitLeft = left;
@@ -250,7 +251,8 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
       x.size = 'large';
-      x.invested += repowerInvestment(x.type!, cost);
+      x.invested += cost - repowerGridCost(x.type!);
+      x.gridPaid += repowerGridCost(x.type!);
       x.offline = REPOWER_QUARTERS;
       consumeReserve(g, x.r, pid, repowerMw(x.type!));
       emit(g, out, { type: 'repowered', playerId: pid, siteId: x.id, mw: siteMw(x), cost });

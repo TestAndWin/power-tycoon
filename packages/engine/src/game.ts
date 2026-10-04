@@ -41,6 +41,8 @@ function makeSite(r: Random, k: RegionKey, i: number): Site {
     fault: false,
     curtail: 0,
     invested: 0,
+    permitPaid: 0,
+    gridPaid: 0,
     age: 0,
     surveyed: [],
     wind: null,

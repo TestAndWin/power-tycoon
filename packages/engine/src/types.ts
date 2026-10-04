@@ -27,7 +27,10 @@ export interface Site {
   eff: number;
   fault: boolean;
   curtail: number;
+  /** Book value parts: paid for building (and repowering), for the permit of the current plant, for the grid. */
   invested: number;
+  permitPaid: number;
+  gridPaid: number;
   age: number;
   /** Players that ordered a yield survey of this site. */
   surveyed: PlayerId[];

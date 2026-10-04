@@ -109,6 +109,7 @@ function decidePermits(g: GameState, out: GameEvent[]): void {
           Object.assign(x, {
             type: alt.type,
             size: alt.size,
+            permitPaid: plantDef(alt.type, alt.size).permit,
             permit: 'approved',
             permitLeft: 0,
             killed: false,

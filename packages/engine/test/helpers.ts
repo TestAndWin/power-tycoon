@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import { applyAction, createGame } from '../src/index.js';
+import { applyAction, createGame, plantDef } from '../src/index.js';
 import type { Action, ActionResult, GameState, PlantType, PlayerId, Site } from '../src/index.js';
 
 export const newGame = (seed = 42, autoMinigames = false): GameState =>
@@ -34,11 +34,13 @@ export function setupSite(
   if (stage === 'leased') return x;
   x.type = type ?? (x.r === 'ns' ? 'off' : x.r === 'al' ? 'solar' : 'wind');
   x.permit = 'approved';
+  x.permitPaid = plantDef(x.type, x.size).permit;
   if (stage === 'approved') return x;
   x.built = true;
   x.invested = 10e6;
   if (stage === 'built') return x;
   x.grid = true;
+  x.gridPaid = plantDef(x.type, x.size).grid;
   return x;
 }
 

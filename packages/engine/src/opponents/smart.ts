@@ -32,7 +32,7 @@ import {
   autoMinigame,
   capFactor as siteCapFactor,
   plantTypesFor,
-  repowerInvestment,
+  repowerGridCost,
   repowerMw,
   siteValue,
   spreadFor,
@@ -420,7 +420,8 @@ class Planner {
     const book = siteValue({
       lease: x.lease,
       type: t,
-      size,
+      permitPaid: P.permit,
+      gridPaid: P.grid,
       permit: 'approved',
       built: true,
       invested,
@@ -476,7 +477,8 @@ class Planner {
     const end = siteValue({
       lease: x.lease,
       type: t,
-      size,
+      permitPaid: P.permit,
+      gridPaid: P.grid,
       permit: 'approved',
       built,
       invested: built ? invested : 0,
@@ -716,11 +718,20 @@ class Planner {
       for (let k = 1; k < this.left; k++)
         gain += (this.revenueAt(x, t, 'large', k, eff) - this.revenueAt(x, t, 'std', k, eff)) * 0.97 - opexDiff;
       // book value at the end, as the engine books the repowering
-      const end = { lease: x.lease, type: t, permit: 'approved' as const, built: true, grid: true };
+      const S = plantDef(t, 'std');
+      const end = {
+        lease: x.lease,
+        type: t,
+        permit: 'approved' as const,
+        built: true,
+        grid: true,
+        permitPaid: S.permit,
+      };
       const age = x.own.age + this.left;
+      const extraGrid = repowerGridCost(t);
       const book =
-        siteValue({ ...end, size: 'large', age, invested: x.own.invested + repowerInvestment(t, opt.cost) }) -
-        siteValue({ ...end, size: 'std', age, invested: x.own.invested });
+        siteValue({ ...end, age, invested: x.own.invested + opt.cost - extraGrid, gridPaid: S.grid + extraGrid }) -
+        siteValue({ ...end, age, invested: x.own.invested, gridPaid: S.grid });
       const interest = opt.cost * this.v.constants.interest * Math.min(this.left, 12) * 0.5;
       const value = gain + book - opt.cost - interest;
       if (value < opt.cost * this.p.minRoi * 2) continue;

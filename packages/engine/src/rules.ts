@@ -53,20 +53,11 @@ export const siteDef = (x: { type: PlantType | null; size: PlantSize }): PlantDe
 export const siteMw = (x: { type: PlantType | null; size: PlantSize }): number => (x.type ? siteDef(x).mw : 0);
 /** Extra capacity of a repowered plant (MW). */
 export const repowerMw = (t: PlantType): number => plantDef(t, 'large').mw - PLANTS[t].mw;
+/** The grid part of a repowering price: the bigger connection of the large plant. */
+export const repowerGridCost = (t: PlantType): number => plantDef(t, 'large').grid - PLANTS[t].grid;
 /** Price of repowering a standard plant to large: extra build costs with a surcharge, plus the bigger grid connection. */
 export const repowerCost = (g: GameState, t: PlantType): number =>
-  Math.round(((buildCost(g, t, 'large') - buildCost(g, t, 'std')) * REPOWER_FACTOR) / 1e4) * 1e4 +
-  plantDef(t, 'large').grid -
-  PLANTS[t].grid;
-/**
- * The part of a repowering price that is booked as investment: `siteValue` counts the large plant's grid
- * connection and permit on its own, and the permit difference was never paid.
- */
-export const repowerInvestment = (t: PlantType, cost: number): number => {
-  const S = PLANTS[t],
-    L = plantDef(t, 'large');
-  return cost - (L.grid - S.grid) - (L.permit - S.permit);
-};
+  Math.round(((buildCost(g, t, 'large') - buildCost(g, t, 'std')) * REPOWER_FACTOR) / 1e4) * 1e4 + repowerGridCost(t);
 export const surveyCost = (x: Site): number => (x.r === 'ns' ? 0.3e6 : 0.05e6);
 
 /** Owned, built and connected (a fault only pauses production). Works on sites and site views. */
@@ -178,13 +169,17 @@ export function consumeReserve(g: GameState, r: RegionKey, pid: PlayerId, mw: nu
   g.res = g.res.filter((o) => o.mw > 0);
 }
 
-export type ValuedSite = Pick<Site, 'lease' | 'type' | 'permit' | 'built' | 'invested' | 'age' | 'grid' | 'size'>;
+export type ValuedSite = Pick<
+  Site,
+  'lease' | 'type' | 'permit' | 'built' | 'invested' | 'permitPaid' | 'gridPaid' | 'age' | 'grid'
+>;
 
+/** Book value of a site from what was paid for it: lease, permit, plant (depreciated) and grid connection. */
 export function siteValue(x: ValuedSite): number {
   let v = x.lease * 0.6;
-  if (x.type && (x.permit === 'approved' || x.built)) v += siteDef(x).permit;
+  if (x.type && (x.permit === 'approved' || x.built)) v += x.permitPaid;
   if (x.built) v += x.invested * Math.max(0.35, 1 - x.age / 100);
-  if (x.grid && x.type) v += siteDef(x).grid * 0.8;
+  if (x.grid && x.type) v += x.gridPaid * 0.8;
   return v;
 }
 export const sellValue = (x: ValuedSite): number => Math.round(siteValue(x) * 0.85);
@@ -220,6 +215,8 @@ export function resetSite(x: Site): void {
     fault: false,
     curtail: 0,
     invested: 0,
+    permitPaid: 0,
+    gridPaid: 0,
     age: 0,
     killed: false,
     alt: null,

@@ -100,6 +100,7 @@ export function resolveChallenge(g: GameState, ch: OpenChallenge, outcome: numbe
       }
       if (ok) {
         x.grid = true;
+        x.gridPaid = cost;
         consumeReserve(g, x.r, pid, mw);
         emit(g, out, { type: 'gridConnected', playerId: pid, siteId: x.id, mw, cost });
       } else if (!ch.rival) emit(g, out, { type: 'gridConnectFailed', playerId: pid, siteId: x.id, cost });

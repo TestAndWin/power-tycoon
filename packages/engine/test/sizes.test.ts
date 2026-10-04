@@ -77,9 +77,15 @@ describe('repowering', () => {
     expect(r.events[0]).toMatchObject({ type: 'repowered', mw: PLANTS.wind.mw + extra, cost: opt.cost });
     const y = site(r.state, 'nd0');
     const L = plantDef('wind', 'large');
-    // grid and permit of the large plant are booked by `siteValue`, not as investment
-    const invested = x.invested + opt.cost - (L.grid - PLANTS.wind.grid) - (L.permit - PLANTS.wind.permit);
-    expect(y).toMatchObject({ size: 'large', offline: 1, invested });
+    // the bigger grid connection is booked with the grid, the rest as investment; the permit stays as paid
+    const extraGrid = L.grid - PLANTS.wind.grid;
+    expect(y).toMatchObject({
+      size: 'large',
+      offline: 1,
+      invested: x.invested + opt.cost - extraGrid,
+      gridPaid: PLANTS.wind.grid + extraGrid,
+      permitPaid: PLANTS.wind.permit,
+    });
     // the net worth does not grow by more than the money spent
     expect(worth(r.state, r.state.players[0]!)).toBeLessThanOrEqual(worth(g, g.players[0]!));
     expect(playerView(r.state, 0).grid.nd.used).toBe(PLANTS.wind.mw + extra);
