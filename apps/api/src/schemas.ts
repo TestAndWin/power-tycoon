@@ -1,5 +1,13 @@
 import { Type } from 'typebox';
-import { DIFFICULTY_KEYS, PLANT_TYPE_KEYS, REGION_KEYS, TRICK_KEYS } from '@power-tycoon/engine';
+import {
+  DETECTIVE_KEYS,
+  DIFFICULTY_KEYS,
+  GAME_YEAR_OPTIONS,
+  PLANT_SIZE_KEYS,
+  PLANT_TYPE_KEYS,
+  REGION_KEYS,
+  TRICK_KEYS,
+} from '@power-tycoon/engine';
 
 /** One of the given string literals (the lists come from the engine). */
 const oneOf = <K extends string>(keys: readonly K[]) => Type.Union(keys.map((k) => Type.Literal(k)));
@@ -11,10 +19,16 @@ const Money = Type.Integer({ minimum: 1, maximum: 1e10 });
 export const ActionSchema = Type.Union([
   site('survey'),
   site('lease'),
-  Type.Object({ type: Type.Literal('applyPermit'), siteId: SiteId, plantType: oneOf(PLANT_TYPE_KEYS) }),
+  Type.Object({
+    type: Type.Literal('applyPermit'),
+    siteId: SiteId,
+    plantType: oneOf(PLANT_TYPE_KEYS),
+    size: Type.Optional(oneOf(PLANT_SIZE_KEYS)),
+  }),
   site('changePlantType'),
   site('build'),
   site('connectGrid'),
+  site('repower'),
   site('repairSelf'),
   site('repairService'),
   site('sellSite'),
@@ -23,6 +37,8 @@ export const ActionSchema = Type.Union([
   Type.Object({ type: Type.Literal('borrow'), amount: Money }),
   Type.Object({ type: Type.Literal('repay'), amount: Type.Union([Money, Type.Literal('all')]) }),
   Type.Object({ type: Type.Literal('lobby'), trick: oneOf(TRICK_KEYS), siteId: SiteId }),
+  Type.Object({ type: Type.Literal('spy'), targetId: Type.Integer({ minimum: 0, maximum: 3 }) }),
+  Type.Object({ type: Type.Literal('hireDetectives'), level: oneOf(DETECTIVE_KEYS) }),
   Type.Object({
     type: Type.Literal('minigameResult'),
     challengeId: Type.Integer({ minimum: 0 }),
@@ -34,6 +50,7 @@ export const CreateGameBody = Type.Object({
   companyName: Type.String({ maxLength: 40 }),
   autoMinigames: Type.Boolean(),
   difficulty: Type.Optional(oneOf(DIFFICULTY_KEYS)),
+  years: Type.Optional(Type.Union(GAME_YEAR_OPTIONS.map((y) => Type.Literal(y)))),
 });
 
 export const ActionBody = Type.Object({ action: ActionSchema });

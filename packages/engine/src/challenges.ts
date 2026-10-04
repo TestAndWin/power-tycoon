@@ -2,10 +2,10 @@
  * Skill minigames ("challenges") inside building, connecting and repairing. A human player
  * plays them in the browser; rivals and players with `autoMinigames` get a random outcome.
  */
-import { AUTO_MINIGAME, LAYOUT_RANGE, PLANTS, SELF_REPAIR_COST } from './data.js';
+import { AUTO_MINIGAME, DUEL_REFUND, DUEL_RESERVE_QUARTERS, LAYOUT_RANGE, PLANTS, SELF_REPAIR_COST } from './data.js';
 import { emit } from './events.js';
 import { clamp, nextUint, rand, randomOf } from './rng.js';
-import { consumeReserve, siteById } from './rules.js';
+import { consumeReserve, freeGrid, siteById, siteDef, siteMw } from './rules.js';
 import type {
   Challenge,
   ChallengeKind,
@@ -33,8 +33,10 @@ export function startChallenge(
   x: Site,
   step: ChallengeStep,
   out: GameEvent[],
+  rival?: OpenChallenge['rival'],
 ): void {
   const ch: OpenChallenge = { id: g.nextId++, kind, siteId: x.id, seed: nextUint(g), playerId: pid, step };
+  if (rival) ch.rival = rival;
   if (autoResolves(g, pid)) resolveChallenge(g, ch, autoOutcome(g, kind), out);
   else g.challenge = ch;
 }
@@ -69,13 +71,27 @@ export function resolveChallenge(g: GameState, ch: OpenChallenge, outcome: numbe
       else emit(g, out, { type: 'assemblyFailed', playerId: pid, siteId: x.id });
       break;
     case 'connect': {
-      const mw = PLANTS[x.type!].mw;
-      const cost = PLANTS[x.type!].grid;
+      const mw = siteMw(x);
+      const cost = siteDef(x).grid;
+      if (ch.rival) {
+        const reservedMw = ok ? 0 : duelLost(g, ch.rival.playerId, x);
+        const refund = ok ? 0 : Math.round(cost * DUEL_REFUND);
+        g.players[pid]!.cash += refund;
+        emit(g, out, {
+          type: 'gridDuel',
+          playerId: pid,
+          rivalId: ch.rival.playerId,
+          siteId: x.id,
+          won: ok,
+          refund,
+          reservedMw,
+        });
+      }
       if (ok) {
         x.grid = true;
         consumeReserve(g, x.r, pid, mw);
         emit(g, out, { type: 'gridConnected', playerId: pid, siteId: x.id, mw, cost });
-      } else emit(g, out, { type: 'gridConnectFailed', playerId: pid, siteId: x.id, cost });
+      } else if (!ch.rival) emit(g, out, { type: 'gridConnectFailed', playerId: pid, siteId: x.id, cost });
       break;
     }
     case 'repair':
@@ -87,6 +103,23 @@ export function resolveChallenge(g: GameState, ch: OpenChallenge, outcome: numbe
   }
 }
 
+/**
+ * The rival won the cable duel for the region of `x`: it secures capacity for its own project waiting for the
+ * grid there (as a short reservation). Returns the reserved MW (0 if it has no such project).
+ */
+function duelLost(g: GameState, rival: PlayerId, x: Site): number {
+  const need = g.sites
+    .filter((y) => y.r === x.r && y.owner === rival && y.type && !y.grid && (y.built || y.permit === 'approved'))
+    .reduce((s, y) => s + siteMw(y), 0);
+  const have = g.res.filter((o) => o.r === x.r && o.pid === rival).reduce((s, o) => s + o.mw, 0);
+  const mw = Math.min(need - have, freeGrid(g, x.r, rival));
+  if (mw <= 0) return 0;
+  g.res.push({ pid: rival, r: x.r, mw, left: DUEL_RESERVE_QUARTERS });
+  return mw;
+}
+
 /** The part of an open challenge the client may see. */
 export const publicChallenge = (ch: OpenChallenge | null): Challenge | null =>
-  ch ? { id: ch.id, kind: ch.kind, siteId: ch.siteId, seed: ch.seed } : null;
+  ch
+    ? { id: ch.id, kind: ch.kind, siteId: ch.siteId, seed: ch.seed, ...(ch.rival ? { rival: { ...ch.rival } } : {}) }
+    : null;

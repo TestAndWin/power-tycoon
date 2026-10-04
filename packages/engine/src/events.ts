@@ -13,10 +13,14 @@ function isNews(g: GameState, e: GameEvent): boolean {
     case 'gridReserved':
       return true;
     case 'trickFailed':
+    case 'spied':
       return e.caught;
+    case 'gridDuel':
+      return human(e.playerId) || human(e.rivalId);
     case 'siteLeased':
       return human(e.playerId) || e.amount >= 1.5e6;
     case 'plantBuilt':
+    case 'repowered':
     case 'gridConnected':
     case 'siteSold':
     case 'contractAccepted':
@@ -42,7 +46,11 @@ export function eventForViewer(e: GameEvent, viewer: PlayerId): GameEvent | null
     case 'loanTaken':
     case 'loanRepaid':
     case 'actionRejected':
+    case 'detectivesHired':
+    case 'detectivesExpired':
       return e.playerId === viewer ? e : null;
+    case 'spied':
+      return e.playerId === viewer || e.caught ? e : null;
     case 'permitApplied':
       if (e.playerId === viewer) return e;
       return { ...e, quarters: undefined };
@@ -68,6 +76,10 @@ export function concerns(e: GameEvent, pid: PlayerId): boolean {
     case 'trickSucceeded':
     case 'trickFailed':
       return e.targetId === pid;
+    case 'spied':
+      return e.playerId === pid || (e.targetId === pid && e.caught);
+    case 'gridDuel':
+      return e.playerId === pid || e.rivalId === pid;
     default:
       return 'playerId' in e && e.playerId === pid;
   }

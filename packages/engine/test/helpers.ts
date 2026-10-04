@@ -41,3 +41,11 @@ export function setupSite(
   x.grid = true;
   return x;
 }
+
+/** Gives player `pid` a valid spy report on each of `targets` (needed for lobby tricks). */
+export function giveIntel(g: GameState, pid: PlayerId, ...targets: PlayerId[]): GameState {
+  const p = g.players[pid]!;
+  p.intel = { ...p.intel };
+  for (const t of targets) p.intel[t] = g.turn + 3;
+  return g;
+}

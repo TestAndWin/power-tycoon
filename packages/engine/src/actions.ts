@@ -5,32 +5,48 @@
  * Rivals go through exactly the same code.
  */
 import {
+  DETECTIVE_QUARTERS,
+  DETECTIVES,
+  DUEL_PACE,
+  DUEL_SCARCITY,
   MAX_CONTRACTS,
   MAX_TRICKS,
+  PLANT_SIZE_KEYS,
   PLANTS,
+  plantDef,
+  REPOWER_QUARTERS,
   RESERVE_COST,
   RESERVE_MW,
   RESERVE_QUARTERS,
   SELF_REPAIR_COST,
+  SPY_COST,
+  SPY_QUARTERS,
   TRICK_CAUGHT,
   TRICK_SUSPECTED,
   TRICKS,
 } from './data.js';
 import { finishBuild, publicChallenge, resolveChallenge, startChallenge } from './challenges.js';
 import { emit } from './events.js';
-import { randint, randomOf } from './rng.js';
+import { pick, randint, randomOf } from './rng.js';
 import {
   buildCost,
   clone,
+  consumeReserve,
   creditLimit,
+  detectivesOf,
   freeGrid,
+  hasIntel,
   plantTypesFor,
   regionOk,
+  repowerCost,
   resetSite,
   retryCost,
   sellValue,
   serviceCost,
   siteById,
+  siteDef,
+  siteMw,
+  sizeOf,
   surveyCost,
   trickTargets,
 } from './rules.js';
@@ -41,6 +57,8 @@ import type {
   ErrorCode,
   GameEvent,
   GameState,
+  PlantSize,
+  PlantType,
   Player,
   PlayerId,
   Site,
@@ -75,6 +93,21 @@ const freeSite = (c: { x: Site }): ErrorCode | null => (c.x.owner >= 0 ? 'siteTa
 const isAmount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0;
 const repayAmount = (p: Player, amount: number | 'all'): number =>
   amount === 'all' ? p.loan : Math.min(amount, p.loan);
+/** Another player that is still in the game. */
+const rivalOk = (g: GameState, pid: PlayerId, target: unknown): target is PlayerId =>
+  typeof target === 'number' && target !== pid && !!g.players[target] && !g.players[target]!.out;
+
+/**
+ * The rival that races player `pid` for the grid connection of `x`: only when the free capacity is scarce,
+ * one of the other players with a site in the region (those with a project waiting for the grid first).
+ */
+function duelRival(g: GameState, pid: PlayerId, x: Site): PlayerId | null {
+  if (freeGrid(g, x.r, pid) >= DUEL_SCARCITY * siteMw(x)) return null;
+  const here = g.sites.filter((y) => y.r === x.r && y.owner >= 0 && y.owner !== pid && !g.players[y.owner]!.out);
+  const waiting = here.filter((y) => y.type && !y.grid && (y.built || y.permit === 'approved'));
+  const ids = [...new Set((waiting.length ? waiting : here).map((y) => y.owner))].sort((a, b) => a - b);
+  return ids.length ? pick(randomOf(g), ids) : null;
+}
 
 function applyTrick(g: GameState, type: TrickType, x: Site): void {
   const r = randomOf(g);
@@ -117,19 +150,23 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       const err = ownSite(c);
       if (err) return err;
       if (!plantTypesFor(x).includes(a.plantType)) return 'invalidPlantType';
+      if (a.size !== undefined && !PLANT_SIZE_KEYS.includes(a.size)) return 'invalidPlantType';
+      const size = a.size ?? 'std';
       if (!x.type) return null;
       if (x.permit === 'rejected') return x.type !== a.plantType ? 'invalidPlantType' : null;
       // change of mind: a running application is replaced, an approved permit stays until the new one is decided
       if (x.built) return 'invalidState';
-      if (x.type === a.plantType || x.alt?.type === a.plantType) return 'invalidState';
+      const same = (t: PlantType | undefined, s: PlantSize | undefined) => t === a.plantType && (s ?? 'std') === size;
+      if (same(x.type, x.size) || (x.alt && same(x.alt.type, x.alt.size))) return 'invalidState';
       return null;
     },
-    price: (c) => PLANTS[c.a.plantType].permit,
+    price: (c) => plantDef(c.a.plantType, c.a.size).permit,
     execute({ g, p, pid, x, a }, cost, out) {
       p.cash -= cost;
-      const left = randint(randomOf(g), ...PLANTS[a.plantType].permitQ);
+      const size = a.size ?? 'std';
+      const left = randint(randomOf(g), ...plantDef(a.plantType, size).permitQ);
       if (x.type && x.permit === 'approved') {
-        x.alt = { type: a.plantType, left };
+        x.alt = { type: a.plantType, left, size };
         emit(g, out, {
           type: 'permitApplied',
           playerId: pid,
@@ -137,10 +174,12 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
           plantType: a.plantType,
           cost,
           quarters: left,
+          size,
         });
         return;
       }
       x.type = a.plantType;
+      x.size = size;
       x.permit = 'pending';
       x.killed = false;
       x.permitLeft = left;
@@ -151,6 +190,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
         plantType: a.plantType,
         cost,
         quarters: x.permitLeft,
+        size,
       });
     },
   },
@@ -167,7 +207,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
   build: {
     site: true,
     validate: (c) => ownSite(c) ?? (c.x.permit !== 'approved' || c.x.built ? 'invalidState' : null),
-    price: ({ g, x }) => (x.fail ? retryCost(g, x.type!) : buildCost(g, x.type!)),
+    price: ({ g, x }) => (x.fail ? retryCost(g, x.type!, sizeOf(x)) : buildCost(g, x.type!, sizeOf(x))),
     execute({ g, p, pid, x }, cost, out) {
       const t = x.type!;
       p.cash -= cost;
@@ -189,13 +229,38 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       const err = ownSite(c);
       if (err) return err;
       if (!x.built || x.grid) return 'invalidState';
-      if (freeGrid(g, x.r, pid) < PLANTS[x.type!].mw) return 'noGridCapacity';
+      if (freeGrid(g, x.r, pid) < siteMw(x)) return 'noGridCapacity';
       return null;
     },
-    price: (c) => PLANTS[c.x.type!].grid,
+    price: (c) => siteDef(c.x).grid,
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
-      startChallenge(g, pid, 'cable', x, 'connect', out);
+      const rival = duelRival(g, pid, x);
+      if (rival === null) return startChallenge(g, pid, 'cable', x, 'connect', out);
+      const pace = DUEL_PACE[g.settings.difficulty === 'hard' ? 'hard' : 'normal'];
+      startChallenge(g, pid, 'cableDuel', x, 'connect', out, { playerId: rival, pace });
+    },
+  },
+  repower: {
+    site: true,
+    validate(c) {
+      const { g, pid, x } = c;
+      const err = ownSite(c);
+      if (err) return err;
+      if (!x.type || !x.built || !x.grid || sizeOf(x) !== 'std' || x.fault || (x.offline ?? 0) > 0)
+        return 'invalidState';
+      if (freeGrid(g, x.r, pid) < plantDef(x.type, 'large').mw - plantDef(x.type).mw) return 'noGridCapacity';
+      return null;
+    },
+    price: (c) => repowerCost(c.g, c.x.type!),
+    execute({ g, p, pid, x }, cost, out) {
+      p.cash -= cost;
+      const extra = plantDef(x.type!, 'large').mw - siteMw(x);
+      x.size = 'large';
+      x.invested += cost;
+      x.offline = REPOWER_QUARTERS;
+      consumeReserve(g, x.r, pid, extra);
+      emit(g, out, { type: 'repowered', playerId: pid, siteId: x.id, mw: siteMw(x), cost });
     },
   },
   repairSelf: {
@@ -210,7 +275,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
   repairService: {
     site: true,
     validate: (c) => ownSite(c) ?? (!c.x.fault || !c.x.grid ? 'invalidState' : null),
-    price: (c) => serviceCost(c.x.type!),
+    price: (c) => serviceCost(c.x.type!, sizeOf(c.x)),
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
       x.fault = false;
@@ -296,6 +361,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     validate({ g, pid, p, a, x }) {
       if (!(a.trick in TRICKS)) return 'unknownTrick';
       if (!trickTargets(g, a.trick, pid).includes(x)) return 'invalidTarget';
+      if (!hasIntel(g, pid, x.owner)) return 'noSpyReport';
       return p.trickUsed >= MAX_TRICKS ? 'trickLimit' : null;
     },
     price: (c) => TRICKS[c.a.trick].cost,
@@ -305,23 +371,62 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       p.cash -= cost;
       p.trickUsed++;
       const targetId = x.owner as PlayerId;
-      if (r() < T.chance) {
+      const target = g.players[targetId]!;
+      const det = detectivesOf(target);
+      const D = det ? DETECTIVES[det.level] : null;
+      // a caught actor pays the fine to the state and damages to the target (court)
+      const court = (caught: boolean) => {
+        if (!caught) return { caught, fine: 0, damages: 0 };
+        p.cash -= T.fine + T.damages;
+        target.cash += T.damages;
+        return { caught, fine: T.fine, damages: T.damages };
+      };
+      if (r() < T.chance * (D?.shield ?? 1)) {
         applyTrick(g, a.trick, x);
-        const suspected = r() < TRICK_SUSPECTED;
-        emit(g, out, { type: 'trickSucceeded', actorId: pid, targetId, trick: a.trick, siteId: x.id, suspected });
-      } else {
-        const caught = T.fine > 0 && r() < TRICK_CAUGHT;
-        if (caught) p.cash -= T.fine;
+        const verdict = court(T.fine > 0 && !!D && r() < D.catchSucceeded);
+        const suspected = verdict.caught || r() < TRICK_SUSPECTED;
         emit(g, out, {
-          type: 'trickFailed',
+          type: 'trickSucceeded',
           actorId: pid,
           targetId,
           trick: a.trick,
           siteId: x.id,
-          caught,
-          fine: caught ? T.fine : 0,
+          suspected,
+          ...(verdict.caught ? verdict : {}),
         });
+      } else {
+        const verdict = court(T.fine > 0 && r() < (D?.catchFailed ?? TRICK_CAUGHT));
+        emit(g, out, { type: 'trickFailed', actorId: pid, targetId, trick: a.trick, siteId: x.id, ...verdict });
       }
+    },
+  },
+  spy: {
+    validate({ g, pid, a }) {
+      if (!rivalOk(g, pid, a.targetId)) return 'invalidTarget';
+      return hasIntel(g, pid, a.targetId) ? 'invalidState' : null;
+    },
+    price: () => SPY_COST,
+    execute({ g, p, pid, a }, cost, out) {
+      p.cash -= cost;
+      const det = detectivesOf(g.players[a.targetId]!);
+      const caught = !!det && randomOf(g)() < DETECTIVES[det.level].catchSpy;
+      const until = g.turn + SPY_QUARTERS - 1;
+      if (!caught) p.intel = { ...p.intel, [a.targetId]: until };
+      emit(g, out, { type: 'spied', playerId: pid, targetId: a.targetId, cost, caught, until: caught ? -1 : until });
+    },
+  },
+  hireDetectives: {
+    validate({ p, a }) {
+      if (!Object.hasOwn(DETECTIVES, a.level)) return 'invalidState';
+      const det = detectivesOf(p);
+      // an upgrade to the better agency is allowed at any time
+      return det && (det.level === 'pro' || a.level === 'basic') ? 'detectivesActive' : null;
+    },
+    price: (c) => DETECTIVES[c.a.level].cost,
+    execute({ g, p, pid, a }, cost, out) {
+      p.cash -= cost;
+      p.detectives = { level: a.level, left: DETECTIVE_QUARTERS };
+      emit(g, out, { type: 'detectivesHired', playerId: pid, level: a.level, quarters: DETECTIVE_QUARTERS, cost });
     },
   },
   minigameResult: {
@@ -347,6 +452,8 @@ const BLOCKING = new Set<ErrorCode>([
   'creditLimit',
   'contractLimit',
   'trickLimit',
+  'noSpyReport',
+  'detectivesActive',
 ]);
 export const isBlocking = (e: ErrorCode): boolean => BLOCKING.has(e);
 

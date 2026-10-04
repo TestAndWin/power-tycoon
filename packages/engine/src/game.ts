@@ -1,5 +1,6 @@
 import {
   AI_DEF,
+  GAME_YEAR_OPTIONS,
   GAME_YEARS,
   PRICE_SEASON,
   REGION_KEYS,
@@ -19,6 +20,8 @@ export interface CreateGameOptions {
   seed: number;
   /** Strength of the rivals, default `normal`. */
   difficulty?: Difficulty;
+  /** Game length in years (one of `GAME_YEAR_OPTIONS`), default `GAME_YEARS`. */
+  years?: number;
 }
 
 function makeSite(r: Random, k: RegionKey, i: number): Site {
@@ -46,6 +49,8 @@ function makeSite(r: Random, k: RegionKey, i: number): Site {
     lease: 0,
     killed: false,
     alt: null,
+    size: 'std',
+    offline: 0,
   };
   s.wind = R.wind ? Math.round(rand(r, R.wind[0], R.wind[1]) * 10) / 10 : null;
   s.sun = R.sun ? Math.round(rand(r, R.sun[0], R.sun[1]) / 10) * 10 : null;
@@ -71,12 +76,15 @@ function mkPlayer(id: PlayerId, name: string, human: boolean): Player {
     co2: 0,
     contracts: [],
     trickUsed: 0,
+    intel: {},
+    detectives: null,
   };
 }
 
 /** Creates a new game. Port of legacy `newGame()`. */
 export function createGame(opts: CreateGameOptions): GameState {
   const name = opts.companyName.trim().slice(0, 40) || 'Mein Konzern';
+  const years = GAME_YEAR_OPTIONS.includes(opts.years ?? GAME_YEARS) ? (opts.years ?? GAME_YEARS) : GAME_YEARS;
   const players = [mkPlayer(0, name, true), ...AI_DEF.map((a, i) => mkPlayer(i + 1, a.name, false))];
   const g: GameState = {
     v: 1,
@@ -85,7 +93,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     year: START_YEAR,
     q: 0,
     startYear: START_YEAR,
-    endYear: START_YEAR + GAME_YEARS,
+    endYear: START_YEAR + years,
     turn: 0,
     players,
     sites: [],

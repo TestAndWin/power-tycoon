@@ -1,5 +1,5 @@
 import { checkAction, isBlocking } from './actions.js';
-import { PLANT_TYPE_KEYS, REGION_KEYS, TRICK_KEYS } from './data.js';
+import { DETECTIVE_KEYS, PLANT_SIZE_KEYS, PLANT_TYPE_KEYS, REGION_KEYS, TRICK_KEYS } from './data.js';
 import { creditLimit } from './rules.js';
 import type { Action, ActionOption, GameState, PlayerId } from './types.js';
 
@@ -21,17 +21,21 @@ function candidates(g: GameState, pid: PlayerId): Action[] {
       for (const trick of TRICK_KEYS) c.push({ type: 'lobby', trick, siteId });
       continue;
     }
-    for (const plantType of PLANT_TYPE_KEYS) c.push({ type: 'applyPermit', siteId, plantType });
+    for (const plantType of PLANT_TYPE_KEYS)
+      for (const size of PLANT_SIZE_KEYS) c.push({ type: 'applyPermit', siteId, plantType, size });
     c.push(
       { type: 'changePlantType', siteId },
       { type: 'build', siteId },
       { type: 'connectGrid', siteId },
+      { type: 'repower', siteId },
       { type: 'repairSelf', siteId },
       { type: 'repairService', siteId },
       { type: 'sellSite', siteId },
     );
   }
   for (const region of REGION_KEYS) c.push({ type: 'reserveGrid', region });
+  for (const q of g.players) if (q.id !== pid) c.push({ type: 'spy', targetId: q.id });
+  for (const level of DETECTIVE_KEYS) c.push({ type: 'hireDetectives', level });
   for (const o of g.offers) c.push({ type: 'acceptContract', offerId: o.id });
   const room = Math.floor((creditLimit(g, p) - p.loan) / 1e6) * 1e6;
   for (const amount of new Set([5e6, 20e6, 50e6, room])) if (amount > 0) c.push({ type: 'borrow', amount });

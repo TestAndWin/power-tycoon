@@ -6,7 +6,7 @@
  * `--rivals mixed` (default): seats 1–3 get normal / hard, rotated over the games so that
  * the regional preferences of the rivals do not favour one strategy. `--rivals hard` etc. gives all
  * three rivals the same strategy. Seat 0 (the "human") is played by `--seat0`
- * (normal | hard | idle) with automatic minigames.
+ * (normal | hard | idle) with automatic minigames. `--years 3|5|10` sets the game length (default 10).
  */
 import { createGame, endQuarter, opponentFor, playTurn, playerView, type OpponentStrategy } from '../src/index.js';
 
@@ -22,6 +22,7 @@ const games = Number(arg('games', '100'));
 const seed0 = Number(arg('seed', '1000'));
 const seat0 = arg('seat0', 'normal') as Name | 'idle';
 const rivalsArg = arg('rivals', 'mixed') as Name | 'mixed';
+const years = Number(arg('years', '10'));
 
 interface Stat {
   worth: number;
@@ -41,7 +42,7 @@ const add = (k: string, worth: number, win: boolean, out: boolean) => {
 
 const t0 = performance.now();
 for (let i = 0; i < games; i++) {
-  let g = createGame({ companyName: 'Sim', autoMinigames: true, seed: seed0 + i });
+  let g = createGame({ companyName: 'Sim', autoMinigames: true, seed: seed0 + i, years });
   const names: Name[] = [0, 1, 2].map((k) => (rivalsArg === 'mixed' ? STRATS[(i + k) % 2]! : rivalsArg));
   const rivals: OpponentStrategy[] = names.map((n) => opponentFor(n));
   const human = seat0 === 'idle' ? null : opponentFor(seat0);
@@ -58,7 +59,7 @@ for (let i = 0; i < games; i++) {
 
 const fmt = (x: number) => (x / 1e6).toFixed(1).padStart(8) + ' M€';
 console.log(
-  `${games} games, rivals ${rivalsArg}, seeds ${seed0}…${seed0 + games - 1}, ${((performance.now() - t0) / 1000).toFixed(1)} s\n`,
+  `${games} games of ${years} years, rivals ${rivalsArg}, seeds ${seed0}…${seed0 + games - 1}, ${((performance.now() - t0) / 1000).toFixed(1)} s\n`,
 );
 console.log('strategy        avg worth   wins   bankrupt');
 for (const [k, s] of stats)

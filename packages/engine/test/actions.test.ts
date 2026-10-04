@@ -12,7 +12,7 @@ import {
   type GameState,
   type OpponentStrategy,
 } from '../src/index.js';
-import { fails, newGame, ok, setupSite, site } from './helpers.js';
+import { fails, giveIntel, newGame, ok, setupSite, site } from './helpers.js';
 
 const idle: OpponentStrategy = { decide: async () => [] };
 const idleRivals = [idle, idle, idle];
@@ -313,6 +313,8 @@ describe('lobby tricks', () => {
     const g = newGame();
     setupSite(g, 'nd0', 1, 'operating', 'wind');
     setupSite(g, 'nd1', 2, 'approved', 'wind');
+    giveIntel(g, 0, 1, 2);
+    giveIntel(g, 3, 0, 2);
     return g;
   };
   it('validates targets and the per-quarter limit for every player', () => {
@@ -334,7 +336,7 @@ describe('lobby tricks', () => {
     let succeeded = 0;
     let failed = 0;
     for (let seed = 1; seed <= 60; seed++) {
-      const g = newGame(seed);
+      const g = giveIntel(newGame(seed), 0, 1);
       setupSite(g, 'nd0', 1, 'operating', 'wind');
       const r = ok(g, { type: 'lobby', trick: 'bi', siteId: 'nd0' });
       const e = r.events[0]!;
@@ -345,7 +347,9 @@ describe('lobby tricks', () => {
         expect(seen).toMatchObject({ actorId: e.suspected ? 0 : null, targetId: 1 });
       } else if (e.type === 'trickFailed') {
         failed++;
-        expect(r.state.players[0]!.cash).toBe(30e6 - 0.4e6 - (e.caught ? 1.5e6 : 0));
+        // caught: fine to the state, damages to the target
+        expect(r.state.players[0]!.cash).toBe(30e6 - 0.4e6 - (e.caught ? 1.5e6 + 1e6 : 0));
+        expect(r.state.players[1]!.cash).toBe(30e6 + (e.caught ? 1e6 : 0));
         const seen = playerView(r.state, 1).news.find((n) => n.event.type === 'trickFailed');
         expect(!!seen).toBe(e.caught);
       }
@@ -387,18 +391,19 @@ describe('general validation', () => {
     expect(validateAction(newGame(), 0, { type: 'fly' } as never)).toBe('unknownAction');
   });
   it('legalActions only contains valid actions', () => {
-    const g = newGame();
+    const g = giveIntel(newGame(), 0, 1);
     setupSite(g, 'nd0', 0, 'leased');
     setupSite(g, 'nd1', 1, 'operating');
     const legal = legalActions(g, 0);
     expect(legal.every((a) => validateAction(g, 0, a) === null)).toBe(true);
-    expect(legal).toContainEqual({ type: 'applyPermit', siteId: 'nd0', plantType: 'wind' });
+    expect(legal).toContainEqual({ type: 'applyPermit', siteId: 'nd0', plantType: 'wind', size: 'std' });
+    expect(legal).toContainEqual({ type: 'applyPermit', siteId: 'nd0', plantType: 'wind', size: 'large' });
     expect(legal).toContainEqual({ type: 'lobby', trick: 'hack', siteId: 'nd1' });
     expect(legal).toContainEqual({ type: 'borrow', amount: 20e6 });
-    expect(legal).not.toContainEqual({ type: 'applyPermit', siteId: 'nd0', plantType: 'off' });
+    expect(legal).not.toContainEqual({ type: 'applyPermit', siteId: 'nd0', plantType: 'off', size: 'std' });
   });
   it('a lobby trick on a non-target is invalidTarget even after the quarterly limit', () => {
-    const g = newGame();
+    const g = giveIntel(newGame(), 0, 2);
     setupSite(g, 'nd1', 2, 'approved', 'wind');
     g.players[0]!.trickUsed = 2;
     fails(g, { type: 'lobby', trick: 'bi', siteId: 'nd1' }, 'invalidTarget');
@@ -423,7 +428,17 @@ describe('action options in the player view', () => {
     expect(o).toContainEqual({ action: { type: 'sellSite', siteId: 'nd0' }, cost: 0, error: null });
     // already built: no permit or build options
     expect(o.some((x) => x.action.type === 'build' && x.action.siteId === 'nd0')).toBe(false);
-    expect(o).toContainEqual({ action: { type: 'lobby', trick: 'klage', siteId: 'nd1' }, cost: 0.5e6, error: null });
+    // without a spy report the trick is shown, but blocked
+    expect(o).toContainEqual({
+      action: { type: 'lobby', trick: 'klage', siteId: 'nd1' },
+      cost: 0.5e6,
+      error: 'noSpyReport',
+    });
+    expect(opts(giveIntel(g, 0, 1))).toContainEqual({
+      action: { type: 'lobby', trick: 'klage', siteId: 'nd1' },
+      cost: 0.5e6,
+      error: null,
+    });
     expect(o.some((x) => x.action.type === 'lobby' && x.action.trick === 'bi' && x.action.siteId === 'nd1')).toBe(
       false,
     );
@@ -444,7 +459,7 @@ describe('action options in the player view', () => {
     setupSite(g, slope.id, 0, 'leased');
     const types = (id: string) =>
       optionsOf(playerView(g, 0), 'applyPermit')
-        .filter((o) => o.action.siteId === id)
+        .filter((o) => o.action.siteId === id && o.action.size === 'std')
         .map((o) => o.action.plantType);
     expect(types(flat.id)).toEqual(['solar', 'batt']);
     expect(types(slope.id)).toEqual(['solar', 'batt', 'hydro', 'pump']);

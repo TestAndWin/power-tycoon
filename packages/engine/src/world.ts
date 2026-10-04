@@ -1,5 +1,5 @@
 /** World events at the start of a quarter end: historic milestones and random market/weather events. */
-import { HIST, REGION_KEYS, STORM_FAULT, WORLD_EVENT_CHANCE, WORLD_EVENTS, type HistoricDef } from './data.js';
+import { historicFor, REGION_KEYS, STORM_FAULT, WORLD_EVENT_CHANCE, WORLD_EVENTS, type HistoricDef } from './data.js';
 import { emit } from './events.js';
 import { pick, randomOf } from './rng.js';
 import { operating } from './rules.js';
@@ -8,7 +8,7 @@ import type { GameEvent, GameState, WorldEventKey } from './types.js';
 /** Resets the quarter's effects (`g.fx`), then applies the historic event of this quarter and maybe a random one. */
 export function applyWorldEvents(g: GameState, out: GameEvent[]): void {
   g.fx = { wind: 1, solar: 1, hydro: 1, price: 1, spread: 0 };
-  const h = HIST.find((e) => e.year === g.year && e.q === g.q);
+  const h = historicFor(g.startYear, g.endYear).find((e) => e.year === g.year && e.q === g.q);
   if (h) {
     applyHistoric(g, h);
     emit(g, out, { type: 'historicEvent', key: h.key });

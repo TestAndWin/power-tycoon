@@ -76,6 +76,36 @@ describe('POST /api/games', () => {
       expect(res.statusCode).toBe(400);
     }
   });
+  it('stores the game length (default ten years) and rejects other lengths', async () => {
+    const end = (g: { view: unknown }) => (g.view as { endYear: number }).endYear;
+    expect(end(await newGame())).toBe(2036);
+    expect(end(await newGame({ companyName: 'X', autoMinigames: true, years: 3 }))).toBe(2029);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/games',
+      payload: { companyName: 'X', autoMinigames: true, years: 4 },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+  it('accepts the phase 7 actions', async () => {
+    const g = await newGame();
+    expect((await act(g.gameId, g.token, { type: 'spy', targetId: 1 })).statusCode).toBe(200);
+    expect((await act(g.gameId, g.token, { type: 'hireDetectives', level: 'pro' })).statusCode).toBe(200);
+    expect((await act(g.gameId, g.token, { type: 'repower', siteId: 'nd0' })).json()).toEqual({ error: 'notOwner' });
+    expect((await act(g.gameId, g.token, { type: 'spy', targetId: 7 })).statusCode).toBe(400);
+    expect((await act(g.gameId, g.token, { type: 'hireDetectives', level: 'gold' })).statusCode).toBe(400);
+    const site = await act(g.gameId, g.token, { type: 'lease', siteId: 'nd0' });
+    expect(site.statusCode).toBe(200);
+    const permit = await act(g.gameId, g.token, {
+      type: 'applyPermit',
+      siteId: 'nd0',
+      plantType: 'wind',
+      size: 'large',
+    });
+    expect(permit.json().events[0]).toMatchObject({ type: 'permitApplied', size: 'large' });
+    const bad = await act(g.gameId, g.token, { type: 'applyPermit', siteId: 'nd0', plantType: 'wind', size: 'huge' });
+    expect(bad.statusCode).toBe(400);
+  });
   it('validates the body', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/games', payload: { companyName: 5 } });
     expect(res.statusCode).toBe(400);

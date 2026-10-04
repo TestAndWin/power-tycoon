@@ -1,16 +1,41 @@
 /** Rule helpers ported from legacy/src/core.js. All functions are pure or mutate only the given state. */
-import { BUYERS, HOURS, MIN_CREDIT, PLANTS, REGIONS, SEASON, STORE_MARKET_SHARE } from './data.js';
+import {
+  BUYERS,
+  HOURS,
+  MIN_CREDIT,
+  PLANTS,
+  REGIONS,
+  REPOWER_FACTOR,
+  SEASON,
+  STORE_MARKET_SHARE,
+  plantDef,
+  type PlantDef,
+} from './data.js';
 import { pick, rand, randint, randomOf } from './rng.js';
-import type { GameState, Player, PlantType, PlayerId, RegionKey, Site, TrickType } from './types.js';
+import type { GameState, Player, PlantSize, PlantType, PlayerId, RegionKey, Site, TrickType } from './types.js';
 
 export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 export const yearsIn = (g: GameState): number => g.year - g.startYear + g.q / 4;
 export const learnF = (g: GameState, t: PlantType): number => Math.pow(1 - PLANTS[t].learn, yearsIn(g));
-export const buildCost = (g: GameState, t: PlantType): number =>
-  Math.round((PLANTS[t].build * learnF(g, t)) / 1e4) * 1e4;
-export const retryCost = (g: GameState, t: PlantType): number => Math.round((buildCost(g, t) * 0.1) / 1e4) * 1e4;
-export const serviceCost = (t: PlantType): number => Math.round((PLANTS[t].build * 0.04) / 1e4) * 1e4;
+export const buildCost = (g: GameState, t: PlantType, size: PlantSize = 'std'): number =>
+  Math.round((plantDef(t, size).build * learnF(g, t)) / 1e4) * 1e4;
+export const retryCost = (g: GameState, t: PlantType, size: PlantSize = 'std'): number =>
+  Math.round((buildCost(g, t, size) * 0.1) / 1e4) * 1e4;
+export const serviceCost = (t: PlantType, size: PlantSize = 'std'): number =>
+  Math.round((plantDef(t, size).build * 0.04) / 1e4) * 1e4;
+
+/** Size of the (planned) plant on a site; games stored before phase 7 only know `std`. */
+export const sizeOf = (x: { size?: PlantSize }): PlantSize => x.size ?? 'std';
+/** Plant data of a site with a type, for its size. */
+export const siteDef = (x: { type: PlantType | null; size?: PlantSize }): PlantDef => plantDef(x.type!, sizeOf(x));
+/** Capacity of the (planned) plant on a site in MW (0 without type). */
+export const siteMw = (x: { type: PlantType | null; size?: PlantSize }): number => (x.type ? siteDef(x).mw : 0);
+/** Price of repowering a standard plant to large: extra build costs with a surcharge, plus the bigger grid connection. */
+export const repowerCost = (g: GameState, t: PlantType): number =>
+  Math.round(((buildCost(g, t, 'large') - buildCost(g, t)) * REPOWER_FACTOR) / 1e4) * 1e4 +
+  plantDef(t, 'large').grid -
+  PLANTS[t].grid;
 export const surveyCost = (x: Site): number => (x.r === 'ns' ? 0.3e6 : 0.05e6);
 
 /** Owned, built and connected (a fault only pauses production). Works on sites and site views. */
@@ -35,20 +60,14 @@ export function genEstimate(g: GameState, x: Site, q?: number): number {
   const cls = PLANTS[x.type].cls as 'wind' | 'solar' | 'hydro';
   const fx = g.fx ? g.fx[cls] : 1;
   return (
-    PLANTS[x.type].mw *
-    HOURS *
-    capFactor(x) *
-    SEASON[cls][q ?? g.q]! *
-    x.eff *
-    (x.curtail > 0 ? 0.5 : 1) *
-    (q == null ? fx : 1)
+    siteMw(x) * HOURS * capFactor(x) * SEASON[cls][q ?? g.q]! * x.eff * (x.curtail > 0 ? 0.5 : 1) * (q == null ? fx : 1)
   );
 }
 
 /** MWh a storage plant can shift per quarter. */
-export function storeCapacity(x: Pick<Site, 'type' | 'eff'>): number {
+export function storeCapacity(x: Pick<Site, 'type' | 'eff' | 'size'>): number {
   if (!x.type) return 0;
-  const P = PLANTS[x.type];
+  const P = siteDef(x);
   return (P.mwh ?? 0) * (P.cycles ?? 0) * (P.eta ?? 0) * x.eff;
 }
 
@@ -87,7 +106,7 @@ export function storeIncome(g: GameState, gen: ReadonlyMap<string, number>, stor
 export function usedGrid(g: GameState, r: RegionKey, pid?: PlayerId): number {
   return g.sites
     .filter((x) => x.r === r && x.grid && x.type && (pid == null || x.owner === pid))
-    .reduce((s, x) => s + PLANTS[x.type as PlantType].mw, 0);
+    .reduce((s, x) => s + siteMw(x), 0);
 }
 export const reserved = (g: GameState, r: RegionKey, exceptPid?: PlayerId): number =>
   g.res.filter((o) => o.r === r && o.pid !== exceptPid).reduce((s, o) => s + o.mw, 0);
@@ -107,13 +126,13 @@ export function consumeReserve(g: GameState, r: RegionKey, pid: PlayerId, mw: nu
   g.res = g.res.filter((o) => o.mw > 0);
 }
 
-export type ValuedSite = Pick<Site, 'lease' | 'type' | 'permit' | 'built' | 'invested' | 'age' | 'grid'>;
+export type ValuedSite = Pick<Site, 'lease' | 'type' | 'permit' | 'built' | 'invested' | 'age' | 'grid' | 'size'>;
 
 export function siteValue(x: ValuedSite): number {
   let v = x.lease * 0.6;
-  if (x.type && (x.permit === 'approved' || x.built)) v += PLANTS[x.type].permit;
+  if (x.type && (x.permit === 'approved' || x.built)) v += siteDef(x).permit;
   if (x.built) v += x.invested * Math.max(0.35, 1 - x.age / 100);
-  if (x.grid && x.type) v += PLANTS[x.type].grid * 0.8;
+  if (x.grid && x.type) v += siteDef(x).grid * 0.8;
   return v;
 }
 export const sellValue = (x: ValuedSite): number => Math.round(siteValue(x) * 0.85);
@@ -134,7 +153,7 @@ export function rankOf(g: GameState, p: Player): number {
   );
 }
 export const mwOf = (g: GameState, pid: PlayerId): number =>
-  g.sites.filter((x) => x.owner === pid && operating(x)).reduce((s, x) => s + PLANTS[x.type as PlantType].mw, 0);
+  g.sites.filter((x) => x.owner === pid && operating(x)).reduce((s, x) => s + siteMw(x), 0);
 
 export function resetSite(x: Site): void {
   Object.assign(x, {
@@ -152,6 +171,8 @@ export function resetSite(x: Site): void {
     age: 0,
     killed: false,
     alt: null,
+    size: 'std',
+    offline: 0,
   });
 }
 
@@ -160,9 +181,7 @@ export const spreadFor = (turn: number, renewableMw: number, add: number): numbe
   35 + 70 * Math.min(1, (800 + turn * 25 + renewableMw) / 3000) + add;
 
 export function updateSpread(g: GameState): void {
-  const mw = g.sites
-    .filter((x) => operating(x) && x.type && !isStore(x.type))
-    .reduce((s, x) => s + PLANTS[x.type as PlantType].mw, 0);
+  const mw = g.sites.filter((x) => operating(x) && x.type && !isStore(x.type)).reduce((s, x) => s + siteMw(x), 0);
   g.spread = Math.round(spreadFor(g.turn, mw, g.spreadAdd + (g.fx ? g.fx.spread || 0 : 0)));
 }
 
@@ -197,5 +216,13 @@ export function trickTargets(g: GameState, type: TrickType, pid: PlayerId): Site
 }
 
 export const siteById = (g: GameState, id: string): Site | undefined => g.sites.find((s) => s.id === id);
+
+/** Does player `pid` hold a valid spy report on player `target`? */
+export const hasIntel = (g: GameState, pid: PlayerId, target: PlayerId): boolean =>
+  (g.players[pid]?.intel?.[target] ?? -1) >= g.turn;
+
+/** Active detective agency of a player, if any. */
+export const detectivesOf = (p: Player): NonNullable<Player['detectives']> | null =>
+  p.detectives && p.detectives.left > 0 ? p.detectives : null;
 
 export const regionOk = (r: unknown): r is RegionKey => typeof r === 'string' && r in REGIONS;

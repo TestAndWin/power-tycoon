@@ -1,16 +1,22 @@
 import {
-  HIST,
+  DETECTIVE_KEYS,
+  DETECTIVE_QUARTERS,
+  DETECTIVES,
+  DUEL_SCARCITY,
+  historicFor,
   INTEREST,
   MAX_CONTRACTS,
   MAX_TRICKS,
   MIN_CREDIT,
   PLANT_TYPE_KEYS,
-  PLANTS,
+  plantDef,
   REGION_KEYS,
   RESERVE_COST,
   RESERVE_MW,
   RESERVE_QUARTERS,
   SELF_REPAIR_COST,
+  SPY_COST,
+  SPY_QUARTERS,
   TRICK_KEYS,
   TRICKS,
 } from './data.js';
@@ -21,8 +27,10 @@ import {
   buildCost,
   clone,
   creditLimit,
+  detectivesOf,
   freeGrid,
   genEstimate,
+  hasIntel,
   isStore,
   mwOf,
   myReserve,
@@ -32,7 +40,9 @@ import {
   retryCost,
   sellValue,
   serviceCost,
+  siteMw,
   siteValue,
+  sizeOf,
   storeCapacity,
   storeIncome,
   surveyCost,
@@ -79,7 +89,8 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
   const sites: SiteView[] = g.sites.map((x) => {
     const mine = x.owner === pid;
     const surveyed = x.surveyed.includes(pid);
-    const known = mine || surveyed;
+    const spied = x.owner >= 0 && !mine && hasIntel(g, pid, x.owner);
+    const known = mine || surveyed || spied;
     const v: SiteView = {
       id: x.id,
       r: x.r,
@@ -99,7 +110,12 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       wind: known ? x.wind : null,
       sun: known ? x.sun : null,
       hydro: known ? x.hydro : null,
+      size: sizeOf(x),
+      mw: siteMw(x),
+      offline: x.offline ?? 0,
     };
+    if (spied)
+      v.intel = { eff: x.eff, permitLeft: x.permitLeft, alt: x.alt ? { type: x.alt.type, left: x.alt.left } : null };
     if (mine)
       v.own = {
         permitLeft: x.permitLeft,
@@ -133,16 +149,26 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     };
   }
   const costs = {} as PlayerView['costs'];
+  const costsLarge = {} as PlayerView['costsLarge'];
   for (const t of PLANT_TYPE_KEYS)
-    costs[t] = {
-      build: buildCost(g, t),
-      retry: retryCost(g, t),
-      permit: PLANTS[t].permit,
-      grid: PLANTS[t].grid,
-      service: serviceCost(t),
-    };
+    for (const [size, into] of [
+      ['std', costs],
+      ['large', costsLarge],
+    ] as const)
+      into[t] = {
+        build: buildCost(g, t, size),
+        retry: retryCost(g, t, size),
+        permit: plantDef(t, size).permit,
+        grid: plantDef(t, size).grid,
+        service: serviceCost(t, size),
+      };
   const tricks = {} as PlayerView['tricks'];
   for (const k of TRICK_KEYS) tricks[k] = { ...TRICKS[k] };
+  const detectives = {} as PlayerView['detectives'];
+  for (const k of DETECTIVE_KEYS) {
+    const { cost, shield, catchFailed, catchSucceeded } = DETECTIVES[k];
+    detectives[k] = { cost, shield, catchFailed, catchSucceeded };
+  }
   const news: NewsItem[] = [];
   for (const n of g.news) {
     const e = eventForViewer(n.event, pid);
@@ -179,8 +205,19 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
         .filter((x) => operating(x) && !x.fault && x.type && !isStore(x.type))
         .reduce((s, x) => s + genEstimate(g, x), 0),
       contractVolume: me.contracts.reduce((s, c) => s + c.vol, 0),
+      detectives: detectivesOf(me) ? { ...detectivesOf(me)! } : null,
     },
     players: g.players.map((p) => ({
+      ...(p.id !== pid && hasIntel(g, pid, p.id)
+        ? {
+            intel: {
+              until: me.intel![p.id]!,
+              contracts: clone(p.contracts),
+              detectives: detectivesOf(p) ? { ...detectivesOf(p)! } : null,
+              tricksLeft: Math.max(0, MAX_TRICKS - p.trickUsed),
+            },
+          }
+        : {}),
       id: p.id,
       name: p.name,
       human: p.human,
@@ -199,7 +236,9 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     market: { price: g.price, spread: g.spread, priceHist: [...g.priceHist], spreadHist: [...g.spreadHist] },
     offers: clone(g.offers),
     costs,
+    costsLarge,
     tricks,
+    detectives,
     options: actionOptions(g, pid),
     constants: {
       maxContracts: MAX_CONTRACTS,
@@ -210,9 +249,15 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       selfRepairCost: SELF_REPAIR_COST,
       maxTricks: MAX_TRICKS,
       minCredit: MIN_CREDIT,
+      spyCost: SPY_COST,
+      spyQuarters: SPY_QUARTERS,
+      detectiveQuarters: DETECTIVE_QUARTERS,
+      duelScarcity: DUEL_SCARCITY,
     },
     challenge: g.challenge && g.challenge.playerId === pid ? publicChallenge(g.challenge) : null,
     news,
-    milestones: HIST.filter((h) => (h.year - g.startYear) * 4 + h.q >= g.turn).map((h) => ({ ...h })),
+    milestones: historicFor(g.startYear, g.endYear)
+      .filter((h) => (h.year - g.startYear) * 4 + h.q >= g.turn)
+      .map((h) => ({ ...h })),
   };
 }

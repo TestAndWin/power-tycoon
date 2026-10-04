@@ -161,6 +161,7 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
         companyName: req.body.companyName,
         autoMinigames: req.body.autoMinigames,
         difficulty: req.body.difficulty ?? 'normal',
+        years: req.body.years,
         seed: randomInt(0, 2 ** 31),
       });
       const gameId = newGameId();

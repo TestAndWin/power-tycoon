@@ -2,7 +2,16 @@
  * Data tables ported 1:1 from legacy/src/core.js. Only numbers and identifiers live here;
  * German names and descriptions are in apps/web/src/texts.ts.
  */
-import type { Difficulty, PlantClass, PlantType, RegionKey, TrickType, WorldEventKey } from './types.js';
+import type {
+  DetectiveLevel,
+  Difficulty,
+  PlantClass,
+  PlantSize,
+  PlantType,
+  RegionKey,
+  TrickType,
+  WorldEventKey,
+} from './types.js';
 
 export interface RegionDef {
   code: string;
@@ -136,6 +145,35 @@ export const PLANTS: Record<PlantType, PlantDef> = {
   },
 };
 
+export const PLANT_SIZE_KEYS: readonly PlantSize[] = ['std', 'large'];
+/**
+ * A large plant: more capacity (and storage volume) for a bit less than proportional build costs, but it
+ * needs more capital and more grid capacity, and big projects meet more resistance: the permit takes a
+ * quarter longer and is rejected more often.
+ */
+export const LARGE = { mw: 1.5, build: 1.45, permit: 1.5, grid: 1.5, opex: 1.45, permitQ: 1, reject: 0.08 };
+/** Repowering a standard plant to large costs the difference of the build costs times this factor. */
+export const REPOWER_FACTOR = 1.3;
+/** Quarters a plant is offline while it is repowered. */
+export const REPOWER_QUARTERS = 1;
+
+/** Plant data for a size (`std` = the table above). */
+export function plantDef(t: PlantType, size: PlantSize = 'std'): PlantDef {
+  const P = PLANTS[t];
+  if (size === 'std') return P;
+  return {
+    ...P,
+    mw: Math.round(P.mw * LARGE.mw),
+    mwh: P.mwh ? Math.round(P.mwh * LARGE.mw) : undefined,
+    build: Math.round((P.build * LARGE.build) / 1e5) * 1e5,
+    permit: Math.round((P.permit * LARGE.permit) / 1e4) * 1e4,
+    grid: Math.round((P.grid * LARGE.grid) / 1e4) * 1e4,
+    opex: Math.round((P.opex * LARGE.opex) / 1e3) * 1e3,
+    permitQ: [P.permitQ[0] + LARGE.permitQ, P.permitQ[1] + LARGE.permitQ],
+    reject: P.reject + LARGE.reject,
+  };
+}
+
 /** Seasonal generation factors per quarter (Q1..Q4). */
 export const SEASON: Record<'wind' | 'solar' | 'hydro', [number, number, number, number]> = {
   wind: [1.3, 0.85, 0.7, 1.15],
@@ -154,7 +192,10 @@ export const TARGET_DRIFT = 1.0025;
 export const PRICE_FOLLOW = 0.15;
 
 export const START_YEAR = 2026;
+/** Default game length in years. */
 export const GAME_YEARS = 10;
+/** Game lengths the player can choose. */
+export const GAME_YEAR_OPTIONS: readonly number[] = [3, 5, 10];
 export const HOURS = 2190;
 export const INTEREST = 0.012;
 export const MAX_CONTRACTS = 3;
@@ -181,17 +222,63 @@ export const TRICK_SUSPECTED = 0.5;
 export interface TrickDef {
   cost: number;
   chance: number;
+  /** Paid to the state when the actor is caught. */
   fine: number;
+  /** Paid to the victim when the actor is caught (court). */
+  damages: number;
 }
 export const TRICK_KEYS: readonly TrickType[] = ['klage', 'bi', 'hack'];
 export const TRICKS: Record<TrickType, TrickDef> = {
-  klage: { cost: 0.5e6, chance: 0.7, fine: 0 },
-  bi: { cost: 0.4e6, chance: 0.65, fine: 1.5e6 },
-  hack: { cost: 0.8e6, chance: 0.6, fine: 5e6 },
+  klage: { cost: 0.5e6, chance: 0.7, fine: 0, damages: 0 },
+  bi: { cost: 0.4e6, chance: 0.65, fine: 1.5e6, damages: 1e6 },
+  hack: { cost: 0.8e6, chance: 0.6, fine: 5e6, damages: 3e6 },
+};
+
+/** A spy report on a rival: price and how many quarters it stays valid (the current one included). */
+export const SPY_COST = 0.3e6;
+export const SPY_QUARTERS = 4;
+
+export interface DetectiveDef {
+  /** Price for the whole term. */
+  cost: number;
+  /** Factor on the success chance of tricks against the client. */
+  shield: number;
+  /** Chance to catch the actor of a failed trick (instead of `TRICK_CAUGHT`). */
+  catchFailed: number;
+  /** Chance to catch the actor of a successful trick afterwards. */
+  catchSucceeded: number;
+  /** Chance to catch a spy (no report then). */
+  catchSpy: number;
+}
+export const DETECTIVE_KEYS: readonly DetectiveLevel[] = ['basic', 'pro'];
+/** Quarters a detective agency is hired for (the current one included). */
+export const DETECTIVE_QUARTERS = 4;
+export const DETECTIVES: Record<DetectiveLevel, DetectiveDef> = {
+  basic: { cost: 0.6e6, shield: 0.75, catchFailed: 0.65, catchSucceeded: 0.2, catchSpy: 0.3 },
+  pro: { cost: 1.5e6, shield: 0.55, catchFailed: 0.85, catchSucceeded: 0.4, catchSpy: 0.55 },
 };
 
 /** Automatic minigame outcomes (rivals always, the player with `autoMinigames`). */
-export const AUTO_MINIGAME = { layout: [0.9, 1.08] as [number, number], rotor: 0.8, cable: 0.85, frequency: 0.62 };
+export const AUTO_MINIGAME = {
+  layout: [0.9, 1.08] as [number, number],
+  rotor: 0.8,
+  cable: 0.85,
+  frequency: 0.62,
+  /** A cable duel against a rival is harder than the solo puzzle. */
+  cableDuel: 0.55,
+};
+
+/**
+ * Grid connection becomes a duel against a rival of the region when the free capacity is less than this
+ * multiple of the plant's capacity.
+ */
+export const DUEL_SCARCITY = 2;
+/** Share of the connection costs refunded when the duel is lost. */
+export const DUEL_REFUND = 0.5;
+/** Quarters the winning rival keeps the grid capacity it raced for (as a reservation). */
+export const DUEL_RESERVE_QUARTERS = 2;
+/** Seconds the rival needs per cable piece in the duel minigame, by difficulty. */
+export const DUEL_PACE: Record<Difficulty, number> = { normal: 1.15, hard: 0.9 };
 /** Allowed range for a client-reported layout efficiency. */
 export const LAYOUT_RANGE: [number, number] = [0.8, 1.15];
 
@@ -265,8 +352,9 @@ export interface HistoricDef {
   ppaBoost?: number;
 }
 /**
- * Historic milestones, spread evenly over the 40 quarters (every 7 quarters from turn 6).
- * Public knowledge: they are political announcements, so strategies may plan with them.
+ * Historic milestones, spread evenly over the 40 quarters (every 7 quarters from turn 6) of a 10-year game;
+ * shorter games use `historicFor`. Public knowledge: they are political announcements, so strategies may
+ * plan with them.
  */
 export const HIST: readonly HistoricDef[] = [
   { year: 2027, q: 2, key: 'ets2', target: 1.08 },
@@ -275,3 +363,12 @@ export const HIST: readonly HistoricDef[] = [
   { year: 2032, q: 3, key: 'coalExit', target: 1.1, spread: 20 },
   { year: 2034, q: 2, key: 'eu2040', target: 1.06 },
 ];
+
+/** The milestones of a game from `startYear` to `endYear`: the 10-year schedule squeezed into the game length. */
+export function historicFor(startYear: number, endYear: number): HistoricDef[] {
+  const quarters = (endYear - startYear) * 4;
+  return HIST.map((h) => {
+    const turn = Math.round((((h.year - START_YEAR) * 4 + h.q) * quarters) / (GAME_YEARS * 4));
+    return { ...h, year: startYear + Math.floor(turn / 4), q: turn % 4 };
+  });
+}

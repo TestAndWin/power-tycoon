@@ -91,5 +91,40 @@ describe('SmartOpponent', () => {
     });
     expect(await lobby('hard')).toEqual([{ type: 'lobby', trick: 'klage', siteId: 'ns2' }]);
     expect(await lobby('normal')).toEqual([]);
+    // the trick needs a spy report on the human first
+    const acts = (await decide('hard', g)).map((a) => a.type);
+    expect(acts.indexOf('spy')).toBeGreaterThanOrEqual(0);
+    expect(acts.indexOf('spy')).toBeLessThan(acts.indexOf('lobby'));
+  });
+
+  it('hires detectives after an attack, if it has plants to protect', async () => {
+    const g = newGame(9, true);
+    setupSite(g, 'nd4', 1, 'operating', 'wind').wind = 7.5;
+    const hires = async (level: 'normal' | 'hard') =>
+      (await decide(level, g)).filter((a) => a.type === 'hireDetectives');
+    expect(await hires('hard')).toEqual([]);
+    g.news.unshift({
+      year: g.year,
+      q: g.q,
+      event: { type: 'trickSucceeded', actorId: null, targetId: 1, trick: 'bi', siteId: 'nd4', suspected: false },
+    });
+    expect(await hires('hard')).toEqual([{ type: 'hireDetectives', level: 'pro' }]);
+    expect(await hires('normal')).toEqual([{ type: 'hireDetectives', level: 'basic' }]);
+    g.players[1]!.detectives = { level: 'basic', left: 2 };
+    expect(await hires('hard')).toEqual([]);
+  });
+
+  it('repowers a good running plant early in the game', async () => {
+    const g = newGame(10, true);
+    const x = setupSite(g, 'ns3', 1, 'operating', 'off');
+    x.wind = 10.4;
+    g.players[1]!.cash = 150e6;
+    const repowers = async (level: 'normal' | 'hard') => (await decide(level, g)).filter((a) => a.type === 'repower');
+    expect(await repowers('hard')).toEqual([{ type: 'repower', siteId: 'ns3' }]);
+    // not in the last quarters: the plant would be offline without paying off
+    g.year = 2035;
+    g.q = 3;
+    g.turn = 39;
+    expect(await repowers('hard')).toEqual([]);
   });
 });

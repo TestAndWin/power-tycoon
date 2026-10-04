@@ -6,9 +6,12 @@ export type RegionKey = 'nd' | 'ns' | 'ib' | 'al';
 export type PlantType = 'wind' | 'off' | 'solar' | 'batt' | 'hydro' | 'pump';
 export type PlantClass = 'wind' | 'solar' | 'store' | 'hydro';
 export type TrickType = 'klage' | 'bi' | 'hack';
+/** `std`: the plant as in the data table; `large`: more capacity for more money and grid (see `LARGE`). */
+export type PlantSize = 'std' | 'large';
+export type DetectiveLevel = 'basic' | 'pro';
 export type PermitState = 'pending' | 'approved' | 'rejected' | null;
 export type GameOver = false | 'bankrupt' | 'time' | 'monopoly';
-export type ChallengeKind = 'layout' | 'rotor' | 'cable' | 'frequency';
+export type ChallengeKind = 'layout' | 'rotor' | 'cable' | 'cableDuel' | 'frequency';
 
 export interface Site {
   id: string;
@@ -38,7 +41,11 @@ export interface Site {
    * Application for another plant type while the current permit stays valid. Granted, it replaces the
    * current type and permit; rejected, the current permit stays. Dropped when building starts.
    */
-  alt?: { type: PlantType; left: number } | null;
+  alt?: { type: PlantType; left: number; size?: PlantSize } | null;
+  /** Plant size; missing in games stored before phase 7 (= `std`). */
+  size?: PlantSize;
+  /** Quarters the plant is still offline for repowering. */
+  offline?: number;
 }
 
 export interface Offer {
@@ -71,6 +78,10 @@ export interface Player {
   co2: number;
   contracts: Contract[];
   trickUsed: number;
+  /** Spy reports: rival id → last turn the report is valid. Missing in games stored before phase 7. */
+  intel?: Record<string, number>;
+  /** Hired detective agency, `left` quarters including the current one. */
+  detectives?: { level: DetectiveLevel; left: number } | null;
 }
 
 export interface Reservation {
@@ -94,6 +105,8 @@ export interface Challenge {
   kind: ChallengeKind;
   siteId: string;
   seed: number;
+  /** Cable duel: the rival racing for the grid capacity and its seconds per cable piece. */
+  rival?: { playerId: PlayerId; pace: number };
 }
 
 export type ChallengeStep = 'build' | 'retry' | 'connect' | 'repair';
@@ -145,10 +158,11 @@ export interface GameState {
 export type Action =
   | { type: 'survey'; siteId: string }
   | { type: 'lease'; siteId: string }
-  | { type: 'applyPermit'; siteId: string; plantType: PlantType }
+  | { type: 'applyPermit'; siteId: string; plantType: PlantType; size?: PlantSize }
   | { type: 'changePlantType'; siteId: string }
   | { type: 'build'; siteId: string }
   | { type: 'connectGrid'; siteId: string }
+  | { type: 'repower'; siteId: string }
   | { type: 'repairSelf'; siteId: string }
   | { type: 'repairService'; siteId: string }
   | { type: 'sellSite'; siteId: string }
@@ -157,6 +171,8 @@ export type Action =
   | { type: 'borrow'; amount: number }
   | { type: 'repay'; amount: number | 'all' }
   | { type: 'lobby'; trick: TrickType; siteId: string }
+  | { type: 'spy'; targetId: PlayerId }
+  | { type: 'hireDetectives'; level: DetectiveLevel }
   | { type: 'minigameResult'; challengeId: number; outcome: number | boolean };
 
 export type ActionType = Action['type'];
@@ -193,7 +209,9 @@ export type ErrorCode =
   | 'creditLimit'
   | 'invalidAmount'
   | 'trickLimit'
-  | 'invalidTarget';
+  | 'invalidTarget'
+  | 'noSpyReport'
+  | 'detectivesActive';
 
 /* ---------------- Events ---------------- */
 
@@ -204,7 +222,15 @@ export type GameEvent =
   | { type: 'gameStarted'; playerId: PlayerId; cash: number }
   | { type: 'siteSurveyed'; playerId: PlayerId; siteId: string; cost: number }
   | { type: 'siteLeased'; playerId: PlayerId; siteId: string; amount: number }
-  | { type: 'permitApplied'; playerId: PlayerId; siteId: string; plantType: PlantType; cost: number; quarters?: number }
+  | {
+      type: 'permitApplied';
+      playerId: PlayerId;
+      siteId: string;
+      plantType: PlantType;
+      cost: number;
+      quarters?: number;
+      size?: PlantSize;
+    }
   | { type: 'plantTypeCleared'; playerId: PlayerId; siteId: string }
   | { type: 'buildStarted'; playerId: PlayerId; siteId: string; plantType: PlantType; cost: number; retry: boolean }
   | { type: 'layoutRated'; playerId: PlayerId; siteId: string; eff: number }
@@ -212,6 +238,18 @@ export type GameEvent =
   | { type: 'plantBuilt'; playerId: PlayerId; siteId: string; plantType: PlantType }
   | { type: 'gridConnected'; playerId: PlayerId; siteId: string; mw: number; cost: number }
   | { type: 'gridConnectFailed'; playerId: PlayerId; siteId: string; cost: number }
+  | {
+      type: 'gridDuel';
+      playerId: PlayerId;
+      rivalId: PlayerId;
+      siteId: string;
+      won: boolean;
+      /** Refund to the loser. */
+      refund: number;
+      /** Capacity the winning rival reserved (0 if it had no project there). */
+      reservedMw: number;
+    }
+  | { type: 'repowered'; playerId: PlayerId; siteId: string; mw: number; cost: number }
   | { type: 'repaired'; playerId: PlayerId; siteId: string; method: 'self' | 'service'; cost: number }
   | { type: 'repairFailed'; playerId: PlayerId; siteId: string }
   | { type: 'siteSold'; playerId: PlayerId; siteId: string; amount: number }
@@ -236,6 +274,10 @@ export type GameEvent =
       trick: TrickType;
       siteId: string;
       suspected: boolean;
+      /** Detectives of the target caught the actor afterwards (fine and damages paid). */
+      caught?: boolean;
+      fine?: number;
+      damages?: number;
     }
   | {
       type: 'trickFailed';
@@ -245,8 +287,13 @@ export type GameEvent =
       siteId: string;
       caught: boolean;
       fine: number;
+      /** Paid to the target (court). */
+      damages?: number;
     }
+  | { type: 'spied'; playerId: PlayerId; targetId: PlayerId; cost: number; caught: boolean; until: number }
+  | { type: 'detectivesHired'; playerId: PlayerId; level: DetectiveLevel; quarters: number; cost: number }
   | { type: 'historicEvent'; key: 'ets2' | 'grid2030' | 'hydrogen' | 'coalExit' | 'eu2040' }
+  | { type: 'detectivesExpired'; playerId: PlayerId }
   | { type: 'worldEvent'; key: WorldEventKey; region?: RegionKey }
   | {
       type: 'permitDecided';
@@ -345,6 +392,13 @@ export interface SiteView {
   wind: number | null;
   sun: number | null;
   hydro: boolean | null;
+  /** Plant size and capacity of the planned or built plant (0 without type). */
+  size: PlantSize;
+  mw: number;
+  /** Quarters the plant is offline for repowering. */
+  offline: number;
+  /** Details of a rival's site from a valid spy report. */
+  intel?: { eff: number; permitLeft: number; alt: { type: PlantType; left: number } | null };
   /** Only for the viewer's own sites. */
   own?: {
     permitLeft: number;
@@ -378,6 +432,14 @@ export interface PlayerSummary {
   genLast: number;
   co2: number;
   hist: (number | null)[];
+  /** Valid spy report of the viewer on this player (not for the viewer itself). */
+  intel?: {
+    /** Last turn the report is valid. */
+    until: number;
+    contracts: Contract[];
+    detectives: { level: DetectiveLevel; left: number } | null;
+    tricksLeft: number;
+  };
 }
 
 export interface GridView {
@@ -416,6 +478,7 @@ export interface PlayerView {
     /** Expected generation this quarter without weather events. */
     nextGen: number;
     contractVolume: number;
+    detectives: { level: DetectiveLevel; left: number } | null;
   };
   players: PlayerSummary[];
   sites: SiteView[];
@@ -423,7 +486,10 @@ export interface PlayerView {
   market: { price: number; spread: number; priceHist: number[]; spreadHist: number[] };
   offers: Offer[];
   costs: Record<PlantType, { build: number; retry: number; permit: number; grid: number; service: number }>;
-  tricks: Record<TrickType, { cost: number; chance: number; fine: number }>;
+  /** The same for large plants. */
+  costsLarge: Record<PlantType, { build: number; retry: number; permit: number; grid: number; service: number }>;
+  tricks: Record<TrickType, { cost: number; chance: number; fine: number; damages: number }>;
+  detectives: Record<DetectiveLevel, { cost: number; shield: number; catchFailed: number; catchSucceeded: number }>;
   /** Everything the viewer can do now or is only blocked from by money, capacity or limits. */
   options: ActionOption[];
   constants: {
@@ -435,6 +501,10 @@ export interface PlayerView {
     selfRepairCost: number;
     maxTricks: number;
     minCredit: number;
+    spyCost: number;
+    spyQuarters: number;
+    detectiveQuarters: number;
+    duelScarcity: number;
   };
   challenge: Challenge | null;
   news: NewsItem[];

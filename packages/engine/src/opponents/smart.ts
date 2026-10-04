@@ -11,9 +11,11 @@
 import {
   AUTO_MINIGAME,
   CAPTURE,
-  HIST,
+  historicFor,
   HOURS,
+  PLANT_SIZE_KEYS,
   PLANTS,
+  plantDef,
   PRICE_FOLLOW,
   PRICE_SEASON,
   REGIONS,
@@ -23,6 +25,7 @@ import {
   TRICKS,
   WORLD_EVENTS,
   type HistoricDef,
+  type PlantDef,
 } from '../data.js';
 import { clamp, type Random } from '../rng.js';
 import { capFactor as siteCapFactor, plantTypesFor, siteValue, spreadFor } from '../rules.js';
@@ -31,6 +34,7 @@ import type {
   Action,
   OpponentContext,
   OpponentStrategy,
+  PlantSize,
   PlantType,
   PlayerId,
   PlayerSummary,
@@ -87,6 +91,12 @@ export interface SmartParams {
    * grudges against each other: feuds between them would only help the human.
    */
   revenge: boolean;
+  /** Detective agency hired after an attack (null = never). */
+  detectives: 'basic' | 'pro' | null;
+  /** Consider large plants for new projects. */
+  largePlants: boolean;
+  /** Repower standard plants to large when it pays off. */
+  repower: boolean;
 }
 
 export type SmartLevel = 'normal' | 'hard';
@@ -113,6 +123,9 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     diversify: false,
     trickTiming: false,
     revenge: false,
+    detectives: 'basic',
+    largePlants: true,
+    repower: true,
   },
   hard: {
     maxPending: 5,
@@ -135,6 +148,9 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     diversify: true,
     trickTiming: true,
     revenge: true,
+    detectives: 'pro',
+    largePlants: true,
+    repower: true,
   },
 };
 
@@ -147,6 +163,8 @@ type QuarterFx = { wind: number; solar: number; hydro: number; price: number; sp
 const PRICE_MEMORY = 8;
 /** Quarters a tricked player is remembered (revenge). */
 const GRUDGE_QUARTERS = 8;
+/** Quarters an attack on the rival makes it hire detectives. */
+const ALERT_QUARTERS = 4;
 
 /** Capacity factor from what the viewer knows; unknown sites use the regional average. */
 function capFactor(x: SiteView, t: PlantType): number {
@@ -156,7 +174,7 @@ function capFactor(x: SiteView, t: PlantType): number {
   return siteCapFactor({ type: t, wind, sun });
 }
 
-const avgPermitQ = (t: PlantType): number => (PLANTS[t].permitQ[0] + PLANTS[t].permitQ[1]) / 2;
+const avgPermitQ = (P: PlantDef): number => (P.permitQ[0] + P.permitQ[1]) / 2;
 
 export class SmartOpponent implements OpponentStrategy {
   readonly params: SmartParams;
@@ -190,7 +208,9 @@ class Planner {
   private readonly builtNow = new Set<string>();
   private readonly connectedNow = new Set<string>();
   /** Projects leased in this turn (not yet in the view). */
-  private readonly leasedNow: { x: SiteView; t: PlantType }[] = [];
+  private readonly leasedNow: { x: SiteView; t: PlantType; size: PlantSize }[] = [];
+  /** Milestones of this game (squeezed into its length). */
+  private readonly hist: HistoricDef[];
 
   constructor(
     private readonly v: PlayerView,
@@ -204,7 +224,16 @@ class Planner {
     this.left = Math.max(1, v.quartersLeft);
     this.free = Object.fromEntries(Object.entries(v.grid).map(([k, g]) => [k, g.free])) as Record<RegionKey, number>;
     this.basePrice = v.market.price / PRICE_SEASON[v.q]!;
+    this.hist = historicFor(v.startYear, v.endYear);
     if (p.foresight) this.forecast();
+  }
+
+  /** Plant data and current costs for a size. */
+  private def(t: PlantType, size: PlantSize = 'std'): PlantDef {
+    return plantDef(t, size);
+  }
+  private cost(t: PlantType, size: PlantSize = 'std'): PlayerView['costs'][PlantType] {
+    return size === 'large' ? this.v.costsLarge[t] : this.v.costs[t];
   }
 
   /* ---------- market forecast ---------- */
@@ -219,7 +248,7 @@ class Planner {
   }
 
   private histIn(k: number): HistoricDef | undefined {
-    return HIST.find((h) => this.inQuarters(h.year, h.q) === k);
+    return this.hist.find((h) => this.inQuarters(h.year, h.q) === k);
   }
 
   /**
@@ -239,7 +268,7 @@ class Planner {
     const recent = hist.slice(-4).map((p, i, a) => p / PRICE_SEASON[(hist.length - a.length + i) % 4]!);
     let target = recent.length ? recent.reduce((s, p) => s + p, 0) / recent.length : this.basePrice;
     let base = this.basePrice;
-    for (const h of HIST) {
+    for (const h of this.hist) {
       const k = this.inQuarters(h.year, h.q);
       // past milestones: the part of the step the price has not followed yet
       if (h.target && k <= 0 && k > -PRICE_MEMORY) target *= 1 + (h.target - 1) * Math.pow(1 - PRICE_FOLLOW, -k);
@@ -258,9 +287,9 @@ class Planner {
     // storage spread: grows with the renewable capacity (see `updateSpread`) and the milestones
     const mw = v.sites
       .filter((x) => x.owner >= 0 && x.built && x.grid && x.type && PLANTS[x.type].cls !== 'store')
-      .reduce((s, x) => s + PLANTS[x.type!].mw, 0);
+      .reduce((s, x) => s + x.mw, 0);
     const growth = mw / Math.max(4, v.turn);
-    let add = HIST.filter((h) => this.inQuarters(h.year, h.q) <= 0).reduce((s, h) => s + (h.spread ?? 0), 0);
+    let add = this.hist.filter((h) => this.inQuarters(h.year, h.q) <= 0).reduce((s, h) => s + (h.spread ?? 0), 0);
     for (let k = 0; k < this.left; k++) {
       if (k > 0) add += this.histIn(k)?.spread ?? 0;
       this.spread.push(spreadFor(v.turn + k, mw + growth * k, add + (k === 0 ? this.fxNow.spread : 0)));
@@ -268,8 +297,8 @@ class Planner {
     // grid: projects of other players that will connect before ours
     for (const x of v.sites) {
       if (x.owner < 0 || x.owner === this.me.id || !x.type || x.grid) continue;
-      if (x.built) this.othersClaim[x.r] += PLANTS[x.type].mw;
-      else if (x.permit === 'approved') this.othersClaim[x.r] += PLANTS[x.type].mw * 0.5;
+      if (x.built) this.othersClaim[x.r] += x.mw;
+      else if (x.permit === 'approved') this.othersClaim[x.r] += x.mw * 0.5;
     }
   }
 
@@ -280,12 +309,12 @@ class Planner {
   }
 
   /** Expected revenue of one operating quarter, averaged over the seasons (without foresight). */
-  private quarterRevenue(x: SiteView, t: PlantType, eff = 1): number {
-    const P = PLANTS[t];
+  private quarterRevenue(x: SiteView, t: PlantType, eff = 1, size: PlantSize = 'std'): number {
+    const P = this.def(t, size);
     if (P.cls === 'store') {
       // spread grows with the share of renewables; assume a bit more than today on average
       const spread = this.v.market.spread * 1.1;
-      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff * this.storeShare(x, t, eff);
+      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff * this.storeShare(x, t, eff, size);
     }
     const cls = P.cls as Cls;
     let s = 0;
@@ -294,12 +323,12 @@ class Planner {
   }
 
   /** Expected revenue in quarter `k` from now (0 = this quarter, incl. its world event). */
-  private revenueAt(x: SiteView, t: PlantType, k: number, eff = 1): number {
-    if (!this.p.foresight) return this.quarterRevenue(x, t, eff);
+  private revenueAt(x: SiteView, t: PlantType, k: number, eff = 1, size: PlantSize = 'std'): number {
+    if (!this.p.foresight) return this.quarterRevenue(x, t, eff, size);
     if (k >= this.left) return 0;
-    const P = PLANTS[t];
+    const P = this.def(t, size);
     if (P.cls === 'store')
-      return (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff * this.storeShare(x, t, eff);
+      return (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff * this.storeShare(x, t, eff, size);
     const cls = P.cls as Cls;
     const q = this.qAt(k);
     const fx = k === 0 ? this.fxNow[cls] : 1;
@@ -311,14 +340,14 @@ class Planner {
    * in the region (planned ones included), `STORE_MARKET_SHARE` for the rest. Other own storages there take
    * their capacity first.
    */
-  private storeShare(x: SiteView, t: PlantType, eff: number): number {
-    const P = PLANTS[t];
+  private storeShare(x: SiteView, t: PlantType, eff: number, size: PlantSize = 'std'): number {
+    const P = this.def(t, size);
     const cap = (P.mwh ?? 0) * (P.cycles ?? 0) * (P.eta ?? 0) * eff;
     if (cap <= 0) return STORE_MARKET_SHARE;
     let avail = 0;
     for (const y of this.mine()) {
       if (y.r !== x.r || y.id === x.id || !y.type) continue;
-      const Q = PLANTS[y.type];
+      const Q = this.def(y.type, y.size);
       if (Q.cls === 'store') avail -= (Q.mwh ?? 0) * (Q.cycles ?? 0) * (Q.eta ?? 0) * (y.own?.eff ?? 1);
       else {
         const cls = Q.cls as Cls;
@@ -330,8 +359,8 @@ class Planner {
     return own + (1 - own) * STORE_MARKET_SHARE;
   }
 
-  private runningCost(x: SiteView, t: PlantType): number {
-    return PLANTS[t].opex + x.lease * 0.02;
+  private runningCost(x: SiteView, t: PlantType, size: PlantSize = 'std'): number {
+    return this.def(t, size).opex + x.lease * 0.02;
   }
 
   /** Fixed misjudgement in [-1, 1] per site and plant type (differs between rivals). */
@@ -350,20 +379,20 @@ class Planner {
    * Expected change of net worth until the end of the game if the project is pursued from its
    * current stage; costs of earlier stages are sunk.
    */
-  private projectValue(x: SiteView, t: PlantType, stage: Stage): number {
-    return this.p.foresight ? this.forecastValue(x, t, stage) : this.simpleValue(x, t, stage);
+  private projectValue(x: SiteView, t: PlantType, stage: Stage, size: PlantSize = 'std'): number {
+    return this.p.foresight ? this.forecastValue(x, t, stage, size) : this.simpleValue(x, t, stage, size);
   }
 
-  private simpleValue(x: SiteView, t: PlantType, stage: Stage): number {
-    const P = PLANTS[t];
-    const c = this.v.costs[t];
+  private simpleValue(x: SiteView, t: PlantType, stage: Stage, size: PlantSize): number {
+    const P = this.def(t, size);
+    const c = this.cost(t, size);
     const left = this.v.quartersLeft;
     let wait = 0;
     let capex = 0;
     if (stage === 'new') capex += x.lease + (x.known ? 0 : x.surveyCost);
     if (stage === 'new' || stage === 'leased') {
       capex += P.permit * (1 + P.reject);
-      wait += avgPermitQ(t) + P.reject * 2;
+      wait += avgPermitQ(P) + P.reject * 2;
     }
     if (stage !== 'built') {
       const wind = P.cls === 'wind';
@@ -373,11 +402,12 @@ class Planner {
     capex += P.grid / AUTO_MINIGAME.cable;
     wait += (1 - AUTO_MINIGAME.cable) / AUTO_MINIGAME.cable;
     const ops = Math.max(0, left - wait);
-    const margin = this.quarterRevenue(x, t) * 0.97 - this.runningCost(x, t); // ~3 % fault losses
+    const margin = this.quarterRevenue(x, t, 1, size) * 0.97 - this.runningCost(x, t, size); // ~3 % fault losses
     const invested = stage === 'built' ? (x.own?.invested ?? c.build) : c.build;
     const book = siteValue({
       lease: x.lease,
       type: t,
+      size,
       permit: 'approved',
       built: true,
       invested,
@@ -395,9 +425,9 @@ class Planner {
    * quarter from the forecast, idle costs before production, and only what is finished counts
    * at the end of the game.
    */
-  private forecastValue(x: SiteView, t: PlantType, stage: Stage): number {
-    const P = PLANTS[t];
-    const c = this.v.costs[t];
+  private forecastValue(x: SiteView, t: PlantType, stage: Stage, size: PlantSize): number {
+    const P = this.def(t, size);
+    const c = this.cost(t, size);
     const left = this.left;
     const wind = P.cls === 'wind';
     let spent = 0;
@@ -405,7 +435,7 @@ class Planner {
     if (stage === 'new') spent += x.lease + (x.known ? 0 : x.surveyCost);
     if (stage === 'new' || stage === 'leased') {
       spent += P.permit * (1 + P.reject);
-      tp = avgPermitQ(t) * (1 + P.reject);
+      tp = avgPermitQ(P) * (1 + P.reject);
     }
     // the permit would not be decided before the end: only the lease stays on the books
     if (tp >= left) return x.lease * 0.6 - this.bookNow(x) - spent;
@@ -421,11 +451,11 @@ class Planner {
     const built = tb < left;
     const connected = tc < left;
     const ops = connected ? left - tc : 0;
-    const running = this.runningCost(x, t);
+    const running = this.runningCost(x, t, size);
     let rev = 0;
     for (let k = 0; k < left; k++) {
       const w = Math.min(1, Math.max(0, k + 1 - tc));
-      if (w > 0) rev += w * (this.revenueAt(x, t, k) * 0.97 - running); // ~3 % fault losses
+      if (w > 0) rev += w * (this.revenueAt(x, t, k, 1, size) * 0.97 - running); // ~3 % fault losses
     }
     const waiting = Math.min(left, tc);
     const idle = x.lease * 0.02 * waiting + (built ? P.opex * Math.max(0, waiting - tb) : 0);
@@ -433,6 +463,7 @@ class Planner {
     const end = siteValue({
       lease: x.lease,
       type: t,
+      size,
       permit: 'approved',
       built,
       invested: built ? invested : 0,
@@ -454,8 +485,7 @@ class Planner {
     const g = this.v.grid[x.r];
     let own = 0;
     for (const y of this.mine())
-      if (y.id !== x.id && y.r === x.r && y.type && y.built && !y.grid && !this.connectedNow.has(y.id))
-        own += PLANTS[y.type].mw;
+      if (y.id !== x.id && y.r === x.r && y.type && y.built && !y.grid && !this.connectedNow.has(y.id)) own += y.mw;
     // reservations of others expire after a few quarters
     const others = this.optimisticGrid ? 0 : this.othersClaim[x.r] + g.reserved - g.myReserved;
     let cap = g.capacity - g.used - others - own;
@@ -468,15 +498,28 @@ class Planner {
     return Infinity;
   }
 
-  private bestType(x: SiteView, stage: 'new' | 'leased'): { t: PlantType; value: number; capex: number } | null {
-    let best: { t: PlantType; value: number; capex: number } | null = null;
+  private bestType(
+    x: SiteView,
+    stage: 'new' | 'leased',
+  ): { t: PlantType; size: PlantSize; value: number; capex: number } | null {
+    let best: { t: PlantType; size: PlantSize; value: number; capex: number } | null = null;
+    const sizes = this.p.largePlants ? PLANT_SIZE_KEYS : (['std'] as const);
+    const pref = this.ctx.profile.pref.includes(x.r) ? 1.05 : 1;
     for (const t of plantTypesFor(x)) {
-      // grid outlook: other players connect as well, keep a margin (with foresight: part of the value)
-      if (!this.p.foresight && this.v.grid[x.r].capacity - this.v.grid[x.r].used < PLANTS[t].mw) continue;
-      const value = this.projectValue(x, t, stage);
-      const capex = this.v.costs[t].build + PLANTS[t].grid + PLANTS[t].permit + (stage === 'new' ? x.lease : 0);
-      const pref = this.ctx.profile.pref.includes(x.r) ? 1.05 : 1;
-      if (!best || value * pref > best.value) best = { t, value: value * pref, capex };
+      // the size by return per invested euro (a large plant always promises more in total); a large one only
+      // if it is clearly better and can be financed now: an approved plant waiting for money earns nothing
+      let pick: { size: PlantSize; value: number; capex: number } | null = null;
+      for (const size of sizes) {
+        const P = this.def(t, size);
+        // grid outlook: other players connect as well, keep a margin (with foresight: part of the value)
+        if (!this.p.foresight && this.v.grid[x.r].capacity - this.v.grid[x.r].used < P.mw) continue;
+        const value = this.projectValue(x, t, stage, size);
+        const capex = this.cost(t, size).build + P.grid + P.permit + (stage === 'new' ? x.lease : 0);
+        if (size === 'large' && (capex > this.freeRoom() || !pick || value / capex < (pick.value / pick.capex) * 1.1))
+          continue;
+        if (!pick || value / capex > pick.value / pick.capex) pick = { size, value, capex };
+      }
+      if (pick && (!best || pick.value * pref > best.value)) best = { t, ...pick, value: pick.value * pref };
     }
     return best;
   }
@@ -487,7 +530,7 @@ class Planner {
     let c = this.loan * this.v.constants.interest;
     for (const x of this.mine()) {
       c += x.lease * 0.02;
-      if (x.built && x.type) c += PLANTS[x.type].opex;
+      if (x.built && x.type) c += this.def(x.type, x.size).opex;
     }
     return c;
   }
@@ -519,10 +562,10 @@ class Planner {
     let c = 0;
     for (const x of this.mine()) {
       if (!x.type || x.permit === 'rejected') continue;
-      if (!x.built && !this.builtNow.has(x.id)) c += this.v.costs[x.type].build;
-      if (!x.grid && !this.connectedNow.has(x.id)) c += PLANTS[x.type].grid;
+      if (!x.built && !this.builtNow.has(x.id)) c += this.cost(x.type, x.size).build;
+      if (!x.grid && !this.connectedNow.has(x.id)) c += this.def(x.type, x.size).grid;
     }
-    for (const n of this.leasedNow) c += this.v.costs[n.t].build + PLANTS[n.t].grid;
+    for (const n of this.leasedNow) c += this.cost(n.t, n.size).build + this.def(n.t, n.size).grid;
     return c;
   }
 
@@ -537,9 +580,11 @@ class Planner {
     if (this.p.sellStuck) this.sellDead();
     this.repairs();
     this.advanceProjects();
+    if (this.p.repower) this.repowers();
     this.newSites();
     if (this.p.contracts) this.contracts();
     if (this.p.reservations) this.reservations();
+    this.detectives();
     this.tricks();
     this.repay();
     return this.acts;
@@ -556,8 +601,10 @@ class Planner {
       if (!x.own || (x.built && x.grid) || x.permit === 'pending') continue;
       const stage: Stage = !x.type || x.permit === 'rejected' ? 'leased' : x.built ? 'built' : 'approved';
       const keep =
-        stage === 'leased' ? (this.bestType(x, 'leased')?.value ?? -Infinity) : this.projectValue(x, x.type!, stage);
-      const idle = -(x.lease * 0.02 + (x.built && x.type ? PLANTS[x.type].opex : 0)) * this.left;
+        stage === 'leased'
+          ? (this.bestType(x, 'leased')?.value ?? -Infinity)
+          : this.projectValue(x, x.type!, stage, x.size);
+      const idle = -(x.lease * 0.02 + (x.built && x.type ? this.def(x.type, x.size).opex : 0)) * this.left;
       const sell = x.own.sellValue - x.own.value;
       if (sell <= Math.max(keep, idle)) continue;
       this.acts.push({ type: 'sellSite', siteId: x.id });
@@ -570,12 +617,12 @@ class Planner {
   private repairs(): void {
     for (const x of this.mine()) {
       if (!x.fault || !x.type || !x.grid) continue;
-      const loss = this.revenueAt(x, x.type, 0, x.own?.eff ?? 1);
+      const loss = this.revenueAt(x, x.type, 0, x.own?.eff ?? 1, x.size);
       if (loss < this.v.constants.selfRepairCost * 2) continue;
       // cheap self repair first; if it fails the service team is still sent (rejected if fixed)
       if (this.cash > this.v.constants.selfRepairCost + 1e6)
         this.spend({ type: 'repairSelf', siteId: x.id }, this.v.constants.selfRepairCost);
-      const svc = this.v.costs[x.type].service;
+      const svc = this.cost(x.type, x.size).service;
       // only paid if still broken; planned as spent to stay on the safe side
       if (loss * 0.8 > svc && this.cash > svc + this.buffer()) this.spend({ type: 'repairService', siteId: x.id }, svc);
     }
@@ -586,8 +633,8 @@ class Planner {
     // most valuable first: connect, then build, then permits
     for (const x of mine) {
       if (!x.type || !x.built || x.grid) continue;
-      const mw = PLANTS[x.type].mw;
-      const c = this.v.costs[x.type].grid;
+      const mw = x.mw;
+      const c = this.cost(x.type, x.size).grid;
       if (this.free[x.r] >= mw && this.afford(c)) {
         this.spend({ type: 'connectGrid', siteId: x.id }, c);
         this.free[x.r] -= mw;
@@ -596,11 +643,11 @@ class Planner {
     }
     const approved = mine
       .filter((x) => x.type && x.permit === 'approved' && !x.built)
-      .sort((a, b) => this.revenueAt(b, b.type!, 1) - this.revenueAt(a, a.type!, 1));
+      .sort((a, b) => this.revenueAt(b, b.type!, 1, 1, b.size) - this.revenueAt(a, a.type!, 1, 1, a.size));
     for (const x of approved) {
       const t = x.type!;
-      const c = x.fail ? this.v.costs[t].retry : this.v.costs[t].build;
-      if ((!x.fail || this.p.lateGame) && this.projectValue(x, t, 'approved') < 0) continue;
+      const c = x.fail ? this.cost(t, x.size).retry : this.cost(t, x.size).build;
+      if ((!x.fail || this.p.lateGame) && this.projectValue(x, t, 'approved', x.size) < 0) continue;
       if (this.afford(c)) {
         this.spend({ type: 'build', siteId: x.id }, c);
         this.builtNow.add(x.id);
@@ -611,8 +658,36 @@ class Planner {
       const best = this.bestType(x, 'leased');
       if (!best || best.value < 0) continue;
       if (x.type && x.type !== best.t) this.acts.push({ type: 'changePlantType', siteId: x.id });
-      const c = PLANTS[best.t].permit;
-      if (this.afford(c)) this.spend({ type: 'applyPermit', siteId: x.id, plantType: best.t }, c);
+      const c = this.def(best.t, best.size).permit;
+      if (this.afford(c)) this.spend({ type: 'applyPermit', siteId: x.id, plantType: best.t, size: best.size }, c);
+    }
+  }
+
+  /**
+   * Repowers standard plants to large when the extra margin until the end (and the higher book value)
+   * pays for the upgrade and the quarter offline.
+   */
+  private repowers(): void {
+    for (const x of this.mine()) {
+      if (!x.type || !x.own || !x.built || !x.grid || x.size !== 'std' || x.fault || x.offline > 0) continue;
+      const t = x.type;
+      const extra = this.def(t, 'large').mw - x.mw;
+      if (this.free[x.r] < extra) continue;
+      const opt = this.v.options.find((o) => o.action.type === 'repower' && o.action.siteId === x.id);
+      if (!opt) continue;
+      const eff = x.own.eff;
+      const opexDiff = this.def(t, 'large').opex - this.def(t).opex;
+      let gain = -this.revenueAt(x, t, 0, eff); // offline this quarter
+      for (let k = 1; k < this.left; k++)
+        gain += (this.revenueAt(x, t, k, eff, 'large') - this.revenueAt(x, t, k, eff)) * 0.97 - opexDiff;
+      const age = x.own.age + this.left;
+      const book = opt.cost * Math.max(0.35, 1 - age / 100);
+      const interest = opt.cost * this.v.constants.interest * Math.min(this.left, 12) * 0.5;
+      const value = gain + book - opt.cost - interest;
+      if (value < opt.cost * this.p.minRoi * 2) continue;
+      if (!this.afford(opt.cost)) continue;
+      this.spend({ type: 'repower', siteId: x.id }, opt.cost);
+      this.free[x.r] -= extra;
     }
   }
 
@@ -631,12 +706,13 @@ class Planner {
     let here = mw;
     for (const x of this.mine()) {
       if (!x.type || x.permit === 'rejected') continue;
-      total += PLANTS[x.type].mw;
-      if (x.r === r) here += PLANTS[x.type].mw;
+      total += x.mw;
+      if (x.r === r) here += x.mw;
     }
     for (const n of this.leasedNow) {
-      total += PLANTS[n.t].mw;
-      if (n.x.r === r) here += PLANTS[n.t].mw;
+      const mw = this.def(n.t, n.size).mw;
+      total += mw;
+      if (n.x.r === r) here += mw;
     }
     if (total < 150) return 1;
     return 1 - 0.2 * Math.max(0, here / total - 0.5);
@@ -653,7 +729,7 @@ class Planner {
       .map((x) => ({ x, b: this.bestType(x, 'new') }))
       .filter((s): s is { x: SiteView; b: NonNullable<ReturnType<Planner['bestType']>> } => !!s.b)
       .filter((s) => s.b.value > s.b.capex * this.p.minRoi)
-      .map((s) => ({ ...s, score: (s.b.value / s.b.capex) * this.spreadFactor(s.x.r, PLANTS[s.b.t].mw) }))
+      .map((s) => ({ ...s, score: (s.b.value / s.b.capex) * this.spreadFactor(s.x.r, this.def(s.b.t, s.b.size).mw) }))
       .sort((a, b) => b.score - a.score);
     let leases = 0;
     for (const { x, b } of scored) {
@@ -662,10 +738,11 @@ class Planner {
       // the whole project should be financeable within the next quarters
       const room = this.me.creditLimit * this.p.debtRatio - this.loan + this.cash - this.buffer();
       if (b.capex > room * 1.2) continue;
-      if (!this.afford(x.lease + PLANTS[b.t].permit)) continue;
+      const permit = this.def(b.t, b.size).permit;
+      if (!this.afford(x.lease + permit)) continue;
       this.spend({ type: 'lease', siteId: x.id }, x.lease);
-      this.spend({ type: 'applyPermit', siteId: x.id, plantType: b.t }, PLANTS[b.t].permit);
-      this.leasedNow.push({ x, t: b.t });
+      this.spend({ type: 'applyPermit', siteId: x.id, plantType: b.t, size: b.size }, permit);
+      this.leasedNow.push({ x, t: b.t, size: b.size });
       leases++;
       pending++;
     }
@@ -708,8 +785,8 @@ class Planner {
       for (const x of this.mine()) {
         if (!x.type || !x.grid || !x.built) continue;
         const P = PLANTS[x.type];
-        if (P.cls === 'store') continue;
-        s += P.mw * HOURS * capFactor(x, x.type) * SEASON[P.cls as Cls][q]! * (x.own?.eff ?? 1);
+        if (P.cls === 'store' || x.offline > 0) continue;
+        s += x.mw * HOURS * capFactor(x, x.type) * SEASON[P.cls as Cls][q]! * (x.own?.eff ?? 1);
       }
       min = Math.min(min, s);
     }
@@ -724,7 +801,7 @@ class Planner {
     for (const x of this.mine()) {
       if (!x.type || !x.grid || !x.built || PLANTS[x.type].cls === 'store') continue;
       const cls = PLANTS[x.type].cls as Cls;
-      const e = PLANTS[x.type].mw * capFactor(x, x.type) * SEASON[cls][q]!;
+      const e = x.mw * capFactor(x, x.type) * SEASON[cls][q]!;
       gen += e;
       val += e * CAPTURE[cls][q]!;
     }
@@ -756,7 +833,7 @@ class Planner {
     for (const x of this.mine()) {
       if (!x.type || x.grid || this.connectedNow.has(x.id)) continue;
       const soon = x.built || x.permit === 'approved' || (x.permit === 'pending' && (x.own?.permitLeft ?? 9) <= 1);
-      if (soon) need[x.r] = (need[x.r] ?? 0) + PLANTS[x.type].mw;
+      if (soon) need[x.r] = (need[x.r] ?? 0) + x.mw;
     }
     for (const [r, mw] of Object.entries(need) as [RegionKey, number][]) {
       const g = this.v.grid[r];
@@ -782,10 +859,11 @@ class Planner {
   private harm(trick: TrickType, x: SiteView): number {
     if (!x.type) return 0;
     if (this.p.trickTiming) return this.timedHarm(trick, x);
-    const rev = this.quarterRevenue(x, x.type);
-    if (trick === 'klage') return rev * 2 + PLANTS[x.type].permit * 0.15 + this.v.costs[x.type].build * 0.15 * 0.1;
+    const rev = this.quarterRevenue(x, x.type, x.intel?.eff ?? 1, x.size);
+    const c = this.cost(x.type, x.size);
+    if (trick === 'klage') return rev * 2 + this.def(x.type, x.size).permit * 0.15 + c.build * 0.15 * 0.1;
     if (trick === 'bi') return rev * 0.5 * 2;
-    return rev * 0.6 + this.v.costs[x.type].service * 0.5; // hack: fault until repaired
+    return rev * 0.6 + c.service * 0.5; // hack: fault until repaired
   }
 
   /**
@@ -796,21 +874,21 @@ class Planner {
    */
   private timedHarm(trick: TrickType, x: SiteView): number {
     const t = x.type!;
-    const rev = (k: number) => this.revenueAt(x, t, k);
+    const rev = (k: number) => this.revenueAt(x, t, k, x.intel?.eff ?? 1, x.size);
     if (trick === 'klage') {
       // an approved but unbuilt plant would start next quarter; a pending one about a quarter later
       const start = x.permit === 'approved' ? 1 : 2;
       let delay = 0;
       for (let k = start; k < start + 2; k++) delay += rev(k);
-      let kill = PLANTS[t].permit;
-      for (let k = start; k < start + 2 + avgPermitQ(t); k++) kill += rev(k);
+      let kill = this.def(t, x.size).permit;
+      for (let k = start; k < start + 2 + avgPermitQ(this.def(t, x.size)); k++) kill += rev(k);
       let h = 0.85 * delay + 0.15 * kill;
       // an approved permit drops out of the owner's net worth until it is granted again
-      if (x.permit === 'approved') h += PLANTS[t].permit * (start + 2 >= this.left ? 1 : 0.2);
+      if (x.permit === 'approved') h += this.def(t, x.size).permit * (start + 2 >= this.left ? 1 : 0.2);
       return h;
     }
     if (trick === 'bi') return 0.5 * (rev(0) + rev(1));
-    return rev(0) + 0.3 * rev(1) + Math.min(this.v.costs[t].service, this.v.constants.selfRepairCost * 3);
+    return rev(0) + 0.3 * rev(1) + Math.min(this.cost(t, x.size).service, this.v.constants.selfRepairCost * 3);
   }
 
   /** Human players caught or suspected tricking this rival recently, with the number of attacks. */
@@ -842,14 +920,21 @@ class Planner {
       (leader.human && leader.worth > this.me.worth * 0.75) ||
       grudge.has(leader.id);
     if (!threat) return;
+    // a known detective agency of the target lowers the chances and raises the risk
+    const det = leader.intel?.detectives ? this.v.detectives[leader.intel.detectives.level] : null;
+    const spy = leader.intel ? 0 : this.v.constants.spyCost;
+    // a report serves the tricks of several quarters: count about a third of it per trick
+    const spyShare = spy / 3;
     const options: { trick: TrickType; siteId: string; edge: number }[] = [];
     for (const trick of ['klage', 'bi', 'hack'] as TrickType[]) {
       const T = this.v.tricks[trick];
-      const ownCost = T.cost + (1 - T.chance) * 0.4 * T.fine;
+      const chance = T.chance * (det?.shield ?? 1);
+      const caught = T.fine > 0 ? (1 - chance) * (det?.catchFailed ?? 0.4) + chance * (det?.catchSucceeded ?? 0) : 0;
+      const ownCost = T.cost + spyShare + caught * (T.fine + T.damages);
       for (const id of trickTargetIds(this.v, trick)) {
         const x = this.v.sites.find((s) => s.id === id);
         if (!x || x.owner !== leader.id) continue;
-        options.push({ trick, siteId: id, edge: (T.chance * this.harm(trick, x)) / ownCost });
+        options.push({ trick, siteId: id, edge: (chance * this.harm(trick, x)) / ownCost });
       }
     }
     options.sort((a, b) => b.edge - a.edge);
@@ -859,10 +944,36 @@ class Planner {
       if (used.size >= max || o.edge < this.p.trickEdge) break;
       if (used.has(o.siteId)) continue;
       const T = TRICKS[o.trick];
+      if (!leader.intel && !used.size) {
+        // tricks need a spy report on the target first (if the spy is caught, the tricks are rejected)
+        if (this.cash < T.cost + spy + this.buffer()) break;
+        this.spend({ type: 'spy', targetId: leader.id }, spy);
+      }
       if (this.cash < T.cost + this.buffer()) break;
       this.spend({ type: 'lobby', trick: o.trick, siteId: o.siteId }, T.cost);
       used.add(o.siteId);
     }
+  }
+
+  /** Hires detectives after recent attacks on own plants or a caught spy, if there is something to protect. */
+  private detectives(): void {
+    const level = this.p.detectives;
+    if (!level || this.me.detectives) return;
+    const attacked = this.v.news.some((n) => {
+      if (-this.inQuarters(n.year, n.q) >= ALERT_QUARTERS) return false;
+      const e = n.event;
+      if (e.type === 'trickSucceeded' || e.type === 'trickFailed') return e.targetId === this.me.id;
+      return e.type === 'spied' && e.targetId === this.me.id;
+    });
+    if (!attacked) return;
+    const operatingRevenue = this.mine()
+      .filter((x) => x.type && x.built && x.grid)
+      .reduce((s, x) => s + this.quarterRevenue(x, x.type!, x.own?.eff ?? 1, x.size), 0);
+    // the agency protects four quarters of revenue against a few more attacks
+    const cost = this.v.detectives[level].cost;
+    if (operatingRevenue * 2 < cost) return;
+    if (this.cash < cost + this.buffer()) return;
+    this.spend({ type: 'hireDetectives', level }, cost);
   }
 
   private repay(): void {
@@ -870,8 +981,8 @@ class Planner {
     // keep money for projects that are about to need it
     let upcoming = 0;
     for (const x of this.mine()) {
-      if (x.type && x.permit === 'pending' && !x.built) upcoming += this.v.costs[x.type].build;
-      if (x.type && x.built && !x.grid) upcoming += PLANTS[x.type].grid;
+      if (x.type && x.permit === 'pending' && !x.built) upcoming += this.cost(x.type, x.size).build;
+      if (x.type && x.built && !x.grid) upcoming += this.def(x.type, x.size).grid;
     }
     const surplus = this.cash - this.buffer() - upcoming;
     if (surplus < 5e6) return;
