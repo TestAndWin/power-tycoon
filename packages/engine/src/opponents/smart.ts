@@ -9,7 +9,6 @@
  * end-of-game accounting, selling of dead projects, diversification and sharper lobby tricks.
  */
 import {
-  AUTO_MINIGAME,
   CAPTURE,
   HIST,
   HOURS,
@@ -22,10 +21,11 @@ import {
   TARGET_DRIFT,
   TRICKS,
   WORLD_EVENTS,
+  type AutoMinigameDef,
   type HistoricDef,
 } from '../data.js';
 import { clamp, type Random } from '../rng.js';
-import { capFactor as siteCapFactor, plantTypesFor, siteValue, spreadFor } from '../rules.js';
+import { autoMinigame, capFactor as siteCapFactor, plantTypesFor, siteValue, spreadFor } from '../rules.js';
 import { trickTargetIds } from '../view.js';
 import type {
   Action,
@@ -191,6 +191,8 @@ class Planner {
   private readonly connectedNow = new Set<string>();
   /** Projects leased in this turn (not yet in the view). */
   private readonly leasedNow: { x: SiteView; t: PlantType }[] = [];
+  /** Expected outcomes of the own (automatic) minigames. */
+  private readonly mg: AutoMinigameDef;
 
   constructor(
     private readonly v: PlayerView,
@@ -198,6 +200,7 @@ class Planner {
     private readonly p: SmartParams,
   ) {
     this.me = v.me;
+    this.mg = autoMinigame(v.settings.difficulty, !!v.players[v.me.id]?.human);
     this.cash = v.me.cash;
     this.loan = v.me.loan;
     this.R = ctx.random;
@@ -367,11 +370,11 @@ class Planner {
     }
     if (stage !== 'built') {
       const wind = P.cls === 'wind';
-      capex += c.build + (wind ? (1 - AUTO_MINIGAME.rotor) * c.retry : 0);
-      wait += wind ? 1 - AUTO_MINIGAME.rotor : 0;
+      capex += c.build + (wind ? (1 - this.mg.rotor) * c.retry : 0);
+      wait += wind ? 1 - this.mg.rotor : 0;
     }
-    capex += P.grid / AUTO_MINIGAME.cable;
-    wait += (1 - AUTO_MINIGAME.cable) / AUTO_MINIGAME.cable;
+    capex += P.grid / this.mg.cable;
+    wait += (1 - this.mg.cable) / this.mg.cable;
     const ops = Math.max(0, left - wait);
     const margin = this.quarterRevenue(x, t) * 0.97 - this.runningCost(x, t); // ~3 % fault losses
     const invested = stage === 'built' ? (x.own?.invested ?? c.build) : c.build;
@@ -413,11 +416,11 @@ class Planner {
     let build = 0;
     let invested = x.own?.invested || c.build;
     if (stage !== 'built') {
-      build = x.fail ? c.retry / AUTO_MINIGAME.rotor : c.build + (wind ? (1 - AUTO_MINIGAME.rotor) * c.retry : 0);
+      build = x.fail ? c.retry / this.mg.rotor : c.build + (wind ? (1 - this.mg.rotor) * c.retry : 0);
       if (!x.fail) invested = c.build;
-      tb += x.fail || wind ? (1 - AUTO_MINIGAME.rotor) / AUTO_MINIGAME.rotor : 0;
+      tb += x.fail || wind ? (1 - this.mg.rotor) / this.mg.rotor : 0;
     }
-    const tc = tb + (1 - AUTO_MINIGAME.cable) / AUTO_MINIGAME.cable + this.gridDelay(x, P.mw, tb);
+    const tc = tb + (1 - this.mg.cable) / this.mg.cable + this.gridDelay(x, P.mw, tb);
     const built = tb < left;
     const connected = tc < left;
     const ops = connected ? left - tc : 0;
@@ -429,7 +432,7 @@ class Planner {
     }
     const waiting = Math.min(left, tc);
     const idle = x.lease * 0.02 * waiting + (built ? P.opex * Math.max(0, waiting - tb) : 0);
-    const capex = spent + (built ? build : 0) + (connected ? P.grid / AUTO_MINIGAME.cable : 0);
+    const capex = spent + (built ? build : 0) + (connected ? P.grid / this.mg.cable : 0);
     const end = siteValue({
       lease: x.lease,
       type: t,

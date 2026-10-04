@@ -190,8 +190,18 @@ export const TRICKS: Record<TrickType, TrickDef> = {
   hack: { cost: 0.8e6, chance: 0.6, fine: 5e6 },
 };
 
-/** Automatic minigame outcomes (rivals always, the player with `autoMinigames`). */
-export const AUTO_MINIGAME = { layout: [0.9, 1.08] as [number, number], rotor: 0.8, cable: 0.85, frequency: 0.62 };
+export interface AutoMinigameDef {
+  /** Range of the layout efficiency. */
+  layout: [number, number];
+  /** Success chances. */
+  rotor: number;
+  cable: number;
+  frequency: number;
+}
+/** Automatic minigame outcomes (rivals on `normal`, the player with `autoMinigames`). */
+export const AUTO_MINIGAME: AutoMinigameDef = { layout: [0.9, 1.08], rotor: 0.8, cable: 0.85, frequency: 0.62 };
+/** Rivals on `hard` play the minigames like a practised player (a good human reaches 1.15 and never fails). */
+export const AUTO_MINIGAME_HARD: AutoMinigameDef = { layout: [1.0, 1.15], rotor: 0.95, cable: 0.95, frequency: 0.85 };
 /** Allowed range for a client-reported layout efficiency. */
 export const LAYOUT_RANGE: [number, number] = [0.8, 1.15];
 

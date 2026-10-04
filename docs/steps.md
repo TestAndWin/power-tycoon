@@ -83,6 +83,11 @@ Quick wins before any LLM, measured with bot-vs-bot simulations over many seeds:
 - [x] Simulation script: N games, report average net worth per strategy
 - [x] Hard: market/grid forecast, end-of-game accounting, value-based surveys, selling dead projects,
       diversification, timed lobby tricks and revenge on the human; historic milestones spread over the game
+- [x] Hard was too easy for a good human (net worth 437 M€ vs. 83–165 M€): rivals on hard get practised
+      minigame odds, `simulate --skilled` models a human who wins every minigame
+- [ ] Play-test hard again; if still too easy, next lever: rivals go offshore earlier (they keep 100 M€+ idle
+      once the onshore sites are gone). Tried without gain: stricter financing of new leases (much weaker),
+      higher project limits, more lobby tricks, valuing the chance of hydro in surveys
 
 ## Step 2 – LLM rivals (separate planning later)
 

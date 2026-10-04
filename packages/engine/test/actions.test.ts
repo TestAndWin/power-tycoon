@@ -208,6 +208,19 @@ describe('build with minigame challenges', () => {
     expect(eff).toBeLessThanOrEqual(1.08);
     expect(r.events.some((e) => e.type === 'layoutRated')).toBe(true);
   });
+  it('rivals on hard play the minigames like a practised player; the human keeps the normal odds', () => {
+    const effs = (pid: 0 | 1) =>
+      Array.from({ length: 20 }, (_, i) => {
+        const g = newGame(100 + i, true);
+        g.settings.difficulty = 'hard';
+        g.players[pid]!.cash = 100e6;
+        setupSite(g, 'nd0', pid, 'approved', 'solar');
+        return site(ok(g, { type: 'build', siteId: 'nd0' }, pid).state, 'nd0').eff;
+      });
+    expect(Math.min(...effs(1))).toBeGreaterThanOrEqual(1);
+    expect(Math.max(...effs(1))).toBeLessThanOrEqual(1.15);
+    expect(Math.max(...effs(0))).toBeLessThanOrEqual(1.08);
+  });
   it('rejects building before approval and without money', () => {
     const g = newGame();
     setupSite(g, 'nd0', 0, 'leased');

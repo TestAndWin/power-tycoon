@@ -139,6 +139,9 @@ Rules:
 - After a reload the client gets the open challenge in the view and restarts the minigame.
 - With `autoMinigames: true` (and always for rivals) the engine resolves challenges itself with the
   legacy probabilities (layout `rand(.9, 1.08)`, wind assembly 80 %, grid 85 %, frequency 62 %).
+  Rivals on `hard` play like a practised human (`AUTO_MINIGAME_HARD`: layout `rand(1, 1.15)`, assembly and
+  grid 95 %, frequency 85 %). A human who wins every minigame earns about 16 % more per plant, which
+  compounds to roughly +50 % net worth over the game.
 - Minigame results are **trusted** from the client (clamped only). Acceptable, because a player can only
   help themselves against the AI. Revisit if a public high-score list is ever added.
 
@@ -218,8 +221,12 @@ interface OpponentStrategy {
     and strikes back at a human who was caught or suspected tricking it.
   Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly.
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
-- `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds.
-  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 181 M€, hard ≈ 292 M€.
+- `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds;
+  `--skilled` lets seat 0 win every minigame like a good human player.
+  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 177 M€, hard ≈ 268 M€.
+  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 241 M€ and
+  wins 20 %, rivals ≈ 277 M€ (before the hard minigame odds: seat 0 won 70 %). A good human plays better than
+  the bot, so this is the target range for "about even" on `hard`.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `SmartOpponent` (`normal`) on timeout/error. Details are decided when step 2 starts.
 

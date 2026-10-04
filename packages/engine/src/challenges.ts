@@ -2,10 +2,10 @@
  * Skill minigames ("challenges") inside building, connecting and repairing. A human player
  * plays them in the browser; rivals and players with `autoMinigames` get a random outcome.
  */
-import { AUTO_MINIGAME, LAYOUT_RANGE, PLANTS, SELF_REPAIR_COST } from './data.js';
+import { LAYOUT_RANGE, PLANTS, SELF_REPAIR_COST } from './data.js';
 import { emit } from './events.js';
 import { clamp, nextUint, rand, randomOf } from './rng.js';
-import { consumeReserve, siteById } from './rules.js';
+import { autoMinigame, consumeReserve, siteById } from './rules.js';
 import type {
   Challenge,
   ChallengeKind,
@@ -19,10 +19,11 @@ import type {
 
 const autoResolves = (g: GameState, pid: PlayerId): boolean => !g.players[pid]!.human || g.settings.autoMinigames;
 
-function autoOutcome(g: GameState, kind: ChallengeKind): number | boolean {
+function autoOutcome(g: GameState, pid: PlayerId, kind: ChallengeKind): number | boolean {
   const r = randomOf(g);
-  if (kind === 'layout') return Math.round(rand(r, AUTO_MINIGAME.layout[0], AUTO_MINIGAME.layout[1]) * 100) / 100;
-  return r() < AUTO_MINIGAME[kind];
+  const M = autoMinigame(g.settings.difficulty, g.players[pid]!.human);
+  if (kind === 'layout') return Math.round(rand(r, M.layout[0], M.layout[1]) * 100) / 100;
+  return r() < M[kind];
 }
 
 /** Opens a challenge for `step` on site `x`; resolves it at once if the player does not play minigames. */
@@ -35,7 +36,7 @@ export function startChallenge(
   out: GameEvent[],
 ): void {
   const ch: OpenChallenge = { id: g.nextId++, kind, siteId: x.id, seed: nextUint(g), playerId: pid, step };
-  if (autoResolves(g, pid)) resolveChallenge(g, ch, autoOutcome(g, kind), out);
+  if (autoResolves(g, pid)) resolveChallenge(g, ch, autoOutcome(g, pid, kind), out);
   else g.challenge = ch;
 }
 
