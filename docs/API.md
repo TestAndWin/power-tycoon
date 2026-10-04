@@ -80,8 +80,8 @@ to re-implement rules to decide which buttons to show:
 ```
 
 `error` is `null` if the action is allowed now, or a code that only blocks it for the moment
-(`insufficientFunds`, `noGridCapacity`, `creditLimit`, `contractLimit`, `trickLimit`, `noSpyReport`,
-`detectivesActive`). Actions that do not
+(`insufficientFunds`, `noGridCapacity`, `creditLimit`, `contractLimit`, `trickLimit`, `surveyLimit`,
+`noSpyReport`, `detectivesActive`). Actions that do not
 apply at all (e.g. `build` on a site without permit) are not listed. The client shows a button for every
 option and disables it while `error` is set; the server still validates every request.
 

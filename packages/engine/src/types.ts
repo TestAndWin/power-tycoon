@@ -81,6 +81,8 @@ export interface Player {
   co2: number;
   contracts: Contract[];
   trickUsed: number;
+  /** Yield surveys ordered in the current quarter. */
+  surveyUsed: number;
   /** Spy reports: rival id → last turn the report is valid. */
   intel: Record<string, number>;
   /** Hired detective agency, protecting until the end of turn `until`. */
@@ -205,6 +207,7 @@ export type ErrorCode =
   | 'siteTaken'
   | 'notOwner'
   | 'alreadySurveyed'
+  | 'surveyLimit'
   | 'insufficientFunds'
   | 'invalidPlantType'
   | 'invalidState'
@@ -285,7 +288,8 @@ export type GameEvent =
     }
   | {
       type: 'trickFailed';
-      actorId: PlayerId;
+      /** null when the viewer may not know who was behind it (the target of an undiscovered attempt). */
+      actorId: PlayerId | null;
       targetId: PlayerId;
       trick: TrickType;
       siteId: string;
@@ -293,6 +297,8 @@ export type GameEvent =
       fine: number;
       /** Paid to the target (court). */
       damages?: number;
+      /** The target had a detective agency. */
+      defended: boolean;
     }
   | { type: 'spied'; playerId: PlayerId; targetId: PlayerId; cost: number; caught: boolean }
   | { type: 'detectivesHired'; playerId: PlayerId; level: DetectiveLevel; quarters: number; cost: number }
@@ -370,6 +376,12 @@ export interface OpponentContext {
 }
 
 export interface OpponentStrategy {
+  /**
+   * Optional first step of a turn: actions that gather information (surveys, spy reports). They are applied
+   * before `decide`, whose view then contains their results – like a human who surveys a site and leases
+   * it in the same quarter.
+   */
+  explore?(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
   decide(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
 }
 
@@ -481,6 +493,7 @@ export interface PlayerView {
     genLast: number;
     contracts: Contract[];
     tricksLeft: number;
+    surveysLeft: number;
     /** Expected generation this quarter without weather events. */
     nextGen: number;
     contractVolume: number;
@@ -506,6 +519,7 @@ export interface PlayerView {
     reserveQuarters: number;
     selfRepairCost: number;
     maxTricks: number;
+    maxSurveys: number;
     minCredit: number;
     spyCost: number;
     spyQuarters: number;

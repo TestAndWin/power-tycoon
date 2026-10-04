@@ -56,30 +56,34 @@ export function rivalProfile(pid: PlayerId): RivalProfile {
 }
 
 /**
- * Lets `strategy` act for player `pid` on `g` (mutates): builds the view, asks the strategy,
+ * Lets `strategy` act for player `pid` on `g` (mutates): builds the view, asks the strategy (first `explore`,
+ * if it has one, then `decide` on a fresh view),
  * applies the returned actions one by one. Invalid actions are skipped and logged as `actionRejected`.
  */
 export async function runTurnInPlace(g: GameState, pid: PlayerId, strategy: OpponentStrategy): Promise<GameEvent[]> {
   const events: GameEvent[] = [];
-  const random = createRng(nextUint(g));
-  let actions: unknown;
-  try {
-    const view = playerView(g, pid);
-    // the allowed options are exactly the legal actions
-    const legal = view.options.filter((o) => o.error === null).map((o) => o.action);
-    actions = await strategy.decide(view, legal, {
-      playerId: pid,
-      profile: rivalProfile(pid),
-      random,
-    });
-  } catch {
-    actions = [];
-  }
-  const list = Array.isArray(actions) ? actions.slice(0, MAX_ACTIONS_PER_TURN) : [];
-  for (const a of list) {
-    const err = applyActionInPlace(g, pid, a, events);
-    if (err)
-      events.push({ type: 'actionRejected', playerId: pid, action: String((a as Action | null)?.type), error: err });
+  const ctx = { playerId: pid, profile: rivalProfile(pid), random: createRng(nextUint(g)) };
+  let budget = MAX_ACTIONS_PER_TURN;
+  // information first (if the strategy explores), then the decision on a view with its results
+  const steps = [strategy.explore?.bind(strategy), strategy.decide.bind(strategy)];
+  for (const step of steps) {
+    if (!step) continue;
+    let actions: unknown;
+    try {
+      const view = playerView(g, pid);
+      // the allowed options are exactly the legal actions
+      const legal = view.options.filter((o) => o.error === null).map((o) => o.action);
+      actions = await step(view, legal, ctx);
+    } catch {
+      actions = [];
+    }
+    const list = Array.isArray(actions) ? actions.slice(0, budget) : [];
+    budget -= list.length;
+    for (const a of list) {
+      const err = applyActionInPlace(g, pid, a, events);
+      if (err)
+        events.push({ type: 'actionRejected', playerId: pid, action: String((a as Action | null)?.type), error: err });
+    }
   }
   return events;
 }
@@ -155,7 +159,9 @@ async function rivalTurns(
     const ev = await runTurnInPlace(g, p.id, strategy);
     events.push(...ev);
     // the log is attributed to the rival, so tricks only appear if the actor is known anyway
-    const visible = eventsForViewer(ev, viewer).filter((e) => !(e.type === 'trickSucceeded' && e.actorId === null));
+    const visible = eventsForViewer(ev, viewer).filter(
+      (e) => !(isConfrontation(e) && 'actorId' in e && e.actorId === null),
+    );
     log.push({ playerId: p.id, events: visible });
   }
   return { events, log };
@@ -295,6 +301,7 @@ function nextQuarter(g: GameState, out: GameEvent[]): void {
   g.turn++;
   for (const p of g.players) {
     p.trickUsed = 0;
+    p.surveyUsed = 0;
     if (p.detectives && p.detectives.until < g.turn) {
       p.detectives = null;
       out.push({ type: 'detectivesExpired', playerId: p.id });

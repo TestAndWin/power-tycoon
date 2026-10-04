@@ -22,8 +22,15 @@ export function milestoneList(limit = Infinity): string {
 }
 
 export function vNews(): string {
-  const k: Record<string, string> = { bad: 'bad', world: 'warn', sab: 'warn', comp: 'acc', info: '' },
-    l: Record<string, string> = { bad: 'Gegen dich', world: 'Welt', sab: 'Lobby', comp: 'Konkurrenz', info: 'Info' };
+  const k: Record<string, string> = { bad: 'bad', good: 'good', world: 'warn', sab: 'warn', comp: 'acc', info: '' },
+    l: Record<string, string> = {
+      bad: 'Gegen dich',
+      good: 'Abgewehrt',
+      world: 'Welt',
+      sab: 'Lobby',
+      comp: 'Konkurrenz',
+      info: 'Info',
+    };
   return `<section class="panel" style="margin-bottom:16px"><h2 style="margin-bottom:8px">Angekündigte Termine</h2>${milestoneList()}</section>
   <section class="panel"><h2 style="margin-bottom:8px">Nachrichten</h2><ul class="list">${newsList()
     .map(

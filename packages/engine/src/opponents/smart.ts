@@ -189,6 +189,9 @@ export class SmartOpponent implements OpponentStrategy {
   constructor(level: SmartLevel | SmartParams = 'normal') {
     this.params = typeof level === 'string' ? SMART_PARAMS[level] : level;
   }
+  async explore(view: PlayerView, _legal: Action[], ctx: OpponentContext): Promise<Action[]> {
+    return new Planner(view, ctx, this.params).explore();
+  }
   async decide(view: PlayerView, _legal: Action[], ctx: OpponentContext): Promise<Action[]> {
     return new Planner(view, ctx, this.params).plan();
   }
@@ -612,6 +615,16 @@ class Planner {
 
   /* ---------- plan ---------- */
 
+  /** Information for the decision: surveys of free sites and a spy report on the rival to fight. */
+  explore(): Action[] {
+    const pending = this.mine().filter((x) => !(x.built && x.grid)).length;
+    const free = this.v.sites.filter((x) => x.owner < 0);
+    // no new projects near the end (same horizon as `newSites`)
+    if (this.v.quartersLeft >= (this.p.lateGame ? 1 : 4)) this.surveys(free, pending);
+    this.spy();
+    return this.acts;
+  }
+
   plan(): Action[] {
     if (this.p.sellStuck) this.sellDead();
     this.repairs();
@@ -800,7 +813,6 @@ class Planner {
       leases++;
       pending++;
     }
-    this.surveys(free, pending);
   }
 
   /** Surveys unknown sites for later quarters. */
@@ -810,7 +822,7 @@ class Planner {
       const unknown = free.filter((x) => !x.known && x.r !== 'ns');
       const prefer = (x: SiteView) => (this.ctx.profile.pref.includes(x.r) ? 1 : 0) + this.R();
       unknown.sort((a, b) => prefer(b) - prefer(a));
-      for (const x of unknown.slice(0, this.p.surveysPerTurn)) {
+      for (const x of unknown.slice(0, Math.min(this.p.surveysPerTurn, this.me.surveysLeft))) {
         if (this.cash < x.surveyCost + this.buffer()) break;
         this.spend({ type: 'survey', siteId: x.id }, x.surveyCost);
       }
@@ -823,7 +835,7 @@ class Planner {
       .filter((s) => s.b && s.b.value > 0)
       .map((s) => ({ x: s.x, score: s.b!.value / s.b!.capex + (this.ctx.profile.pref.includes(s.x.r) ? 0.05 : 0) }))
       .sort((a, b) => b.score - a.score);
-    const n = this.p.surveysPerTurn + (this.freeRoom() > 40e6 ? 2 : 0);
+    const n = Math.min(this.p.surveysPerTurn + (this.freeRoom() > 40e6 ? 2 : 0), this.me.surveysLeft);
     for (const { x } of unknown.slice(0, n)) {
       if (this.cash < x.surveyCost + this.buffer()) break;
       this.spend({ type: 'survey', siteId: x.id }, x.surveyCost);
@@ -959,26 +971,36 @@ class Planner {
     return g;
   }
 
-  private tricks(): void {
-    if (this.me.tricksLeft <= 0) return;
+  /**
+   * The player this rival would fight: the strongest (human bias, grudges), if it is a real threat or struck
+   * first. Null when there is nobody to fight or no trick left.
+   */
+  private rival(): { leader: PlayerSummary; grudge: Map<PlayerId, number> } | null {
+    if (this.me.tricksLeft <= 0) return null;
     const grudge = this.grudges();
-    if (this.R() > this.p.trickRate * (grudge.size ? 2 : 1)) return;
     const others = this.v.players.filter((p) => p.id !== this.me.id && !p.out);
-    if (!others.length) return;
+    if (!others.length) return null;
     const score = (p: PlayerSummary) =>
       p.worth * (p.human ? this.p.humanBias : 1) * (1 + 0.5 * (grudge.get(p.id) ?? 0));
     const leader = others.reduce((a, b) => (score(b) > score(a) ? b : a));
-    // only fight when the leader is a real threat (or struck first)
     const threat =
       leader.worth >= this.me.worth * 0.9 ||
       (leader.human && leader.worth > this.me.worth * 0.75) ||
       grudge.has(leader.id);
-    if (!threat) return;
+    return threat ? { leader, grudge } : null;
+  }
+
+  /** Does the rival feel like fighting this quarter (more often against players it holds a grudge against)? */
+  private fights(grudge: Map<PlayerId, number>): boolean {
+    return this.R() <= this.p.trickRate * (grudge.size ? 2 : 1);
+  }
+
+  /** Tricks against the leader by their edge (expected harm per own cost), best first. */
+  private trickOptions(leader: PlayerSummary): { trick: TrickType; siteId: string; edge: number }[] {
     // a known detective agency of the target (from the spy report) lowers the chances and raises the risk
     const det = leader.intel?.detectives?.level;
-    const spy = leader.intel ? 0 : this.v.constants.spyCost;
     // a report serves the tricks of several quarters: count about a third of it per trick
-    const spyShare = spy / 3;
+    const spyShare = leader.intel ? 0 : this.v.constants.spyCost / 3;
     const options: { trick: TrickType; siteId: string; edge: number }[] = [];
     for (const trick of ['klage', 'bi', 'hack'] as TrickType[]) {
       const T = this.v.tricks[trick];
@@ -992,18 +1014,37 @@ class Planner {
         options.push({ trick, siteId: id, edge: (chance * this.harm(trick, x)) / ownCost });
       }
     }
-    options.sort((a, b) => b.edge - a.edge);
+    return options.sort((a, b) => b.edge - a.edge);
+  }
+
+  /** Buys a spy report on the leader if the rival wants to fight it this quarter (tricks need one). */
+  private spy(): void {
+    const r = this.rival();
+    if (!r || r.leader.intel || !this.fights(r.grudge)) return;
+    const best = this.trickOptions(r.leader)[0];
+    if (!best || best.edge < this.p.trickEdge) return;
+    const spy = this.v.constants.spyCost;
+    if (this.cash < TRICKS[best.trick].cost + spy + this.buffer()) return;
+    this.spend({ type: 'spy', targetId: r.leader.id }, spy);
+  }
+
+  private tricks(): void {
+    const r = this.rival();
+    const intel = r?.leader.intel;
+    if (!r || !intel) return;
+    const { leader, grudge } = r;
+    // a report bought this quarter means the decision to fight is already made
+    const fresh = intel.until === this.v.turn + this.v.constants.spyQuarters - 1;
+    if (!fresh && !this.fights(grudge)) return;
+    // a detective agency deters: the better it is, the more often the rival backs off
+    const det = intel.detectives?.level;
+    if (det && this.R() < 1 - this.v.detectives[det].shield) return;
     const max = this.p.trickTiming ? this.me.tricksLeft : 1;
     const used = new Set<string>();
-    for (const o of options) {
+    for (const o of this.trickOptions(leader)) {
       if (used.size >= max || o.edge < this.p.trickEdge) break;
       if (used.has(o.siteId)) continue;
       const T = TRICKS[o.trick];
-      if (!leader.intel && !used.size) {
-        // tricks need a spy report on the target first (if the spy is caught, the tricks are rejected)
-        if (this.cash < T.cost + spy + this.buffer()) break;
-        this.spend({ type: 'spy', targetId: leader.id }, spy);
-      }
       if (this.cash < T.cost + this.buffer()) break;
       this.spend({ type: 'lobby', trick: o.trick, siteId: o.siteId }, T.cost);
       used.add(o.siteId);

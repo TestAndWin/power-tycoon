@@ -180,6 +180,7 @@ export const ERROR_TEXT: Record<string, string> = {
   siteTaken: 'Die Fläche ist bereits vergeben.',
   notOwner: 'Das ist nicht deine Fläche.',
   alreadySurveyed: 'Für diese Fläche liegt schon ein Gutachten vor.',
+  surveyLimit: 'Mehr als vier Ertragsgutachten pro Quartal schaffen die Gutachter nicht.',
   invalidPlantType: 'Dieser Anlagentyp ist hier nicht möglich.',
   invalidState: 'Das ist in diesem Projektstand nicht möglich.',
   noGridCapacity: 'Keine freie Netzkapazität.',
@@ -292,7 +293,7 @@ export function reportLineText(l: ReportLine): string {
 }
 
 export type TextKind = 'bad' | 'warn' | 'good' | 'info';
-export type NewsKind = 'bad' | 'world' | 'sab' | 'comp' | 'info';
+export type NewsKind = 'bad' | 'good' | 'world' | 'sab' | 'comp' | 'info';
 
 /** Context for formatting events from the viewer's perspective. */
 interface Ctx {
@@ -312,6 +313,28 @@ function trickText(c: Ctx, e: Extract<GameEvent, { type: 'trickSucceeded' }>): s
   if (e.trick === 'klage') return `Klage gegen das Projekt ${x} von ${tgt} – Verzögerung um zwei Quartale.`;
   if (e.trick === 'bi') return `Bürgerinitiative gegen ${x} (${tgt}): halbe Leistung für zwei Quartale.`;
   return `Hackerangriff auf die Leitwarte von ${x} (${tgt}). Das Kraftwerk ist vom Netz.`;
+}
+
+/** An undiscovered attempt on the viewer's own site that failed (with or without detectives). */
+function fendedOffText(c: Ctx, e: Extract<GameEvent, { type: 'trickFailed' }>): string {
+  const x = sn(c, e.siteId);
+  const unknown = ' Wer dahintersteckt, bleibt unklar.';
+  if (e.trick === 'klage')
+    return (
+      (e.defended ? `Deine Detektei wehrt eine Klage gegen ${x} ab.` : `Eine Klage gegen ${x} wird abgewiesen.`) +
+      unknown
+    );
+  if (e.trick === 'bi')
+    return (
+      (e.defended
+        ? `Deine Detektei deckt eine bestellte Bürgerinitiative gegen ${x} auf.`
+        : `Eine Bürgerinitiative gegen ${x} findet keine Unterstützer.`) + unknown
+    );
+  return (
+    (e.defended
+      ? `Deine Detektei wehrt einen Hackerangriff auf ${x} ab.`
+      : `Ein Hackerangriff auf ${x} läuft ins Leere.`) + unknown
+  );
 }
 
 /** Court verdict after a caught culprit: fine and damages. */
@@ -406,7 +429,7 @@ export function newsTexts(view: PlayerView, e: GameEvent): { kind: NewsKind; tex
       return [{ kind: e.targetId === me ? 'bad' : 'sab', text: t + sus }];
     }
     case 'trickFailed': {
-      if (!e.caught) return [];
+      if (!e.caught) return e.targetId === me ? [{ kind: 'good', text: fendedOffText(c, e) }] : [];
       const court = courtText(c, e.actorId, e.fine, e.damages, me);
       return e.actorId === me
         ? [{ kind: 'bad', text: `Deine Aktion „${TRICK_TEXT[e.trick].name}“ flog auf.${court}` }]
@@ -496,7 +519,8 @@ export function reportEventText(view: PlayerView, e: GameEvent): { kind: TextKin
       // a culprit of a trick on the viewer caught by the detectives: good news if the trick failed, mixed
       // news (plant hit, but damages paid) if it succeeded
       const caughtOnMe = !!e.caught && e.targetId === view.playerId;
-      const kind: TextKind = caughtOnMe ? (e.type === 'trickFailed' ? 'good' : 'warn') : 'bad';
+      const fendedOff = e.type === 'trickFailed' && e.targetId === view.playerId;
+      const kind: TextKind = caughtOnMe ? (e.type === 'trickFailed' ? 'good' : 'warn') : fendedOff ? 'good' : 'bad';
       return n ? { kind, text: n.text } : null;
     }
     default:

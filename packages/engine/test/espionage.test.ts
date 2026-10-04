@@ -105,6 +105,25 @@ describe('detectives', () => {
     expect(open.caughtShare).toBeLessThan(TRICK_CAUGHT + 0.12);
     expect(guarded.caughtShare).toBeGreaterThan(DETECTIVES.pro.catchFailed - 0.12);
   });
+  it('show the target the attempts they fended off, without revealing the actor', () => {
+    let seen = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const g = giveIntel(newGame(seed), 1, 0);
+      setupSite(g, 'nd0', 0, 'approved', 'wind');
+      g.players[0]!.detectives = { level: 'basic', until: 3 };
+      const r = applyAction(g, 1, { type: 'lobby', trick: 'klage', siteId: 'nd0' });
+      if (!r.ok) throw new Error(r.error);
+      const e = r.events[0]!;
+      if (e.type !== 'trickFailed') continue;
+      seen++;
+      // a lawsuit is legal: nobody is caught, but the target hears about it
+      expect(e).toMatchObject({ caught: false, defended: true, actorId: 1 });
+      const news = playerView(r.state, 0).news.find((n) => n.event.type === 'trickFailed');
+      expect(news?.event).toMatchObject({ actorId: null, siteId: 'nd0', defended: true });
+      expect(playerView(r.state, 2).news.some((n) => n.event.type === 'trickFailed')).toBe(false);
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
   it('can catch the actor of a successful trick: the damage stays, the court pays the victim', () => {
     let found = false;
     for (let seed = 1; seed <= 200 && !found; seed++) {

@@ -210,6 +210,8 @@ export const START_CASH = 30e6;
 export const STORE_MARKET_SHARE = 0.5;
 export const SITES_PER_REGION = 16;
 export const MAX_TRICKS = 2;
+/** Yield surveys a player may order per quarter. */
+export const MAX_SURVEYS = 4;
 export const RESERVE_MW = 50;
 export const RESERVE_COST = 0.8e6;
 export const RESERVE_QUARTERS = 4;
@@ -256,8 +258,8 @@ export const DETECTIVE_KEYS: readonly DetectiveLevel[] = ['basic', 'pro'];
 /** Quarters a detective agency is hired for (the current one included). */
 export const DETECTIVE_QUARTERS = 4;
 export const DETECTIVES: Record<DetectiveLevel, DetectiveDef> = {
-  basic: { cost: 0.6e6, shield: 0.75, catchFailed: 0.65, catchSucceeded: 0.2, catchSpy: 0.3 },
-  pro: { cost: 1.5e6, shield: 0.55, catchFailed: 0.85, catchSucceeded: 0.4, catchSpy: 0.55 },
+  basic: { cost: 0.6e6, shield: 0.6, catchFailed: 0.65, catchSucceeded: 0.2, catchSpy: 0.3 },
+  pro: { cost: 1.5e6, shield: 0.4, catchFailed: 0.85, catchSucceeded: 0.4, catchSpy: 0.55 },
 };
 
 export interface AutoMinigameDef {

@@ -78,6 +78,7 @@ function mkPlayer(id: PlayerId, name: string, human: boolean): Player {
     co2: 0,
     contracts: [],
     trickUsed: 0,
+    surveyUsed: 0,
     intel: {},
     detectives: null,
   };

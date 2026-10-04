@@ -176,6 +176,9 @@ function detail(): string {
     switch (act.type) {
       case 'survey':
         a.push(btn('survey', x.id, 'Ertragsgutachten', opt));
+        a.push(
+          `<p class="muted" style="font-size:12px;margin:0">Noch ${v.me.surveysLeft} von ${v.constants.maxSurveys} Gutachten in diesem Quartal.</p>`,
+        );
         break;
       case 'lease':
         a.push(btn('lease', x.id, 'Fläche pachten', opt, { cls: 'primary' }));

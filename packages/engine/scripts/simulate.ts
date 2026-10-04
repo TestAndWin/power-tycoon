@@ -44,17 +44,21 @@ const skilled = process.argv.includes('--skilled');
 /** Seat 0's turn with every minigame won. */
 async function skilledTurn(g: GameState, strategy: OpponentStrategy, seed: number): Promise<GameState> {
   const ctx = { playerId: 0 as const, profile: rivalProfile(0), random: createRng(seed) };
-  for (const a of await strategy.decide(playerView(g, 0), [], ctx)) {
-    let r = applyAction(g, 0, a);
-    while (r.ok) {
-      g = r.state;
-      const ch = r.challenge;
-      if (!ch) break;
-      r = applyAction(g, 0, {
-        type: 'minigameResult',
-        challengeId: ch.id,
-        outcome: ch.kind === 'layout' ? 1.15 : true,
-      });
+  // like `runTurnInPlace`: information first, then the decision on a fresh view
+  for (const step of [strategy.explore?.bind(strategy), strategy.decide.bind(strategy)]) {
+    if (!step) continue;
+    for (const a of await step(playerView(g, 0), [], ctx)) {
+      let r = applyAction(g, 0, a);
+      while (r.ok) {
+        g = r.state;
+        const ch = r.challenge;
+        if (!ch) break;
+        r = applyAction(g, 0, {
+          type: 'minigameResult',
+          challengeId: ch.id,
+          outcome: ch.kind === 'layout' ? 1.15 : true,
+        });
+      }
     }
   }
   return g;

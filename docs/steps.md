@@ -105,6 +105,9 @@ balance is measured with the simulation script (normal/hard) before merging.
 - [x] Caught culprit pays the fine **and** damages to the victim (court); new events for the report
 - [x] Rivals: spy before tricks, hire detectives when they were targeted; hard rivals weigh it by value
 - [x] Web: espionage panel (report view), detective status, German texts
+- [x] Playtest fixes: rivals survey and lease in the same quarter (`OpponentStrategy.explore`), at most four
+      surveys per quarter for everyone, stronger detectives (shield 0.6 / 0.4) that deter rivals, and the
+      target sees attempts that were fended off
 
 **Selectable game length (D)**
 - [x] `createGame` option `years` (3 / 5 / 10, default 10) → `endYear`; stored games keep 10

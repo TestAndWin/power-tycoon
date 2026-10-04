@@ -3,9 +3,11 @@ import {
   createGame,
   endQuarter,
   legalActions,
+  MAX_SURVEYS,
   opponentFor,
   opponentsFor,
   playerView,
+  playTurn,
   SmartOpponent,
   SMART_PARAMS,
   type Difficulty,
@@ -38,13 +40,28 @@ describe('SmartOpponent', () => {
 
   it('plans actions from the view without minigame results', async () => {
     const g = newGame(5, true);
-    const acts = await new SmartOpponent('hard').decide(playerView(g, 1), legalActions(g, 1), {
-      playerId: 1,
-      profile: { name: 'X', pref: ['nd'] },
-      random: () => 0.5,
-    });
+    const c = { playerId: 1, profile: { name: 'X', pref: ['nd' as const] }, random: () => 0.5 };
+    const hard = new SmartOpponent('hard');
+    const acts = [
+      ...(await hard.explore(playerView(g, 1), legalActions(g, 1), c)),
+      ...(await hard.decide(playerView(g, 1), legalActions(g, 1), c)),
+    ];
     expect(acts.length).toBeGreaterThan(0);
     for (const a of acts) expect(a.type).not.toBe('minigameResult');
+  });
+
+  it('surveys and leases in the same quarter, already in the first one', async () => {
+    for (const level of ['normal', 'hard'] as const) {
+      const { state, events } = await playTurn(newGame(42, true), 1, new SmartOpponent(level));
+      const types = events.map((e) => e.type);
+      expect(types).toContain('siteSurveyed');
+      expect(types).toContain('siteLeased');
+      // a leased site was surveyed first (offshore may be leased blind)
+      const leased = events.flatMap((e) => (e.type === 'siteLeased' ? [e.siteId] : []));
+      for (const id of leased)
+        if (!id.startsWith('ns')) expect(state.sites.find((x) => x.id === id)!.surveyed).toContain(1);
+      expect(state.players[1]!.surveyUsed).toBeLessThanOrEqual(MAX_SURVEYS);
+    }
   });
 
   it('plays full games deterministically', async () => {
@@ -81,19 +98,23 @@ describe('SmartOpponent', () => {
     const g = newGame(8, true);
     g.players[1]!.cash = 120e6;
     setupSite(g, 'ns2', 0, 'approved');
-    const lobby = async (level: 'normal' | 'hard') => (await decide(level, g)).filter((a) => a.type === 'lobby');
+    const turn = async (level: 'normal' | 'hard') => (await playTurn(g, 1, new SmartOpponent(level))).events;
+    const lobby = async (level: 'normal' | 'hard') =>
+      (await turn(level)).flatMap((e) =>
+        e.type === 'trickSucceeded' || e.type === 'trickFailed' ? [{ trick: e.trick, siteId: e.siteId }] : [],
+      );
     expect(await lobby('hard')).toEqual([]);
     g.news.unshift({
       year: g.year,
       q: g.q,
       event: { type: 'trickSucceeded', actorId: 0, targetId: 1, trick: 'hack', siteId: 'nd1', suspected: true },
     });
-    expect(await lobby('hard')).toEqual([{ type: 'lobby', trick: 'klage', siteId: 'ns2' }]);
+    expect(await lobby('hard')).toEqual([{ trick: 'klage', siteId: 'ns2' }]);
     expect(await lobby('normal')).toEqual([]);
-    // the trick needs a spy report on the human first
-    const acts = (await decide('hard', g)).map((a) => a.type);
-    expect(acts.indexOf('spy')).toBeGreaterThanOrEqual(0);
-    expect(acts.indexOf('spy')).toBeLessThan(acts.indexOf('lobby'));
+    // the trick needs a spy report on the human first (bought before the decision)
+    const types = (await turn('hard')).map((e) => e.type);
+    expect(types.indexOf('spied')).toBeGreaterThanOrEqual(0);
+    expect(types.indexOf('spied')).toBeLessThan(types.findIndex((t) => t.startsWith('trick')));
   });
 
   it('hires detectives after an attack, if it has plants to protect', async () => {

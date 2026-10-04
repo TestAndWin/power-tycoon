@@ -9,6 +9,7 @@ import {
   DETECTIVES,
   duelSeconds,
   MAX_CONTRACTS,
+  MAX_SURVEYS,
   MAX_TRICKS,
   PLANT_SIZE_KEYS,
   PLANTS,
@@ -120,10 +121,13 @@ function applyTrick(g: GameState, type: TrickType, x: Site): void {
 const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
   survey: {
     site: true,
-    validate: (c) => freeSite(c) ?? (c.x.surveyed.includes(c.pid) ? 'alreadySurveyed' : null),
+    validate: (c) =>
+      freeSite(c) ??
+      (c.x.surveyed.includes(c.pid) ? 'alreadySurveyed' : c.p.surveyUsed >= MAX_SURVEYS ? 'surveyLimit' : null),
     price: (c) => surveyCost(c.x),
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
+      p.surveyUsed++;
       x.surveyed.push(pid);
       emit(g, out, { type: 'siteSurveyed', playerId: pid, siteId: x.id, cost });
     },
@@ -390,7 +394,15 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
         });
       } else {
         const verdict = court(odds.caughtIfFailed > 0 && r() < odds.caughtIfFailed);
-        emit(g, out, { type: 'trickFailed', actorId: pid, targetId, trick: a.trick, siteId: x.id, ...verdict });
+        emit(g, out, {
+          type: 'trickFailed',
+          actorId: pid,
+          targetId,
+          trick: a.trick,
+          siteId: x.id,
+          defended: !!target.detectives,
+          ...verdict,
+        });
       }
     },
   },
@@ -445,6 +457,7 @@ const BLOCKING = new Set<ErrorCode>([
   'creditLimit',
   'contractLimit',
   'trickLimit',
+  'surveyLimit',
   'noSpyReport',
   'detectivesActive',
 ]);

@@ -86,6 +86,7 @@ Modules of `packages/engine/src`:
   with an approved permit it runs as `Site.alt` next to it – granted, it replaces type and permit, rejected,
   the approved permit stays (`permitDecided.previous`). Starting the build drops it.
 - Lobby tricks: max 2 per player per quarter (legacy only limited the human; apply it to all).
+- Yield surveys: max `MAX_SURVEYS` (4) per player per quarter (`surveyLimit`, `PlayerView.me.surveysLeft`).
 
 ### Phase 7 additions (ideas from Oil Imperium)
 
@@ -95,6 +96,8 @@ Modules of `packages/engine/src`:
 - Detectives (`hireDetectives`, `basic`/`pro`, `DETECTIVE_QUARTERS`, `Player.detectives`): tricks against the
   client succeed less often (`shield`), failed culprits are caught more often, successful ones sometimes
   afterwards, spies may be caught (no report, the target is told). Hidden from other players.
+  The target learns about undiscovered failed attempts on its sites (`trickFailed` with `actorId: null` and
+  `defended` = it had detectives), so it sees what the agency fended off.
   The term is stored as the last protected turn (`until`). It starts with `termStart`: the current turn, or the
   next one when hired during `endQuarter` (`GameState.phase = 'quarterEnd'`), because the rivals act after the
   human – so both sides get `DETECTIVE_QUARTERS` turns of the others covered.
@@ -227,11 +230,14 @@ sound on/off) may also be kept there. "Neues Spiel" creates a new game and repla
 
 ```ts
 interface OpponentStrategy {
-  decide(view: PlayerView, legal: Action[], ctx: { playerId: PlayerId; profile: RivalProfile }): Promise<Action[]>;
+  explore?(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
+  decide(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
 }
 ```
 
 - The engine applies the returned actions one by one via `applyAction`; invalid actions are skipped and logged.
+- `explore` (optional) runs first and gathers information (surveys, spy reports); `decide` then gets a fresh
+  view with the results – a rival can survey and lease in the same quarter, like the human.
 - `SmartOpponent` (phase 6, difficulties `normal` / `hard`; the legacy rival AI was removed): values every project by its expected
   contribution to net worth at game end (remaining quarters × margin + book value − investment), surveys
   before leasing, finances with debt up to a share of the credit limit, accepts PPA contracts covered by
@@ -248,17 +254,19 @@ interface OpponentStrategy {
     the big one,
   - values tricks by the target's real loss (season, timing, end of game), may use both tricks of a quarter
     and strikes back at a human who was caught or suspected tricking it.
-  Both levels spy on a target before tricking it, hire detectives after an attack (`normal` basic, `hard` pro),
+  Both levels spy on a target before tricking it (in `explore`, so the report – including the target's
+  detectives – is known when they decide), back off from a target with detectives with probability
+  `1 − shield`, hire detectives after an attack (`normal` basic, `hard` pro),
   choose the plant size by return per invested euro (large only if it is financeable now and clearly better)
   and repower running plants when the extra margin pays for the upgrade and the quarter offline.
   Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly.
 - `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
 - `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds;
   `--skilled` lets seat 0 win every minigame like a good human player, `--years` sets the game length.
-  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 176 M€, hard ≈ 301 M€.
-  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 307 M€ and
-  wins 26 %, rivals ≈ 314 M€ and 25 % each (before the hard minigame odds and `bigProjects`: seat 0 won 70 %;
-  before phase 7: 13 %). A good human plays better than the bot, so this is the target range for "about even" on `hard`.
+  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 194 M€, hard ≈ 322 M€.
+  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 325 M€ and
+  wins 25 %, rivals ≈ 339 M€ and 25 % each (before the hard minigame odds and `bigProjects`: seat 0 won 70 %;
+  before phase 7: 13 %; before `explore` the rivals only leased from the second quarter on: 309 / 318 M€). A good human plays better than the bot, so this is the target range for "about even" on `hard`.
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
   `AI_DEF`. Falls back to `SmartOpponent` (`normal`) on timeout/error. Details are decided when step 2 starts.
 

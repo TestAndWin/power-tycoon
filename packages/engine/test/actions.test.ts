@@ -3,6 +3,7 @@ import {
   applyAction,
   endQuarter,
   legalActions,
+  MAX_SURVEYS,
   optionsOf,
   plantTypesFor,
   playerView,
@@ -39,6 +40,17 @@ describe('survey', () => {
     fails(g, { type: 'survey', siteId: 'nd1' }, 'siteTaken');
     g.players[0]!.cash = 1000;
     fails(g, { type: 'survey', siteId: 'nd2' }, 'insufficientFunds');
+  });
+  it('is limited per quarter', async () => {
+    let g = newGame();
+    for (let i = 0; i < MAX_SURVEYS; i++) g = ok(g, { type: 'survey', siteId: 'ib' + i }).state;
+    expect(playerView(g, 0).me.surveysLeft).toBe(0);
+    fails(g, { type: 'survey', siteId: 'ib9' }, 'surveyLimit');
+    // the rivals have their own limit, and a new quarter brings a new one
+    ok(g, { type: 'survey', siteId: 'ib9' }, 1);
+    g = (await endQuarter(g, [])).state;
+    expect(playerView(g, 0).me.surveysLeft).toBe(MAX_SURVEYS);
+    ok(g, { type: 'survey', siteId: 'ib9' });
   });
 });
 

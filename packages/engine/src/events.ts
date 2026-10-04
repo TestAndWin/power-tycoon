@@ -13,6 +13,8 @@ function isNews(g: GameState, e: GameEvent): boolean {
     case 'gridReserved':
       return true;
     case 'trickFailed':
+      // the human learns about attempts on own sites (whose actor stays unknown unless caught)
+      return e.caught || human(e.targetId);
     case 'spied':
       return e.caught;
     case 'gridDuel':
@@ -62,7 +64,8 @@ export function eventForViewer(e: GameEvent, viewer: PlayerId): GameEvent | null
       if (e.playerId === viewer) return e;
       return { ...e, quarters: undefined };
     case 'trickFailed':
-      return e.actorId === viewer || e.caught ? e : null;
+      if (e.actorId === viewer || e.caught) return e;
+      return e.targetId === viewer ? { ...e, actorId: null } : null;
     case 'trickSucceeded':
       return e.actorId === viewer || e.suspected ? e : { ...e, actorId: null };
     default:

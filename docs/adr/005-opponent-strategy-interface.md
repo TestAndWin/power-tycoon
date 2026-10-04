@@ -13,7 +13,8 @@ driven by an LLM. The LLM must not be able to break the rules.
 
 Rivals implement `OpponentStrategy.decide(view, legalActions, ctx): Promise<Action[]>`. The engine
 applies the returned actions through the same `applyAction` validation as player actions and skips
-invalid ones. Rival minigame challenges are resolved by the engine with the legacy probabilities.
+invalid ones. An optional `explore` step runs before `decide` for information actions (surveys, spy
+reports), so the decision sees their results within the same quarter, as a human player does. Rival minigame challenges are resolved by the engine with the legacy probabilities.
 
 ## Consequences
 
