@@ -124,7 +124,7 @@ describe('permits', () => {
   it('a rejected alternative keeps the approved permit', async () => {
     const g = newGame();
     const x = setupSite(g, 'nd0', 0, 'approved', 'wind');
-    x.alt = { type: 'solar', left: 1 };
+    x.alt = { type: 'solar', left: 1, size: 'std' };
     // force the rejection
     const reject = PLANTS.solar.reject;
     PLANTS.solar.reject = 1;

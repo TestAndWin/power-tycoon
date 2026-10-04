@@ -41,11 +41,11 @@ export interface Site {
    * Application for another plant type while the current permit stays valid. Granted, it replaces the
    * current type and permit; rejected, the current permit stays. Dropped when building starts.
    */
-  alt?: { type: PlantType; left: number; size?: PlantSize } | null;
-  /** Plant size; missing in games stored before phase 7 (= `std`). */
-  size?: PlantSize;
+  alt: { type: PlantType; left: number; size: PlantSize } | null;
+  /** Plant size. */
+  size: PlantSize;
   /** Quarters the plant is still offline for repowering. */
-  offline?: number;
+  offline: number;
 }
 
 export interface Offer {
@@ -78,10 +78,10 @@ export interface Player {
   co2: number;
   contracts: Contract[];
   trickUsed: number;
-  /** Spy reports: rival id → last turn the report is valid. Missing in games stored before phase 7. */
-  intel?: Record<string, number>;
+  /** Spy reports: rival id → last turn the report is valid. */
+  intel: Record<string, number>;
   /** Hired detective agency, `left` quarters including the current one. */
-  detectives?: { level: DetectiveLevel; left: number } | null;
+  detectives: { level: DetectiveLevel; left: number } | null;
 }
 
 export interface Reservation {
@@ -148,8 +148,7 @@ export interface GameState {
   news: NewsItem[];
   nextId: number;
   over: GameOver;
-  /** `difficulty` is missing in games created before phase 6 (or `easy` from before its removal): `normal`. */
-  settings: { autoMinigames: boolean; difficulty?: Difficulty | 'easy' };
+  settings: { autoMinigames: boolean; difficulty: Difficulty };
   challenge: OpenChallenge | null;
 }
 

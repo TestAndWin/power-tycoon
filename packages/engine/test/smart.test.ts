@@ -28,10 +28,9 @@ async function play(seed: number, rivals: Difficulty[]): Promise<GameState> {
 }
 
 describe('SmartOpponent', () => {
-  it('maps difficulties to strategies; old games without difficulty or with easy play normal', () => {
+  it('maps difficulties to strategies; new games play normal by default', () => {
     const params = (o: unknown) => (o as SmartOpponent).params;
-    expect(params(opponentFor('easy'))).toBe(SMART_PARAMS.normal);
-    expect(params(opponentFor(undefined))).toBe(SMART_PARAMS.normal);
+    expect(params(opponentFor('normal'))).toBe(SMART_PARAMS.normal);
     expect(params(opponentFor('hard'))).toBe(SMART_PARAMS.hard);
     expect(opponentsFor('hard')).toHaveLength(3);
     expect(createGame({ companyName: 'X', autoMinigames: false, seed: 1 }).settings.difficulty).toBe('normal');

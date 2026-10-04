@@ -24,8 +24,7 @@ player may know about the rivals. Add `GET /api/games/:id/rivals` only if the vi
 ```
 
 `years` (`3` | `5` | `10`) is the game length, optional, default `10`; the historic milestones are squeezed into
-it. `difficulty` (`normal` | `hard`) is optional, default `normal`. Stored games without a difficulty (or with
-the removed `easy`) play against `normal`.
+it. `difficulty` (`normal` | `hard`) is optional, default `normal`.
 The token is returned **only here**. The client stores `{ gameId, token }` in `localStorage`.
 Rate limit: 10 new games per IP per hour.
 

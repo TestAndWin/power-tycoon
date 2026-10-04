@@ -96,7 +96,7 @@ Modules of `packages/engine/src`:
   client succeed less often (`shield`), failed culprits are caught more often, successful ones sometimes
   afterwards, spies may be caught (no report, the target is told). Hidden from other players.
 - Court: a caught culprit pays the fine and `damages` to the victim (`TRICKS`).
-- Plant sizes: `Site.size` (`std`/`large`, missing in old games = `std`), chosen with `applyPermit`.
+- Plant sizes: `Site.size` (`std`/`large`), chosen with `applyPermit`.
   `plantDef(t, size)` scales capacity, storage volume and costs (`LARGE`); large permits take a quarter longer
   and are rejected more often. `repower` upgrades a running standard plant (`repowerCost`, needs the extra grid
   capacity) and takes it offline for `REPOWER_QUARTERS` (`Site.offline`).
@@ -192,7 +192,8 @@ CREATE TABLE games (
 ```
 
 - Migrations: a numbered list of SQL strings applied at startup (`PRAGMA user_version`). No ORM.
-- `GameState.v` (schema version) stays; bump it and migrate old JSON on load if the shape changes.
+- No compatibility with older saved games while the game is not live: a change of the `GameState` shape needs a
+  fresh database. Once it is live, bump `GameState.v` and migrate old JSON on load.
 - Cleanup job on startup + daily: delete games not updated for 180 days.
 - Backup: `sqlite3 .backup` via a host cron job (documented in README, not part of the app).
 
@@ -226,8 +227,7 @@ interface OpponentStrategy {
 ```
 
 - The engine applies the returned actions one by one via `applyAction`; invalid actions are skipped and logged.
-- `SmartOpponent` (phase 6, difficulties `normal` / `hard`; the legacy rival AI `easy` was removed, stored games
-  without a difficulty or with `easy` play against `normal`): values every project by its expected
+- `SmartOpponent` (phase 6, difficulties `normal` / `hard`; the legacy rival AI was removed): values every project by its expected
   contribution to net worth at game end (remaining quarters × margin + book value − investment), surveys
   before leasing, finances with debt up to a share of the credit limit, accepts PPA contracts covered by
   its own generation, values storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity (`hard`) and aims lobby tricks

@@ -41,7 +41,6 @@ import {
   serviceCost,
   siteMw,
   siteValue,
-  sizeOf,
   storeCapacity,
   storeIncome,
   surveyCost,
@@ -114,9 +113,9 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       wind: known ? x.wind : null,
       sun: known ? x.sun : null,
       hydro: known ? x.hydro : null,
-      size: sizeOf(x),
+      size: x.size,
       mw: siteMw(x),
-      offline: x.offline ?? 0,
+      offline: x.offline,
     };
     if (spied) v.intel = { eff: x.eff, permitLeft: x.permitLeft };
     if (mine)
@@ -190,7 +189,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     over: g.over,
     settings: {
       autoMinigames: g.settings.autoMinigames,
-      difficulty: g.settings.difficulty === 'hard' ? 'hard' : 'normal',
+      difficulty: g.settings.difficulty,
     },
     me: {
       id: pid,

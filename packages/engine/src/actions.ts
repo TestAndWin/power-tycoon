@@ -46,7 +46,6 @@ import {
   siteById,
   siteDef,
   siteMw,
-  sizeOf,
   surveyCost,
   trickOdds,
   trickTargets,
@@ -146,19 +145,19 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (err) return err;
       if (!plantTypesFor(x).includes(a.plantType)) return 'invalidPlantType';
       if (a.size !== undefined && !PLANT_SIZE_KEYS.includes(a.size)) return 'invalidPlantType';
-      const size = sizeOf(a);
+      const size = a.size ?? 'std';
       if (!x.type) return null;
       if (x.permit === 'rejected') return x.type !== a.plantType ? 'invalidPlantType' : null;
       // change of mind: a running application is replaced, an approved permit stays until the new one is decided
       if (x.built) return 'invalidState';
-      const same = (o: { type: PlantType | null; size?: PlantSize }) => o.type === a.plantType && sizeOf(o) === size;
+      const same = (o: { type: PlantType | null; size: PlantSize }) => o.type === a.plantType && o.size === size;
       if (same(x) || (x.alt && same(x.alt))) return 'invalidState';
       return null;
     },
     price: (c) => plantDef(c.a.plantType, c.a.size).permit,
     execute({ g, p, pid, x, a }, cost, out) {
       p.cash -= cost;
-      const size = sizeOf(a);
+      const size = a.size ?? 'std';
       const left = randint(randomOf(g), ...plantDef(a.plantType, size).permitQ);
       if (x.type && x.permit === 'approved') {
         x.alt = { type: a.plantType, left, size };
@@ -202,7 +201,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
   build: {
     site: true,
     validate: (c) => ownSite(c) ?? (c.x.permit !== 'approved' || c.x.built ? 'invalidState' : null),
-    price: ({ g, x }) => (x.fail ? retryCost(g, x.type!, sizeOf(x)) : buildCost(g, x.type!, sizeOf(x))),
+    price: ({ g, x }) => (x.fail ? retryCost(g, x.type!, x.size) : buildCost(g, x.type!, x.size)),
     execute({ g, p, pid, x }, cost, out) {
       const t = x.type!;
       p.cash -= cost;
@@ -242,8 +241,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       const { g, pid, x } = c;
       const err = ownSite(c);
       if (err) return err;
-      if (!x.type || !x.built || !x.grid || sizeOf(x) !== 'std' || x.fault || (x.offline ?? 0) > 0)
-        return 'invalidState';
+      if (!x.type || !x.built || !x.grid || x.size !== 'std' || x.fault || x.offline > 0) return 'invalidState';
       if (freeGrid(g, x.r, pid) < repowerMw(x.type)) return 'noGridCapacity';
       return null;
     },
@@ -269,7 +267,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
   repairService: {
     site: true,
     validate: (c) => ownSite(c) ?? (!c.x.fault || !c.x.grid ? 'invalidState' : null),
-    price: (c) => serviceCost(c.x.type!, sizeOf(c.x)),
+    price: (c) => serviceCost(c.x.type!, c.x.size),
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
       x.fault = false;
@@ -403,7 +401,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       p.cash -= cost;
       const det = g.players[a.targetId]!.detectives;
       const caught = !!det && randomOf(g)() < DETECTIVES[det.level].catchSpy;
-      if (!caught) p.intel = { ...p.intel, [a.targetId]: g.turn + SPY_QUARTERS - 1 };
+      if (!caught) p.intel[a.targetId] = g.turn + SPY_QUARTERS - 1;
       emit(g, out, { type: 'spied', playerId: pid, targetId: a.targetId, cost, caught });
     },
   },

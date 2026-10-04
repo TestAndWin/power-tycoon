@@ -33,7 +33,7 @@ import type {
 } from './types.js';
 
 /** Automatic minigame outcomes for a rival (`human` false) or a player with `autoMinigames`. */
-export const autoMinigame = (difficulty: Difficulty | 'easy' | undefined, human: boolean): AutoMinigameDef =>
+export const autoMinigame = (difficulty: Difficulty, human: boolean): AutoMinigameDef =>
   !human && difficulty === 'hard' ? AUTO_MINIGAME_HARD : AUTO_MINIGAME;
 
 export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
@@ -47,12 +47,10 @@ export const retryCost = (g: GameState, t: PlantType, size: PlantSize = 'std'): 
 export const serviceCost = (t: PlantType, size: PlantSize = 'std'): number =>
   Math.round((plantDef(t, size).build * 0.04) / 1e4) * 1e4;
 
-/** Size of the (planned) plant on a site; games stored before phase 7 only know `std`. */
-export const sizeOf = (x: { size?: PlantSize }): PlantSize => x.size ?? 'std';
 /** Plant data of a site with a type, for its size. */
-export const siteDef = (x: { type: PlantType | null; size?: PlantSize }): PlantDef => plantDef(x.type!, sizeOf(x));
+export const siteDef = (x: { type: PlantType | null; size: PlantSize }): PlantDef => plantDef(x.type!, x.size);
 /** Capacity of the (planned) plant on a site in MW (0 without type). */
-export const siteMw = (x: { type: PlantType | null; size?: PlantSize }): number => (x.type ? siteDef(x).mw : 0);
+export const siteMw = (x: { type: PlantType | null; size: PlantSize }): number => (x.type ? siteDef(x).mw : 0);
 /** Extra capacity of a repowered plant (MW). */
 export const repowerMw = (t: PlantType): number => plantDef(t, 'large').mw - PLANTS[t].mw;
 /** Price of repowering a standard plant to large: extra build costs with a surcharge, plus the bigger grid connection. */
@@ -75,7 +73,7 @@ export const surveyCost = (x: Site): number => (x.r === 'ns' ? 0.3e6 : 0.05e6);
 export const operating = (x: Pick<Site, 'owner' | 'built' | 'grid'>): boolean => x.owner >= 0 && x.built && x.grid;
 /** Operating and producing this quarter: no fault and not offline for repowering. */
 export const producing = (x: Pick<Site, 'owner' | 'built' | 'grid' | 'fault' | 'offline'>): boolean =>
-  operating(x) && !x.fault && !((x.offline ?? 0) > 0);
+  operating(x) && !x.fault && x.offline <= 0;
 /** A plant (or approved project) that will need a grid connection: built or approved, not connected. */
 export const waitingForGrid = (x: Pick<Site, 'type' | 'grid' | 'built' | 'permit'>): boolean =>
   !!x.type && !x.grid && (x.built || x.permit === 'approved');
@@ -273,7 +271,7 @@ export const siteById = (g: GameState, id: string): Site | undefined => g.sites.
 
 /** Does player `pid` hold a valid spy report on player `target`? */
 export const hasIntel = (g: GameState, pid: PlayerId, target: PlayerId): boolean =>
-  (g.players[pid]?.intel?.[target] ?? -1) >= g.turn;
+  (g.players[pid]?.intel[target] ?? -1) >= g.turn;
 
 /**
  * Odds of a lobby trick against a target with the given detective agency (null = none): success, and the chance

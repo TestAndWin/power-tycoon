@@ -12,7 +12,6 @@ import {
   operating,
   resetSite,
   siteDef,
-  sizeOf,
   storeIncome,
   updateSpread,
   worth,
@@ -109,7 +108,7 @@ function decidePermits(g: GameState, out: GameEvent[]): void {
         if (ok)
           Object.assign(x, {
             type: alt.type,
-            size: sizeOf(alt),
+            size: alt.size,
             permit: 'approved',
             permitLeft: 0,
             killed: false,
@@ -185,7 +184,7 @@ function produce(g: GameState, price: number, out: GameEvent[]): Map<PlayerId, O
   for (const x of g.sites) {
     if (!operating(x) || !x.type) continue;
     x.age++;
-    if (x.offline && x.offline > 0) {
+    if (x.offline > 0) {
       // repowering: no production this quarter
       x.offline--;
       continue;
@@ -299,7 +298,7 @@ function nextQuarter(g: GameState, out: GameEvent[]): void {
       p.detectives = null;
       out.push({ type: 'detectivesExpired', playerId: p.id });
     }
-    if (p.intel) for (const k of Object.keys(p.intel)) if (p.intel[k]! < g.turn) delete p.intel[k];
+    for (const k of Object.keys(p.intel)) if (p.intel[k]! < g.turn) delete p.intel[k];
   }
   if (g.q > 3) {
     g.q = 0;
