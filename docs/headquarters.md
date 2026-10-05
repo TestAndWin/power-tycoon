@@ -31,15 +31,17 @@ the hotspots are real buttons laid over the canvas, so tab order and screen read
 
 | Object | Opens | Live details in the object |
 |---|---|---|
-| Wall map of the four regions | Sites | own plots as company pins, flashing pin when a site needs action |
+| Wall map of Europe (rough coastlines, the four regions marked) | Sites | own plots as company pins, flashing pin when a site needs action |
 | Ticker / monitor on the wall | Power market | current price and arrow, scrolling ticker |
-| Safe / bank folder | Bank | cash on a small display, loan as a stack of IOUs |
 | Side door "Hinterzimmer" | Lobby & espionage | door ajar when a spy report is valid, light under the door when detectives are active |
 | Newspaper on the desk | News | real headline of the latest event |
 | Portrait wall / trophy shelf | Rivals | the rival crests in rank order, own trophies from milestones |
 | Window | Overview / landscape | shows the region with the largest own capacity, season and time of day |
-| Desk phone | Board messages | rings (sound + wobble) when a board member or rival has something |
+| Smartphone on the desk | Decision cards, calls | vibrates and lights up with the caller when a decision card or a rival call comes in |
 | Big stamp on the desk | End quarter | stamp animation on the quarter report |
+
+The bank has no object in the room (a safe looked out of place in every building): it opens from the cash
+figure in the top bar and from the folder tabs.
 
 Areas open as a **folder that slides onto the desk** (overlay over the dimmed office) instead of a tab
 switch. The content of today's views is reused, restyled as paper: binder tabs, paper clips, rubber
@@ -56,7 +58,7 @@ stamps, typewriter numbers for figures. `Esc` or a click on the office closes th
 **Atmosphere**
 
 - Time of day in the window follows the quarter (season light), the office lamp at night/winter
-- Quiet room sound (clock, distant typing), phone ring, stamp, paper rustle – through `sound.ts`, off with
+- Quiet room sound (clock, distant typing), phone buzz, stamp, paper rustle – through `sound.ts`, off with
   the sound button
 - Reduced motion: still picture, no ticker, no wobble
 
@@ -113,7 +115,7 @@ two or three options, each with a clear effect. Examples:
 Cards are data (`DECISIONS` in `data.ts`) like `WORLD_EVENTS`, with conditions (owns storage, has a
 pending permit…). An open card blocks nothing; if it is not decided by the end of the quarter, the default
 option applies. Rivals decide with the same cards (by value). The card is the office's "event in the
-room" – the phone rings when one arrives.
+room" – the phone vibrates when one arrives.
 
 ### 3c. The headquarters building (`upgradeHq`)
 
