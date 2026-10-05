@@ -35,7 +35,8 @@ the hotspots are real buttons laid over the canvas, so tab order and screen read
 | Ticker / monitor on the wall | Power market | current price and arrow, scrolling ticker |
 | Side door "Hinterzimmer" | Lobby & espionage | door ajar when a spy report is valid, light under the door when detectives are active |
 | Newspaper on the desk | News | real headline of the latest event |
-| Portrait wall / trophy shelf | Rivals | the rival crests in rank order, own trophies from milestones |
+| Trophy shelf | Awards | one trophy per award won (3d), the annual cup largest |
+| Portrait wall | Rivals | the rival CEOs in rank order |
 | Window | Overview / landscape | shows the region with the largest own capacity, season and time of day |
 | Smartphone on the desk | Decision cards, calls | vibrates and lights up with the caller when a decision card or a rival call comes in |
 | Big stamp on the desk | End quarter | stamp animation on the quarter report |
@@ -131,6 +132,31 @@ and the number of decision options shown (higher levels sometimes get a third, b
 also counts into the net worth with a book value. Rivals upgrade by value; the rivals' tower is visible in
 the portrait wall / rival folder.
 
+### 3d. Awards and the annual cup
+
+Trophies on the shelf stand for **awards**. They are recognition only, without effect on the rules, so they
+need no balancing. Every company can win each award once; the first company to reach it gets the gold
+version, later ones silver. Awards are checked at the end of a quarter (new step after the history step);
+the newspaper reports them.
+
+| Award | Condition |
+|---|---|
+| Erster Spatenstich | first own plant connected to the grid |
+| Offshore-Pionier | first offshore wind farm in operation |
+| Europäer | sites in all four regions |
+| 500 MW | 500 MW in operation |
+| Klimaschützer | 1 Mio. t CO₂ avoided |
+| Speicherprofi | 1 GWh storage capacity in operation |
+
+**Annual cup (Jahrespokal):** at the end of each game year, the company with the largest growth in net worth
+over that year wins the cup of that year (ties: higher net worth). It can be won repeatedly, so a company
+that is behind overall still has something to fight for each year. The awards folder shows the race for the
+running year.
+
+State: `Player.awards: { key, year, q, gold }[]` and the annual cup as key `cup` with its year; event
+`awardWon`. Rivals do not change their play for awards (they just collect them); their trophies show in the
+rival folder.
+
 ### Out of scope for now
 
 - Supervisory board goals ("200 MW offshore by 2028" → bonus): possible later on top of 3b
@@ -147,4 +173,4 @@ the portrait wall / rival folder.
   folders share it.
 - Engine: new actions `hireExecutive`, `fireExecutive`, `decide`, `upgradeHq`; new state `Player.board`,
   `Player.hq`, `Player.decision`; view fields for them; new events (`executiveHired`, `decisionOffered`,
-  `decisionTaken`, `hqUpgraded`). All in `API.md` and `ARCHITECTURE.md` once implemented.
+  `decisionTaken`, `hqUpgraded`, `awardWon`). All in `API.md` and `ARCHITECTURE.md` once implemented.

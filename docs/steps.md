@@ -144,6 +144,7 @@ scene, then the paper look. Balance measured with the simulation script like pha
 - [ ] Board: `hireExecutive` / `fireExecutive`, four departments, junior/senior, salary per quarter, effects
 - [ ] Decision cards: `DECISIONS` data, `decide` action, default option at quarter end, rivals decide by value
 - [ ] HQ building: `upgradeHq`, four levels, upkeep, board limit, book value in net worth
+- [ ] Awards (gold for the first, silver after) and the annual cup for the largest net worth growth per year
 - [ ] Rivals: hire, decide and upgrade (normal: simple rules, hard: by value); simulation before/after
 
 **Web**
@@ -151,6 +152,7 @@ scene, then the paper look. Balance measured with the simulation script like pha
 - [ ] Folder overlay replaces the tab switch on desktop; phone keeps the tabs with an office header picture
 - [ ] Board members with speech bubbles replace "Handlungsbedarf"; phone calls from rival CEOs
 - [ ] Quarter report as board meeting
+- [ ] Trophy shelf and awards folder (cabinet of awards, race for the annual cup)
 - [ ] Paper documents: permit form with stamp, lease contract, redacted spy file, newspaper
 - [ ] Room sound, phone ring, stamp; reduced motion
 - [ ] Playwright play-through on desktop and phone width
