@@ -135,6 +135,26 @@ balance is measured with the simulation script (normal/hard) before merging.
   doldrums and negative prices in solar surplus, which reward storage and PPAs
 - Time budget per quarter, hot-seat multiplayer: too large for the fun they add in solo play
 
+## Phase 8 – Headquarters: the office as main view
+
+Concept: [headquarters.md](headquarters.md). Mechanics first (they give the office its purpose), then the
+scene, then the paper look. Balance measured with the simulation script like phase 7.
+
+**Engine**
+- [ ] Board: `hireExecutive` / `fireExecutive`, four departments, junior/senior, salary per quarter, effects
+- [ ] Decision cards: `DECISIONS` data, `decide` action, default option at quarter end, rivals decide by value
+- [ ] HQ building: `upgradeHq`, four levels, upkeep, board limit, book value in net worth
+- [ ] Rivals: hire, decide and upgrade (normal: simple rules, hard: by value); simulation before/after
+
+**Web**
+- [ ] Office canvas scene (`scene/office.ts`) per HQ level, hotspots as buttons over the canvas
+- [ ] Folder overlay replaces the tab switch on desktop; phone keeps the tabs with an office header picture
+- [ ] Board members with speech bubbles replace "Handlungsbedarf"; phone calls from rival CEOs
+- [ ] Quarter report as board meeting
+- [ ] Paper documents: permit form with stamp, lease contract, redacted spy file, newspaper
+- [ ] Room sound, phone ring, stamp; reduced motion
+- [ ] Playwright play-through on desktop and phone width
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)
