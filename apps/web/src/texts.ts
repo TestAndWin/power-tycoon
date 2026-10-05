@@ -256,7 +256,8 @@ export function siteStatusText(code: SiteStatusCode, x: SiteView): string {
     case 'curtailed':
       return 'Auflage −50 %';
     case 'repowering':
-      return 'Repowering';
+      // repowering, or a storage lent to the grid operator (heat wave)
+      return 'Außer Betrieb · ' + x.offline + ' Q';
     case 'operating':
       return 'In Betrieb';
   }
