@@ -96,6 +96,19 @@ export const SND = {
     this.tone(392, 0.12, 'sine', 0.05);
     this.tone(523, 0.18, 'sine', 0.05, null, 0.1);
   },
+  /** A folder slides onto the desk. */
+  paper() {
+    this.noise(0.22, 0.04, 3200, 0, 0.8);
+  },
+  /** The phone vibrates on the desk. */
+  buzz() {
+    for (let i = 0; i < 3; i++) this.tone(150, 0.12, 'sawtooth', 0.03, 140, i * 0.2);
+  },
+  /** The quarter stamp hits the report. */
+  stamp() {
+    this.tone(110, 0.12, 'square', 0.05, 60);
+    this.noise(0.08, 0.06, 900, 0, 1.5);
+  },
 };
 try {
   SND.on = localStorage.getItem('wattmogul-sound') !== 'off';

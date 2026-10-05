@@ -15,6 +15,7 @@ import {
   type ActionOption,
   type PlantType,
   type RegionKey,
+  type SiteView,
 } from '@power-tycoon/engine';
 import { esc, money, mwh, QN } from '../format.js';
 import { playerColor } from '../players.js';
@@ -181,7 +182,7 @@ function detail(): string {
         );
         break;
       case 'lease':
-        a.push(btn('lease', x.id, 'Fläche pachten', opt, { cls: 'primary' }));
+        a.push(btn('lease', x.id, 'Pachtvertrag unterschreiben', opt, { cls: 'primary' }));
         break;
       case 'applyPermit':
         if ((act.size ?? 'std') === UI.size) permits.push({ t: act.plantType, opt });
@@ -247,7 +248,7 @@ function detail(): string {
   const permitButtons = permits.map(({ t, opt }) =>
     x.type
       ? btn('permit', pv(t), 'Erneut beantragen: ' + pname(t), opt, { cls: 'primary' })
-      : btn('permit', pv(t), 'Genehmigung: ' + pname(t), opt, {
+      : btn('permit', pv(t), 'Antrag unterschreiben: ' + pname(t), opt, {
           cls: t === regionTypes[0] ? 'primary' : '',
         }),
   );
@@ -269,5 +270,17 @@ function detail(): string {
         `<button class="btn" data-act="trickGo" data-v="${x.id}|${lt}"><span>Lobby-Aktion planen …</span></button>`,
       );
   }
-  return `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl>${storeNote}<div class="actions">${a.join('')}</div>`;
+  return `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl>${mine ? stamps(x) : ''}${storeNote}<div class="actions">${a.join('')}</div>`;
+}
+
+/** The stamps on the papers of an own site: lease contract and the authority's decision. */
+function stamps(x: SiteView): string {
+  const s: string[] = ['<span class="stampmark green">Gepachtet</span>'];
+  if (x.type && !x.built) {
+    if (x.permit === 'pending') s.push('<span class="stampmark grey">Antrag eingegangen</span>');
+    else if (x.permit === 'approved') s.push('<span class="stampmark">Genehmigt</span>');
+    else if (x.permit === 'rejected') s.push('<span class="stampmark">Abgelehnt</span>');
+  }
+  if (x.built) s.push(`<span class="stampmark ${x.grid ? 'green' : 'grey'}">${x.grid ? 'Am Netz' : 'Gebaut'}</span>`);
+  return `<div class="stamps" aria-label="Stempel auf der Akte">${s.join('')}</div>`;
 }

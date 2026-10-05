@@ -2,7 +2,7 @@
 import { DETECTIVE_KEYS, TRICK_KEYS, trickTargetIds, type PlayerSummary } from '@power-tycoon/engine';
 import { esc, money, turnStr } from '../format.js';
 import { UI } from '../state.js';
-import { DETECTIVE_TEXT, detectivesText, PLANT_NAME, siteName, TRICK_TEXT } from '../texts.js';
+import { DEPT_TEXT, DETECTIVE_TEXT, detectivesText, GRADE_TEXT, PLANT_NAME, siteName, TRICK_TEXT } from '../texts.js';
 import { disabledUnless, optionFor, V } from './common.js';
 import { crest } from './companies.js';
 
@@ -10,10 +10,10 @@ function spyRow(p: PlayerSummary): string {
   const v = V(),
     I = p.intel;
   const facts = I
-    ? `<span class="muted">Bericht bis ${turnStr(v.startYear, I.until)} · ${I.contracts.length} Liefervertr${I.contracts.length === 1 ? 'ag' : 'äge'} · ${detectivesText(I.detectives)} · ${I.tricksLeft} Tricks frei</span>`
-    : '<span class="muted">Kein aktueller Bericht. Ohne Bericht keine Lobby-Aktion gegen diesen Konzern.</span>';
+    ? `<div class="secret"><span class="conf">VERTRAULICH</span><br>Gültig bis ${turnStr(v.startYear, I.until)}<br>Lieferverträge: ${I.contracts.length}<br>Vorstand: ${I.board.length ? I.board.map((e) => DEPT_TEXT[e.dept].short + ' (' + GRADE_TEXT[e.grade] + ')').join(', ') : 'niemand'}<br>Schutz: ${detectivesText(I.detectives)}<br>Tricks frei: ${I.tricksLeft}</div>`
+    : '<div class="secret"><span class="conf">VERTRAULICH</span><br>Verträge: <span class="redact" style="width:7em"></span><br>Vorstand: <span class="redact" style="width:9em"></span><br>Schutz: <span class="redact" style="width:6em"></span><br><span style="font-family:var(--sans)" class="muted">Ohne Bericht keine Lobby-Aktion gegen diesen Konzern.</span></div>';
   const spy = { type: 'spy', targetId: p.id } as const;
-  return `<li class="spyrow">${crest(p.id, 22)}<span class="stack" style="gap:2px"><b>${esc(p.name)}</b>${facts}</span>${
+  return `<li class="spyrow">${crest(p.id, 22)}<div class="stack" style="gap:2px;min-width:0"><b>${esc(p.name)}</b>${facts}</div>${
     I
       ? '<span class="chip good">Bericht liegt vor</span>'
       : `<button class="btn" data-act="spy" data-v="${p.id}" ${disabledUnless(spy)}><span>Spion schicken</span><small>${money(v.constants.spyCost, true)}</small></button>`

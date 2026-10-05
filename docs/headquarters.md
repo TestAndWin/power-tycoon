@@ -59,8 +59,8 @@ stamps, typewriter numbers for figures. `Esc` or a click on the office closes th
 **Atmosphere**
 
 - Time of day in the window follows the quarter (season light), the office lamp at night/winter
-- Quiet room sound (clock, distant typing), phone buzz, stamp, paper rustle – through `sound.ts`, off with
-  the sound button
+- Phone buzz, stamp and paper rustle through `sound.ts`, off with the sound button (a looping room sound was
+  left out: it wears on the player)
 - Reduced motion: still picture, no ticker, no wobble
 
 **Phone (< 760 px)**
@@ -90,12 +90,15 @@ measured with the simulation script (normal/hard) before merging.
 The player starts alone (CEO). They can hire up to four executives, one per department. Each costs a
 signing fee and a salary per quarter and gives one clear advantage:
 
-| Executive | Department | Effect (values to be tuned) |
+| Executive | Department | Effect per power point (junior 1, senior 2) |
 |---|---|---|
-| Projektentwicklung | permits | permit chance +10 %-points, one more survey per quarter |
-| Netz & Technik | grid | cable duel time +20 %, repowering cheaper |
-| Handel | market | PPA offers +3 €/MWh, storage spread share up |
-| Recht & Kommunikation | lobby | court damages +50 %, own tricks less likely traced |
+| Projektentwicklung | permits | rejection chance −5 %-points, one more survey per quarter |
+| Netz & Technik | grid | cable duel time +10 % (auto duel +5 %-points), repowering −8 % |
+| Handel | market | new PPA contracts +3 €/MWh, storage market spread share +8 %-points |
+| Recht & Kommunikation | lobby | court damages +25 %, own tricks caught 20 % less often |
+
+Junior: 0.5 M€ fee, 0.2 M€ salary per quarter; senior: 1.5 M€ fee, 0.45 M€ salary (`EXEC_GRADES`).
+Headquarters: 0 / 4 / 12 / 30 M€, upkeep 0.05 / 0.12 / 0.25 / 0.5 M€ per quarter (`HQ_LEVELS`).
 
 Two quality levels per position (junior/senior) like the detectives. Executives are visible to rivals with
 a spy report. Rivals hire by expected value (hard) or by a simple rule (normal). The board members in the

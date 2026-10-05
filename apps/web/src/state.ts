@@ -11,6 +11,8 @@ export const UI = {
   size: 'std' as PlantSize,
   target: '',
   confirm: null as string | null,
+  /** Desktop: the folder open on the desk (an area key as in `tab`), null = the office. */
+  folder: null as string | null,
 };
 
 /** Current game: the last view from the server replaces the legacy global `G`. */
@@ -20,7 +22,12 @@ export const S = {
   busy: false,
   /** Latest moves of each rival (newest first), collected from the quarterly reports of this session. */
   rivalMoves: {} as Record<number, { d: string; text: string }[]>,
+  /** A rival CEO on the phone (after a confrontation or an overtaking), until the player hangs up. */
+  call: null as { pid: number; kind: 'overtook' | 'duelWon' | 'caught' | 'tricked' } | null,
 };
+
+/** Phone layout: tabs instead of the office with folders. */
+export const isPhone = (): boolean => typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
 
 export const $ = <T extends HTMLElement = HTMLElement>(s: string): T | null => document.querySelector<T>(s);
 export const RMO = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;

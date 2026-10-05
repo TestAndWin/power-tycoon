@@ -66,6 +66,10 @@ Action types (TypeScript union exported by the engine):
 | `lobby` | `trick`, `siteId` | `A.doTrick` (needs a valid spy report on the owner) |
 | `spy` | `targetId` | new: spy report on a rival |
 | `hireDetectives` | `level` (`basic` \| `pro`) | new: protection against tricks and spies |
+| `hireExecutive` | `dept` (`dev` \| `grid` \| `trade` \| `law`), `grade` (`junior` \| `senior`) | phase 8: board member, needs a free seat (`boardFull`) |
+| `fireExecutive` | `dept` | phase 8: dismissal against one quarterly salary |
+| `upgradeHq` | – | phase 8: move into the next headquarters (four levels) |
+| `decide` | `option` | phase 8: answer the open decision card (`noDecision`, `invalidOption`, `hqLocked`) |
 | `minigameResult` | `challengeId`, `outcome` | result of `mini*()` |
 
 The confirmation step of `sellSite` is pure UI and stays in the client.
@@ -81,7 +85,7 @@ to re-implement rules to decide which buttons to show:
 
 `error` is `null` if the action is allowed now, or a code that only blocks it for the moment
 (`insufficientFunds`, `noGridCapacity`, `creditLimit`, `contractLimit`, `trickLimit`, `surveyLimit`,
-`noSpyReport`, `detectivesActive`). Actions that do not
+`noSpyReport`, `detectivesActive`, `boardFull`, `hqLocked`). Actions that do not
 apply at all (e.g. `build` on a site without permit) are not listed. The client shows a button for every
 option and disables it while `error` is set; the server still validates every request.
 
@@ -100,7 +104,8 @@ option and disables it while `error` is set; the server still validates every re
 }
 ```
 
-Report lines are structured (`kind`: `ppa` | `spot` | `storage` | `opex` | `lease` | `interest`; storage lines carry
+Report lines are structured (`kind`: `ppa` | `spot` | `storage` | `opex` | `lease` | `board` | `hq` | `interest`;
+`board` are the salaries, `hq` the upkeep of the headquarters; storage lines carry
 `source`: `own` (own generation of the region shifted, with `mwh`) or `market`) because the
 engine never produces German text; the web app labels them.
 

@@ -115,6 +115,31 @@ Modules of `packages/engine/src`:
   (`DUEL_RESERVE_QUARTERS`). Rivals and `autoMinigames` roll `AUTO_MINIGAME.cableDuel`.
 - Game length: `createGame({ years })` with `GAME_YEAR_OPTIONS`; `historicFor(startYear, endYear)` squeezes
   the milestones into the game.
+### Phase 8 additions (headquarters)
+
+Concept: [headquarters.md](headquarters.md). Modules `decisions.ts` (cards) and `awards.ts`.
+
+- Board: `Player.board` (one `Executive` per department, `EXEC_GRADES` junior/senior with fee, salary and power),
+  limited by the seats of the headquarters (`HQ_LEVELS[hq].seats`). Effects per power point (`EXEC_EFFECTS`):
+  project development lowers the rejection chance (`rejectChance`) and adds surveys (`surveyLimit`); grid &
+  engineering gives more duel time / a better auto duel and cheaper repowering (`repowerPrice`); trading adds
+  €/MWh to new contracts and more market spread for storage (`storeIncome`); legal raises the court damages a
+  caught culprit pays and lowers the chance to be caught (`trickOdds`).
+- Headquarters: `Player.hq` 0–3 and `hqPaid` (`HQ_BOOK` of it counts into `worth`). Salaries and upkeep are booked
+  in `settle` as the report lines `board` and `hq`.
+- Decision cards: `dealDecisions` at the end of `nextQuarter` gives a player without a card one with
+  `DECISION_CHANCE` (weighted among the cards whose condition holds); `decide` applies an option; `closeDecisions`
+  after the rival turns applies the default option of every open card. Options can need a headquarters level
+  (`minHq`). Effects: `Site.rejectMod` (citizens), `Player.discount` on build prices (`buildPrice`), storage
+  offline for a quarter (heat wave), gambles with the seeded RNG (grant, citizens' delay), losing a board member
+  (poach), a discounted lease (mayor). `PlayerView.me.decision` shows the card with price, gain and chance per
+  option.
+- Awards: `checkAwards` after the history step of `nextQuarter`; gold for the first company (several in the same
+  quarter all gold), silver later; the annual cup at the start of a year for the largest growth of `hist` over
+  the year before. Public (`PlayerSummary.awards`, news), progress in `PlayerView.me.awardProgress`.
+- Rivals (`SmartOpponent`): value board members by their effect over `BOARD_HORIZON` against fee and salaries
+  (`boardEdge`), extend the headquarters for a needed seat, dismiss on `hard`, and decide cards by expected value.
+
 - PPA contracts: legacy stores `G.contracts` globally for the human only. Store contracts **per player**
   so rivals can use them; `SmartOpponent` accepts contracts.
 

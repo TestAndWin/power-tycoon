@@ -1,6 +1,6 @@
 /** News tab and the news list of the overview. */
 import { qStr } from '../format.js';
-import { MILESTONE_NAME, milestoneEffects, newsTexts, type NewsKind } from '../texts.js';
+import { MILESTONE_NAME, milestoneEffects, newsTexts, SEASON_NAME, type NewsKind } from '../texts.js';
 import { V } from './common.js';
 
 export function newsList(): { d: string; kind: NewsKind; text: string }[] {
@@ -31,11 +31,16 @@ export function vNews(): string {
       comp: 'Konkurrenz',
       info: 'Info',
     };
-  return `<section class="panel" style="margin-bottom:16px"><h2 style="margin-bottom:8px">Angekündigte Termine</h2>${milestoneList()}</section>
-  <section class="panel"><h2 style="margin-bottom:8px">Nachrichten</h2><ul class="list">${newsList()
-    .map(
-      (n) =>
-        `<li><span class="mono muted" style="font-size:12px;min-width:62px">${n.d}</span><span class="chip ${k[n.kind] || ''}">${l[n.kind] || 'Info'}</span><span>${n.text}</span></li>`,
-    )
-    .join('')}</ul></section>`;
+  const v = V(),
+    [lead, ...rest] = newsList();
+  return `<article class="paper"><div class="mast"><h2>ENERGIE-KURIER</h2></div>
+    <div class="dateline"><span>${SEASON_NAME[v.q]} ${v.year}</span><span>Ausgabe ${qStr(v.year, v.q)}</span></div>
+    ${lead ? `<p class="lead">${lead.text}</p>` : ''}
+    <div class="cols">${rest
+      .map(
+        (n) =>
+          `<p><span class="d">${n.d} · <span class="chip ${k[n.kind] || ''}">${l[n.kind] || 'Info'}</span></span>${n.text}</p>`,
+      )
+      .join('')}</div></article>
+  <section class="panel" style="margin-top:16px"><h2 style="margin-bottom:8px">Angekündigte Termine</h2>${milestoneList()}</section>`;
 }

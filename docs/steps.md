@@ -141,21 +141,23 @@ Concept: [headquarters.md](headquarters.md). Mechanics first (they give the offi
 scene, then the paper look. Balance measured with the simulation script like phase 7.
 
 **Engine**
-- [ ] Board: `hireExecutive` / `fireExecutive`, four departments, junior/senior, salary per quarter, effects
-- [ ] Decision cards: `DECISIONS` data, `decide` action, default option at quarter end, rivals decide by value
-- [ ] HQ building: `upgradeHq`, four levels, upkeep, board limit, book value in net worth
-- [ ] Awards (gold for the first, silver after) and the annual cup for the largest net worth growth per year
-- [ ] Rivals: hire, decide and upgrade (normal: simple rules, hard: by value); simulation before/after
+- [x] Board: `hireExecutive` / `fireExecutive`, four departments, junior/senior, salary per quarter, effects
+- [x] Decision cards: `DECISIONS` data, `decide` action, default option at quarter end, rivals decide by value
+- [x] HQ building: `upgradeHq`, four levels, upkeep, board limit, book value in net worth
+- [x] Awards (gold for the first, silver after) and the annual cup for the largest net worth growth per year
+- [x] Rivals: hire, decide and upgrade by value (normal with a higher bar, hard also dismisses); simulation
+- [x] Simulation (200 games): hard 322 M€ before / 322 M€ after, normal 194 / 205 M€ (the first valuation of the
+      grid board member was too optimistic and cost hard rivals 24 M€)
 
 **Web**
-- [ ] Office canvas scene (`scene/office.ts`) per HQ level, hotspots as buttons over the canvas
-- [ ] Folder overlay replaces the tab switch on desktop; phone keeps the tabs with an office header picture
-- [ ] Board members with speech bubbles replace "Handlungsbedarf"; phone calls from rival CEOs
-- [ ] Quarter report as board meeting
-- [ ] Trophy shelf and awards folder (cabinet of awards, race for the annual cup)
-- [ ] Paper documents: permit form with stamp, lease contract, redacted spy file, newspaper
-- [ ] Room sound, phone ring, stamp; reduced motion
-- [ ] Playwright play-through on desktop and phone width
+- [x] Office canvas scene (`scene/office.ts`) per HQ level, hotspots as buttons over the canvas
+- [x] Folder overlay replaces the tab switch on desktop; phone keeps the tabs with an office header picture
+- [x] Board members with speech bubbles replace "Handlungsbedarf"; phone calls from rival CEOs
+- [x] Quarter report as board meeting
+- [x] Trophy shelf and awards folder (cabinet of awards, race for the annual cup)
+- [x] Paper documents: permit form with stamp, lease contract, redacted spy file, newspaper
+- [x] Sounds: folder, phone buzz, stamp; reduced motion (no looping room sound – it would wear on the player)
+- [x] Playwright play-through on desktop and phone width
 
 ## Step 2 – LLM rivals (separate planning later)
 

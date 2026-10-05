@@ -29,7 +29,7 @@ import {
   DUEL_HINT,
 } from '../texts.js';
 import { disabledUnless, LOGO, optionFor, V } from './common.js';
-import { crest, portrait } from './companies.js';
+import { assistantPortrait, crest, execPortrait, portrait } from './companies.js';
 import { byRank } from './rivals.js';
 
 export function showReport(rep: QuarterReport, rivals: RivalActionLog[]): void {
@@ -53,7 +53,8 @@ export function showReport(rep: QuarterReport, rivals: RivalActionLog[]): void {
     )
     .join('');
   const delta = rep.endCash - rep.startCash;
-  openModal(`<div class="banner"><canvas data-scene="${br}" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Quartalsbericht</span><h2>${qStr(rep.year, rep.q)}</h2></div><div class="bdelta ${delta < 0 ? 'neg' : ''}"><span class="label">Kasse</span><b data-count="${delta}">${money(delta)}</b></div></div>
+  openModal(`<div class="banner"><canvas data-scene="${br}" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Vorstandssitzung</span><h2>${qStr(rep.year, rep.q)}</h2></div><div class="bdelta ${delta < 0 ? 'neg' : ''}"><span class="label">Kasse</span><b data-count="${delta}">${money(delta)}</b></div></div>
+    <div class="meeting">${v.me.board.map((e) => execPortrait(e.dept, e.grade, 34)).join('') || assistantPortrait(34)}<span class="muted">${v.me.board.length ? 'Der Vorstand ist versammelt. Die Finanzen:' : 'Nur du und deine Assistenz – die Zahlen des Quartals:'}</span></div>
     <div class="rep"><span>Erzeugung</span><span class="v" data-count="${rep.gen}" data-fmt="mwh">${mwh(rep.gen)}</span><span>Ø Börsenpreis</span><span class="v">${eur(rep.price)}</span>${lines}
     <span class="sum">Veränderung Kasse</span><span class="v sum ${delta < 0 ? 'down' : 'up'}" data-count="${delta}">${money(delta)}</span></div>
     ${ev ? `<ul class="list">${ev}</ul>` : ''}${compLog(rivals)}<div class="foot"><button class="btn primary" data-act="closeReport">Weiter</button></div>`);

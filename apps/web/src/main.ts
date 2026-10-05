@@ -4,12 +4,15 @@ import './styles.css';
 import type {
   Action,
   Challenge,
+  Department,
   DetectiveLevel,
+  ExecGrade,
   Difficulty,
   GameEvent,
   PlantSize,
   PlantType,
   PlayerView,
+  QuarterReport,
   RegionKey,
   TrickType,
 } from '@power-tycoon/engine';
@@ -19,8 +22,19 @@ import { playChallenge } from './minigames/index.js';
 import { closeModal, modalLocked, openModal, toast } from './modal.js';
 import { registerScenes, setHover } from './scene/index.js';
 import { SND, toggleSound } from './sound.js';
-import { $, S, UI } from './state.js';
-import { DETECTIVE_TEXT, errorText, newsTexts, REGION_TEXT, siteName, siteQuality } from './texts.js';
+import { $, isPhone, S, UI } from './state.js';
+import {
+  decisionResultText,
+  DEPT_TEXT,
+  DETECTIVE_TEXT,
+  errorText,
+  execName,
+  HQ_TEXT,
+  newsTexts,
+  REGION_TEXT,
+  siteName,
+  siteQuality,
+} from './texts.js';
 import { redrawCharts, render, renderTop, selectSite, showBuilt, showEnd, showReport, showStart } from './ui/index.js';
 import { recordRivalMoves } from './ui/rivals.js';
 
@@ -111,6 +125,23 @@ function react(events: GameEvent[]): void {
         );
         break;
       }
+      case 'executiveHired':
+        SND.ok();
+        toast(`${execName(e.dept, e.grade)} leitet jetzt ${DEPT_TEXT[e.dept].name}.`);
+        break;
+      case 'executiveLeft':
+        toast(`${execName(e.dept, e.grade)} verlässt den Vorstand.`);
+        break;
+      case 'hqUpgraded':
+        SND.ok();
+        toast(`Umzug geschafft: Willkommen ${HQ_TEXT[e.level].at}!`);
+        break;
+      case 'decisionTaken':
+        if (UI.folder === 'decision') UI.folder = null;
+        if (UI.tab === 'decision') UI.tab = 'overview';
+        SND.stamp();
+        toast(decisionResultText(v, e));
+        break;
       case 'trickFailed':
         openModal(
           `<h2>Hat nicht geklappt</h2><p style="margin:0">${e.caught ? 'Du bist aufgeflogen. Das kostet dich ' + money(e.fine) + ' Strafe' + (e.damages ? ' und ' + money(e.damages) + ' Schadensersatz an ' + v.players[e.targetId]!.name : '') + '.' : e.trick === 'klage' ? 'Das Gericht hat die Klage abgewiesen.' : 'Niemand weiß, wer dahintersteckt.'}</p><div class="foot"><button class="btn primary" data-act="closeModal">OK</button></div>`,
@@ -119,7 +150,31 @@ function react(events: GameEvent[]): void {
       default:
         break;
     }
+    if ((e.type === 'trickFailed' || e.type === 'trickSucceeded') && e.caught && e.actorId === v.playerId)
+      S.call = { pid: e.targetId, kind: 'caught' };
   }
+}
+
+/** A rival CEO calls after the quarter: after a trick on the player, a won cable duel or overtaking. */
+function rivalCall(before: PlayerView, after: PlayerView, rep: QuarterReport): void {
+  const me = after.playerId;
+  for (const e of rep.events) {
+    if (e.type === 'trickSucceeded' && e.targetId === me && e.actorId !== null && e.actorId !== me && !e.caught) {
+      S.call = { pid: e.actorId, kind: 'tricked' };
+      return;
+    }
+  }
+  for (const e of rep.events) {
+    if (e.type === 'gridDuel' && e.rivalId === me && e.won) {
+      S.call = { pid: e.playerId, kind: 'duelWon' };
+      return;
+    }
+  }
+  const mine = (v: PlayerView) => v.players[me]!.worth;
+  const passed = after.players.find(
+    (p) => p.id !== me && !p.out && before.players[p.id]!.worth <= mine(before) && p.worth > mine(after),
+  );
+  if (passed) S.call = { pid: passed.id, kind: 'overtook' };
 }
 
 /** Sends one action; plays minigame challenges until the flow is finished. */
@@ -155,10 +210,15 @@ async function resolveChallenge(ch: Challenge): Promise<void> {
 async function endQuarter(): Promise<void> {
   if (!S.game || S.busy || modalLocked) return;
   S.busy = true;
+  SND.stamp();
   renderTop();
   try {
+    const before = S.view!;
     const res = await api.endQuarter(S.game);
     S.view = res.view;
+    UI.folder = null;
+    S.call = null;
+    rivalCall(before, res.view, res.report);
     recordRivalMoves(res.report, res.rivalActions);
     UI.confirm = null;
     S.busy = false;
@@ -191,12 +251,39 @@ async function startGame(): Promise<void> {
   }
 }
 
+/** Opens an area: a folder on the desk, or a tab on the phone. */
+function openArea(v: string): void {
+  UI.tab = v;
+  UI.folder = isPhone() ? null : v;
+  render();
+  if (isPhone()) window.scrollTo({ top: 0 });
+}
+
 const A: Record<string, (v: string, el: HTMLElement) => void> = {
-  tab: (v) => {
-    UI.tab = v;
+  tab: (v) => openArea(v),
+  closeFolder: () => {
+    UI.folder = null;
+    UI.tab = 'overview';
     render();
-    window.scrollTo({ top: 0 });
   },
+  hangUp: () => {
+    S.call = null;
+    render();
+  },
+  hireExec: (v) => {
+    const [dept, grade] = v.split('|');
+    void run({ type: 'hireExecutive', dept: dept as Department, grade: grade as ExecGrade });
+  },
+  fireExec: (v, el) => {
+    if (el.dataset.ok !== '1') {
+      UI.confirm = 'fireExec:' + v;
+      render();
+      return;
+    }
+    void run({ type: 'fireExecutive', dept: v as Department });
+  },
+  upgradeHq: () => void run({ type: 'upgradeHq' }),
+  decide: (v) => void run({ type: 'decide', option: v }),
   region: (v) => {
     UI.region = v as RegionKey;
     UI.sel = null;
@@ -210,11 +297,9 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
     if (window.innerWidth < 980) $('#detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
   goRegion: (v) => {
-    UI.tab = 'sites';
     UI.region = v as RegionKey;
     UI.sel = null;
-    render();
-    window.scrollTo({ top: 0 });
+    openArea('sites');
   },
   sound: () => {
     toggleSound();
@@ -222,15 +307,15 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
   },
   goSite: (v) => {
     const x = S.view!.sites.find((s) => s.id === v)!;
-    UI.tab = 'sites';
     UI.region = x.r;
     UI.sel = v;
-    render();
+    openArea('sites');
   },
   endQuarter: () => void endQuarter(),
   closeReport: () => {
     closeModal();
     if (S.view?.over) showEnd();
+    else if (S.view?.me.decision || S.call) SND.buzz();
   },
   closeModal: () => closeModal(),
   newGameDlg: () => showStart(false, S.view?.me.name, S.view?.settings.difficulty, yearsOf(S.view)),
@@ -314,16 +399,28 @@ document.addEventListener('change', (e) => {
   }
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !$('#modal')!.hidden && !modalLocked) {
+  if (e.key !== 'Escape') return;
+  if (!$('#modal')!.hidden) {
+    if (modalLocked) return;
     if ($('[data-act="closeReport"]')) A.closeReport!('', document.body);
     else if ($('[data-act="closeModal"]')) closeModal();
-  }
+  } else if (UI.folder) A.closeFolder!('', document.body);
+});
+// a click on the dimmed office around the folder closes it
+document.addEventListener('click', (e) => {
+  if (e.target === $('#folder') && UI.folder) A.closeFolder!('', document.body);
 });
 let rzT: ReturnType<typeof setTimeout> | undefined;
+let wasPhone = isPhone();
 window.addEventListener('resize', () => {
   clearTimeout(rzT);
   rzT = setTimeout(() => {
-    if (S.view) {
+    if (!S.view) return;
+    // switching between the phone tabs and the desktop office needs a full render
+    if (isPhone() !== wasPhone) {
+      wasPhone = isPhone();
+      render();
+    } else {
       redrawCharts();
       registerScenes();
     }

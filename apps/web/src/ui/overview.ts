@@ -2,7 +2,7 @@
 import { operating, REGION_KEYS } from '@power-tycoon/engine';
 import { money, mwh, QN, tons } from '../format.js';
 import { REGION_TEXT } from '../texts.js';
-import { meP, todo, V } from './common.js';
+import { meP, V } from './common.js';
 import { ICON } from './icons.js';
 import { milestoneList, newsList } from './news.js';
 import { raceTrack } from './rivals.js';
@@ -11,7 +11,6 @@ import { ownBar } from './sites.js';
 export function vOverview(): string {
   const v = V(),
     P = meP(),
-    T = todo(),
     mine = v.sites.filter((x) => x.owner === v.playerId);
   const minis = REGION_KEYS.map((r) => {
     const m = v.sites.filter((x) => x.r === r && x.owner === v.playerId),
@@ -30,9 +29,8 @@ export function vOverview(): string {
   </div>
   <div class="grid g2">
     <section class="panel"><div class="phead"><h3>Nettovermögen der Konzerne</h3><span class="muted">quartalsweise</span></div><div class="chart" data-chart="worth"></div></section>
-    <section class="panel"><div class="phead"><h3>Handlungsbedarf</h3></div>
-      ${T.length ? `<ul class="list">${T.map((o) => `<li><span class="chip ${o.k}">${o.k === 'bad' ? 'Dringend' : 'Offen'}</span><button class="linkish" data-act="goSite" data-v="${o.x.id}">${o.t}</button></li>`).join('')}</ul>` : `<p class="muted" style="margin:0">Nichts offen. Zeit für neue Flächen unter <button class="linkish" data-act="tab" data-v="sites">Standorte</button>.</p>`}
-      <div class="phead" style="margin-top:18px"><h3>Meldungen</h3><button class="linkish" data-act="tab" data-v="news">Alle</button></div>
+    <section class="panel">
+      <div class="phead"><h3>Meldungen</h3><button class="linkish" data-act="tab" data-v="news">Alle</button></div>
       <ul class="list">${news.map((n) => `<li><span class="mono muted" style="font-size:12px;min-width:62px">${n.d}</span><span>${n.text}</span></li>`).join('')}</ul>
       <div class="phead" style="margin-top:18px"><h3>Nächste Termine</h3><button class="linkish" data-act="tab" data-v="news">Alle</button></div>
       ${milestoneList(2)}
