@@ -21,6 +21,8 @@ Decisions (Michael):
 - Phone: keeps the tabs; the HQ shows there as a header picture with the board members
 - New mechanics are welcome
 
+Clickable prototype (no game logic, mock data): [prototypes/headquarters.html](prototypes/headquarters.html).
+
 ## 1. The office as main view (web)
 
 A canvas scene (`scene/office.ts`), same drawing toolkit and palette as the landscapes, front view into
