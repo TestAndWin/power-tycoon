@@ -12,6 +12,13 @@ export type DetectiveLevel = 'basic' | 'pro';
 export type PermitState = 'pending' | 'approved' | 'rejected' | null;
 export type GameOver = false | 'bankrupt' | 'time' | 'monopoly';
 export type ChallengeKind = 'layout' | 'rotor' | 'cable' | 'frequency';
+/** Board departments: project development, grid & engineering, trading, legal & communication. */
+export type Department = 'dev' | 'grid' | 'trade' | 'law';
+export type ExecGrade = 'junior' | 'senior';
+/** Headquarters level: 0 site container, 1 old town floor, 2 office building, 3 glass tower. */
+export type HqLevel = 0 | 1 | 2 | 3;
+export type DecisionKey = 'citizens' | 'supplier' | 'heatwave' | 'grant' | 'poach' | 'mayor';
+export type AwardKey = 'firstPlant' | 'offshore' | 'europe' | 'mw500' | 'co2' | 'storage' | 'cup';
 
 export interface Site {
   id: string;
@@ -47,8 +54,10 @@ export interface Site {
   alt: { type: PlantType; left: number; size: PlantSize } | null;
   /** Plant size. */
   size: PlantSize;
-  /** Quarters the plant is still offline for repowering. */
+  /** Quarters the plant is still offline (repowering, or a storage lent to the grid operator). */
   offline: number;
+  /** Change of the rejection chance of the running permit application (decision cards). */
+  rejectMod: number;
 }
 
 export interface Offer {
@@ -87,6 +96,43 @@ export interface Player {
   intel: Record<string, number>;
   /** Hired detective agency, protecting until the end of turn `until`. */
   detectives: { level: DetectiveLevel; until: number } | null;
+  /** Board members, at most one per department and `HQ_LEVELS[hq].seats` in total. */
+  board: Executive[];
+  /** Headquarters level and what was paid for the buildings (book value). */
+  hq: HqLevel;
+  hqPaid: number;
+  /** Open decision card (dealt at the start of a quarter, decided by the default option at its end). */
+  decision: DecisionCard | null;
+  /** Discount on build costs from a supplier deal, valid until the end of turn `until`. */
+  discount: { pct: number; until: number } | null;
+  awards: Award[];
+}
+
+export interface Executive {
+  dept: Department;
+  grade: ExecGrade;
+  /** Turn of hiring. */
+  since: number;
+}
+
+export interface DecisionCard {
+  key: DecisionKey;
+  /** Turn the card was dealt. */
+  turn: number;
+  /** The site the card is about (citizens: own pending project; mayor: free site on offer). */
+  siteId?: string;
+  /** The board member a rival wants to poach. */
+  dept?: Department;
+}
+
+export interface Award {
+  key: AwardKey;
+  /** Turn the award was won. */
+  turn: number;
+  /** The first company to reach it gets gold (several in the same quarter all get gold). */
+  gold: boolean;
+  /** Annual cup: the game year it was won for. */
+  year?: number;
 }
 
 export interface Reservation {
@@ -179,6 +225,10 @@ export type Action =
   | { type: 'lobby'; trick: TrickType; siteId: string }
   | { type: 'spy'; targetId: PlayerId }
   | { type: 'hireDetectives'; level: DetectiveLevel }
+  | { type: 'hireExecutive'; dept: Department; grade: ExecGrade }
+  | { type: 'fireExecutive'; dept: Department }
+  | { type: 'upgradeHq' }
+  | { type: 'decide'; option: string }
   | { type: 'minigameResult'; challengeId: number; outcome: number | boolean };
 
 export type ActionType = Action['type'];
@@ -218,7 +268,11 @@ export type ErrorCode =
   | 'trickLimit'
   | 'invalidTarget'
   | 'noSpyReport'
-  | 'detectivesActive';
+  | 'detectivesActive'
+  | 'boardFull'
+  | 'noDecision'
+  | 'invalidOption'
+  | 'hqLocked';
 
 /* ---------------- Events ---------------- */
 
@@ -316,6 +370,26 @@ export type GameEvent =
     }
   | { type: 'plantFault'; playerId: PlayerId; siteId: string; cause: 'technical' | 'storm' }
   | { type: 'faultCleared'; playerId: PlayerId; siteId: string }
+  | { type: 'executiveHired'; playerId: PlayerId; dept: Department; grade: ExecGrade; cost: number }
+  | { type: 'executiveLeft'; playerId: PlayerId; dept: Department; grade: ExecGrade; cost: number; poached: boolean }
+  | { type: 'hqUpgraded'; playerId: PlayerId; level: HqLevel; cost: number }
+  | { type: 'decisionOffered'; playerId: PlayerId; key: DecisionKey; siteId?: string; dept?: Department }
+  | {
+      type: 'decisionTaken';
+      playerId: PlayerId;
+      key: DecisionKey;
+      option: string;
+      /** The default option applied at the end of the quarter. */
+      auto: boolean;
+      cost: number;
+      siteId?: string;
+      dept?: Department;
+      /** Money received (grant, grid operator). */
+      gain?: number;
+      /** Outcome of a gamble: the grant came through, the permit was delayed. */
+      success?: boolean;
+    }
+  | { type: 'awardWon'; playerId: PlayerId; award: AwardKey; gold: boolean; year?: number }
   | { type: 'playerBankrupt'; playerId: PlayerId }
   | { type: 'actionRejected'; playerId: PlayerId; action: string; error: ErrorCode };
 
@@ -334,6 +408,9 @@ export type ReportLine =
   | { kind: 'storage'; source: 'market'; amount: number }
   | { kind: 'opex'; amount: number }
   | { kind: 'lease'; amount: number }
+  /** Salaries of the board and upkeep of the headquarters. */
+  | { kind: 'board'; amount: number }
+  | { kind: 'hq'; amount: number }
   | { kind: 'interest'; amount: number };
 
 export interface QuarterReport {
@@ -450,14 +527,38 @@ export interface PlayerSummary {
   genLast: number;
   co2: number;
   hist: (number | null)[];
+  hq: HqLevel;
+  awards: Award[];
   /** Valid spy report of the viewer on this player (not for the viewer itself). */
   intel?: {
+    board: Executive[];
     /** Last turn the report is valid. */
     until: number;
     contracts: Contract[];
     detectives: { level: DetectiveLevel; left: number } | null;
     tricksLeft: number;
   };
+}
+
+export interface DecisionOptionView {
+  key: string;
+  /** Price now (0 for free options). */
+  cost: number;
+  /** Money the option brings for sure or if it works out. */
+  gain: number;
+  /** Chance that a gamble works out (grant), the risk of a delay (citizens' protest), or null. */
+  chance: number | null;
+  /** Needs a better headquarters (level). */
+  minHq: HqLevel;
+  /** Applied when the player does not decide. */
+  default: boolean;
+}
+
+export interface DecisionView {
+  key: DecisionKey;
+  siteId?: string;
+  dept?: Department;
+  options: DecisionOptionView[];
 }
 
 export interface GridView {
@@ -498,6 +599,17 @@ export interface PlayerView {
     nextGen: number;
     contractVolume: number;
     detectives: { level: DetectiveLevel; left: number } | null;
+    board: Executive[];
+    hq: HqLevel;
+    /** Board seats of the current headquarters. */
+    seats: number;
+    /** Salaries and headquarters upkeep per quarter. */
+    overhead: number;
+    discount: { pct: number; left: number } | null;
+    decision: DecisionView | null;
+    awards: Award[];
+    /** Progress towards the awards (compare with `AWARDS[k].goal`; at least 1 for the first two). */
+    awardProgress: Record<Exclude<AwardKey, 'cup'>, number>;
   };
   players: PlayerSummary[];
   sites: SiteView[];

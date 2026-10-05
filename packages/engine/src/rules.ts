@@ -5,7 +5,12 @@ import {
   BUYERS,
   DETECTIVES,
   DUEL_SCARCITY,
+  EXEC_EFFECTS,
+  EXEC_GRADES,
   HOURS,
+  HQ_BOOK,
+  HQ_LEVELS,
+  MAX_SURVEYS,
   MIN_CREDIT,
   PLANTS,
   REGIONS,
@@ -18,8 +23,9 @@ import {
   type AutoMinigameDef,
   type PlantDef,
 } from './data.js';
-import { pick, rand, randint, randomOf } from './rng.js';
+import { clamp, pick, rand, randint, randomOf } from './rng.js';
 import type {
+  Department,
   DetectiveLevel,
   Difficulty,
   GameState,
@@ -58,6 +64,33 @@ export const repowerGridCost = (t: PlantType): number => plantDef(t, 'large').gr
 /** Price of repowering a standard plant to large: extra build costs with a surcharge, plus the bigger grid connection. */
 export const repowerCost = (g: GameState, t: PlantType): number =>
   Math.round(((buildCost(g, t, 'large') - buildCost(g, t, 'std')) * REPOWER_FACTOR) / 1e4) * 1e4 + repowerGridCost(t);
+
+/* ---------- board and headquarters ---------- */
+
+/** Power of player `p`'s board member in department `d` (0 = vacant, junior 1, senior 2). */
+export const execPower = (p: Pick<Player, 'board'> | undefined, d: Department): number => {
+  const e = p?.board.find((b) => b.dept === d);
+  return e ? EXEC_GRADES[e.grade].power : 0;
+};
+/** Salaries of the board and upkeep of the headquarters per quarter. */
+export const salaries = (p: Pick<Player, 'board'>): number =>
+  p.board.reduce((s, e) => s + EXEC_GRADES[e.grade].salary, 0);
+export const overhead = (p: Pick<Player, 'board' | 'hq'>): number => salaries(p) + HQ_LEVELS[p.hq].upkeep;
+/** Yield surveys player `p` may order per quarter. */
+export const surveyLimit = (p: Player): number => MAX_SURVEYS + EXEC_EFFECTS.dev.surveys * execPower(p, 'dev');
+/** Rejection chance of a permit application for plant data `reject` on site `x`. */
+export const rejectChance = (g: GameState, x: Site, reject: number): number =>
+  clamp(reject + x.rejectMod - EXEC_EFFECTS.dev.reject * execPower(g.players[x.owner], 'dev'), 0.01, 1);
+/** Build-cost factor of player `p` (supplier discount from a decision card). */
+const discountF = (g: GameState, p: Player): number =>
+  p.discount && p.discount.until >= g.turn ? 1 - p.discount.pct : 1;
+/** What player `p` pays to build (or retry) a plant. */
+export const buildPrice = (g: GameState, p: Player, t: PlantType, size: PlantSize, retry = false): number =>
+  Math.round(((retry ? retryCost(g, t, size) : buildCost(g, t, size)) * discountF(g, p)) / 1e4) * 1e4;
+/** What player `p` pays to repower (grid & engineering board member: cheaper). */
+export const repowerPrice = (g: GameState, p: Player, t: PlantType): number =>
+  Math.round((repowerCost(g, t) * (1 - EXEC_EFFECTS.grid.repower * execPower(p, 'grid'))) / 1e4) * 1e4;
+
 export const surveyCost = (x: Site): number => (x.r === 'ns' ? 0.3e6 : 0.05e6);
 
 /** Owned, built and connected (a fault only pauses production). Works on sites and site views. */
@@ -126,7 +159,8 @@ export function storeIncome(g: GameState, gen: ReadonlyMap<string, number>, stor
       avail = pool.get(x.owner + x.r) ?? 0,
       m = Math.min(cap, avail);
     pool.set(x.owner + x.r, avail - m);
-    res.set(x.id, { ownMwh: m, own: m * g.spread, market: (cap - m) * g.spread * STORE_MARKET_SHARE });
+    const share = STORE_MARKET_SHARE + EXEC_EFFECTS.trade.storeShare * execPower(g.players[x.owner], 'trade');
+    res.set(x.id, { ownMwh: m, own: m * g.spread, market: (cap - m) * g.spread * share });
   }
   return res;
 }
@@ -185,7 +219,7 @@ export function siteValue(x: ValuedSite): number {
 export const sellValue = (x: ValuedSite): number => Math.round(siteValue(x) * 0.85);
 
 export function worth(g: GameState, p: Player): number {
-  let v = p.cash - p.loan;
+  let v = p.cash - p.loan + p.hqPaid * HQ_BOOK;
   for (const x of g.sites) if (x.owner === p.id) v += siteValue(x);
   return Math.round(v);
 }
@@ -222,6 +256,7 @@ export function resetSite(x: Site): void {
     alt: null,
     size: 'std',
     offline: 0,
+    rejectMod: 0,
   });
 }
 
@@ -283,15 +318,16 @@ export const hasIntel = (g: GameState, pid: PlayerId, target: PlayerId): boolean
 export function trickOdds(
   trick: TrickType,
   detectives: DetectiveLevel | null | undefined,
+  actorLaw = 0,
 ): { success: number; caughtIfFailed: number; caughtIfSucceeded: number } {
   const T = TRICKS[trick],
     D = detectives ? DETECTIVES[detectives] : null;
-  // a lawsuit is legal: nobody is caught
-  const catchable = T.fine > 0;
+  // a lawsuit is legal: nobody is caught; the actor's legal department covers tracks
+  const catchable = T.fine > 0 ? 1 - EXEC_EFFECTS.law.caught * actorLaw : 0;
   return {
     success: T.chance * (D?.shield ?? 1),
-    caughtIfFailed: catchable ? (D?.catchFailed ?? TRICK_CAUGHT) : 0,
-    caughtIfSucceeded: catchable ? (D?.catchSucceeded ?? 0) : 0,
+    caughtIfFailed: catchable * (D?.catchFailed ?? TRICK_CAUGHT),
+    caughtIfSucceeded: catchable * (D?.catchSucceeded ?? 0),
   };
 }
 

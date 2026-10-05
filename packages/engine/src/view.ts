@@ -3,6 +3,7 @@ import {
   DETECTIVE_QUARTERS,
   DETECTIVES,
   historicFor,
+  HQ_LEVELS,
   INTEREST,
   MAX_CONTRACTS,
   MAX_SURVEYS,
@@ -20,11 +21,13 @@ import {
   TRICK_KEYS,
   TRICKS,
 } from './data.js';
+import { awardProgress } from './awards.js';
 import { publicChallenge } from './challenges.js';
+import { decisionView } from './decisions.js';
 import { eventForViewer } from './events.js';
 import { actionOptions } from './legal.js';
 import {
-  buildCost,
+  buildPrice,
   clone,
   creditLimit,
   duelRivals,
@@ -34,10 +37,10 @@ import {
   isStore,
   mwOf,
   myReserve,
+  overhead,
   producing,
   rankOf,
   reserved,
-  retryCost,
   sellValue,
   serviceCost,
   siteMw,
@@ -45,6 +48,7 @@ import {
   storeCapacity,
   storeIncome,
   surveyCost,
+  surveyLimit,
   usedGrid,
   worth,
 } from './rules.js';
@@ -165,8 +169,8 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       ['large', costsLarge],
     ] as const)
       into[t] = {
-        build: buildCost(g, t, size),
-        retry: retryCost(g, t, size),
+        build: buildPrice(g, me, t, size),
+        retry: buildPrice(g, me, t, size, true),
         permit: plantDef(t, size).permit,
         grid: plantDef(t, size).grid,
         service: serviceCost(t, size),
@@ -210,10 +214,28 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       genLast: me.genLast,
       contracts: clone(me.contracts),
       tricksLeft: Math.max(0, MAX_TRICKS - me.trickUsed),
-      surveysLeft: Math.max(0, MAX_SURVEYS - me.surveyUsed),
+      surveysLeft: Math.max(0, surveyLimit(me) - me.surveyUsed),
       nextGen: own.filter((x) => producing(x) && x.type && !isStore(x.type)).reduce((s, x) => s + genEstimate(g, x), 0),
       contractVolume: me.contracts.reduce((s, c) => s + c.vol, 0),
       detectives: detectivesView(g, me),
+      board: clone(me.board),
+      hq: me.hq,
+      seats: HQ_LEVELS[me.hq].seats,
+      overhead: overhead(me),
+      discount:
+        me.discount && me.discount.until >= g.turn
+          ? { pct: me.discount.pct, left: me.discount.until - g.turn + 1 }
+          : null,
+      decision: decisionView(g, me),
+      awards: clone(me.awards),
+      awardProgress: {
+        firstPlant: awardProgress(g, me, 'firstPlant'),
+        offshore: awardProgress(g, me, 'offshore'),
+        europe: awardProgress(g, me, 'europe'),
+        mw500: awardProgress(g, me, 'mw500'),
+        co2: awardProgress(g, me, 'co2'),
+        storage: awardProgress(g, me, 'storage'),
+      },
     },
     players: g.players.map((p) => ({
       ...(p.id !== pid && hasIntel(g, pid, p.id)
@@ -223,6 +245,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
               contracts: clone(p.contracts),
               detectives: detectivesView(g, p),
               tricksLeft: Math.max(0, MAX_TRICKS - p.trickUsed),
+              board: clone(p.board),
             },
           }
         : {}),
@@ -238,6 +261,8 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       genLast: p.genLast,
       co2: p.co2,
       hist: [...p.hist],
+      hq: p.hq,
+      awards: clone(p.awards),
     })),
     sites,
     grid,

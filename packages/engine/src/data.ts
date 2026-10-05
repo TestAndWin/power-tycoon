@@ -3,8 +3,13 @@
  * German names and descriptions are in apps/web/src/texts.ts.
  */
 import type {
+  AwardKey,
+  DecisionKey,
+  Department,
   DetectiveLevel,
   Difficulty,
+  ExecGrade,
+  HqLevel,
   PlantClass,
   PlantSize,
   PlantType,
@@ -399,3 +404,143 @@ export function historicFor(startYear: number, endYear: number): HistoricDef[] {
     return { ...h, year: startYear + Math.floor(turn / 4), q: turn % 4 };
   });
 }
+
+/* ---------------- Headquarters (phase 8) ---------------- */
+
+export const DEPARTMENT_KEYS: readonly Department[] = ['dev', 'grid', 'trade', 'law'];
+export const EXEC_GRADE_KEYS: readonly ExecGrade[] = ['junior', 'senior'];
+
+export interface ExecGradeDef {
+  /** Signing fee. */
+  fee: number;
+  /** Salary per quarter. */
+  salary: number;
+  /** Strength of the department's effect (multiplies `EXEC_EFFECTS`). */
+  power: number;
+}
+export const EXEC_GRADES: Record<ExecGrade, ExecGradeDef> = {
+  junior: { fee: 0.5e6, salary: 0.2e6, power: 1 },
+  senior: { fee: 1.5e6, salary: 0.45e6, power: 2 },
+};
+/** Severance when a board member is dismissed, in quarterly salaries. */
+export const EXEC_SEVERANCE = 1;
+
+/** Effects of the departments per point of power (a senior has two). */
+export const EXEC_EFFECTS = {
+  /** Project development: lower rejection chance of permits, extra yield surveys per quarter. */
+  dev: { reject: 0.05, surveys: 1 },
+  /** Grid & engineering: more time in the cable duel (and a better auto outcome), cheaper repowering. */
+  grid: { duelTime: 0.1, duelChance: 0.05, repower: 0.08 },
+  /** Trading: better price on new PPA contracts (€/MWh), more of the spread for storage charged from the market. */
+  trade: { ppa: 3, storeShare: 0.08 },
+  /** Legal & communication: higher court damages (paid by the actor), own tricks are caught less often. */
+  law: { damages: 0.25, caught: 0.2 },
+} as const;
+
+export interface HqDef {
+  /** Price of moving into this headquarters. */
+  cost: number;
+  /** Running costs per quarter. */
+  upkeep: number;
+  /** Board seats. */
+  seats: number;
+}
+export const HQ_LEVEL_KEYS: readonly HqLevel[] = [0, 1, 2, 3];
+export const HQ_LEVELS: Record<HqLevel, HqDef> = {
+  0: { cost: 0, upkeep: 0.05e6, seats: 1 },
+  1: { cost: 4e6, upkeep: 0.12e6, seats: 2 },
+  2: { cost: 12e6, upkeep: 0.25e6, seats: 3 },
+  3: { cost: 30e6, upkeep: 0.5e6, seats: 4 },
+};
+/** Share of the money paid for the headquarters that counts as book value. */
+export const HQ_BOOK = 0.8;
+
+/** Chance per quarter that a player without an open card gets a decision card. */
+export const DECISION_CHANCE = 0.35;
+
+export interface DecisionOptionDef {
+  key: string;
+  /** Needs this headquarters level. */
+  minHq: HqLevel;
+  default?: true;
+}
+export interface DecisionDef {
+  /** Selection weight among the cards whose condition holds. */
+  weight: number;
+  options: readonly DecisionOptionDef[];
+}
+/** Decision cards; their conditions and effects are in `decisions.ts`, the texts in the web app. */
+export const DECISIONS: Record<DecisionKey, DecisionDef> = {
+  citizens: {
+    weight: 3,
+    options: [
+      { key: 'talk', minHq: 0 },
+      { key: 'ignore', minHq: 0, default: true },
+      { key: 'report', minHq: 2 },
+    ],
+  },
+  supplier: {
+    weight: 2,
+    options: [
+      { key: 'order', minHq: 0 },
+      { key: 'decline', minHq: 0, default: true },
+      { key: 'frame', minHq: 3 },
+    ],
+  },
+  heatwave: {
+    weight: 2,
+    options: [
+      { key: 'join', minHq: 0 },
+      { key: 'decline', minHq: 0, default: true },
+    ],
+  },
+  grant: {
+    weight: 2,
+    options: [
+      { key: 'apply', minHq: 0 },
+      { key: 'skip', minHq: 0, default: true },
+      { key: 'lobbyist', minHq: 1 },
+    ],
+  },
+  poach: {
+    weight: 2,
+    options: [
+      { key: 'raise', minHq: 0 },
+      { key: 'release', minHq: 0, default: true },
+      { key: 'options', minHq: 2 },
+    ],
+  },
+  mayor: {
+    weight: 2,
+    options: [
+      { key: 'lease', minHq: 0 },
+      { key: 'decline', minHq: 0, default: true },
+    ],
+  },
+};
+/** Numbers of the decision cards. */
+export const DECISION_DATA = {
+  citizens: { talk: { cost: 0.5e6, reject: 0.1 }, report: { cost: 0.3e6, reject: 0.12 }, delay: 0.35 },
+  supplier: { order: { cost: 1e6, pct: 0.1, quarters: 4 }, frame: { cost: 1.5e6, pct: 0.15, quarters: 6 } },
+  /** The grid operator pays this share of the full-spread value of the storage capacity. */
+  heatwave: { pay: 0.9 },
+  grant: { amount: 3e6, apply: { cost: 0.2e6, chance: 0.5 }, lobbyist: { cost: 0.5e6, chance: 0.8 } },
+  /** Keeping a poached board member: one-off payment in quarterly salaries. */
+  poach: { raise: 2, options: 1 },
+  /** The community leases a free site at this share of the lease. */
+  mayor: { lease: 0.6 },
+} as const;
+
+export interface AwardDef {
+  /** Threshold for the award (MW, t CO₂, MWh storage); 0 where the condition is not a number. */
+  goal: number;
+}
+export const AWARD_KEYS: readonly AwardKey[] = ['firstPlant', 'offshore', 'europe', 'mw500', 'co2', 'storage', 'cup'];
+export const AWARDS: Record<Exclude<AwardKey, 'cup'>, AwardDef> = {
+  firstPlant: { goal: 0 },
+  offshore: { goal: 0 },
+  europe: { goal: 4 },
+  mw500: { goal: 500 },
+  co2: { goal: 1e6 },
+  storage: { goal: 1000 },
+};

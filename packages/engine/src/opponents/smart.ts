@@ -10,7 +10,12 @@
  */
 import {
   CAPTURE,
+  DEPARTMENT_KEYS,
+  EXEC_EFFECTS,
+  EXEC_GRADE_KEYS,
+  EXEC_GRADES,
   historicFor,
+  HQ_LEVELS,
   HOURS,
   PLANT_SIZE_KEYS,
   PLANTS,
@@ -41,6 +46,9 @@ import {
 import { costsFor, trickTargetIds } from '../view.js';
 import type {
   Action,
+  DecisionOptionView,
+  Department,
+  ExecGrade,
   OpponentContext,
   OpponentStrategy,
   PlantSize,
@@ -107,6 +115,13 @@ export interface SmartParams {
    * plant is built, and do not prefer small projects while the financing room covers the big one.
    */
   bigProjects: boolean;
+  /**
+   * Board and headquarters: a board member is hired when its expected value over the planning horizon beats
+   * fee and salaries by this factor (Infinity = never); the headquarters is extended for a seat the same way.
+   */
+  boardEdge: number;
+  /** Dismiss board members that no longer pay off. */
+  boardReview: boolean;
 }
 
 export type SmartLevel = 'normal' | 'hard';
@@ -135,6 +150,8 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     revenge: false,
     detectives: 'basic',
     bigProjects: false,
+    boardEdge: 1.6,
+    boardReview: false,
   },
   hard: {
     maxPending: 5,
@@ -159,6 +176,8 @@ export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
     revenge: true,
     detectives: 'pro',
     bigProjects: true,
+    boardEdge: 1.15,
+    boardReview: true,
   },
 };
 
@@ -173,6 +192,8 @@ const PRICE_MEMORY = 8;
 const GRUDGE_QUARTERS = 8;
 /** Quarters an attack on the rival makes it hire detectives. */
 const ALERT_QUARTERS = 4;
+/** Quarters over which board members and headquarters are valued (and their fees spread). */
+const BOARD_HORIZON = 12;
 
 /** Capacity factor from what the viewer knows; unknown sites use the regional average. */
 function capFactor(x: SiteView, t: PlantType): number {
@@ -546,7 +567,7 @@ class Planner {
   /* ---------- money ---------- */
 
   private runningCostsPerQuarter(): number {
-    let c = this.loan * this.v.constants.interest;
+    let c = this.loan * this.v.constants.interest + this.me.overhead;
     for (const x of this.mine()) {
       c += x.lease * 0.02;
       if (x.built && x.type) c += plantDef(x.type, x.size).opex;
@@ -590,7 +611,7 @@ class Planner {
 
   /** Expected operating cash flow per quarter of the own plants (after running costs and interest). */
   private cashFlow(): number {
-    let c = -this.loan * this.v.constants.interest;
+    let c = -this.loan * this.v.constants.interest - this.me.overhead;
     for (const x of this.mine()) {
       c -= x.lease * 0.02;
       if (!x.type || !x.built) continue;
@@ -626,6 +647,8 @@ class Planner {
   }
 
   plan(): Action[] {
+    this.decision();
+    this.board();
     if (this.p.sellStuck) this.sellDead();
     this.repairs();
     this.advanceProjects();
@@ -1070,6 +1093,145 @@ class Planner {
     if (operatingRevenue * 2 < cost) return;
     if (this.cash < cost + this.buffer()) return;
     this.spend({ type: 'hireDetectives', level }, cost);
+  }
+
+  /* ---------- board, headquarters and decision cards ---------- */
+
+  /** Expected value per quarter of a board member in department `d` with `power` (see `EXEC_EFFECTS`). */
+  private execValue(d: Department, power: number): number {
+    const mine = this.mine();
+    switch (d) {
+      case 'dev': {
+        // a lower rejection chance saves the permit fee and about two quarters of the project's revenue
+        let s = 0;
+        for (const x of mine)
+          if (x.type && x.permit === 'pending')
+            s += plantDef(x.type, x.size).permit + 2 * this.quarterRevenue(x, x.type, x.size);
+        // new projects applied for in the coming quarters
+        s *= 1 + this.p.leasesPerTurn / Math.max(1, mine.filter((x) => x.permit === 'pending').length);
+        return (power * EXEC_EFFECTS.dev.reject * s) / 3;
+      }
+      case 'trade': {
+        let store = 0;
+        for (const x of mine)
+          if (x.type && x.grid && PLANTS[x.type].cls === 'store')
+            store += (x.own?.storeCapacity ?? 0) - (x.own?.storeOwnMwh ?? 0);
+        const ppa = Math.max(this.me.contractVolume, this.safeVolume() * 0.5);
+        return power * (EXEC_EFFECTS.trade.ppa * ppa + EXEC_EFFECTS.trade.storeShare * store * this.v.market.spread);
+      }
+      case 'grid': {
+        // each plant is repowered once: the saving spread over the horizon
+        let repower = 0;
+        for (const o of this.v.options)
+          if (o.action.type === 'repower' && (o.error === null || o.error === 'insufficientFunds')) repower += o.cost;
+        return (power * EXEC_EFFECTS.grid.repower * repower) / BOARD_HORIZON;
+      }
+      case 'law':
+        // only worth it for rivals that fight with lobby tricks
+        return this.p.trickRate >= 0.5 ? power * 0.15e6 : 0;
+    }
+  }
+
+  /** Net value of a board member over the horizon (value minus salaries and the fee). */
+  private execNet(d: Department, grade: ExecGrade, withFee: boolean): number {
+    const n = Math.min(BOARD_HORIZON, this.left);
+    const G = EXEC_GRADES[grade];
+    return this.execValue(d, G.power) * n - (G.salary * n + (withFee ? G.fee : 0)) * this.p.boardEdge;
+  }
+
+  /** Hires (and with `boardReview` dismisses) board members; extends the headquarters for a needed seat. */
+  private board(): void {
+    if (!Number.isFinite(this.p.boardEdge) || this.left < 4) return;
+    const board = this.me.board;
+    if (this.p.boardReview)
+      for (const e of board) {
+        const keep = this.execNet(e.dept, e.grade, false);
+        const sev = EXEC_GRADES[e.grade].salary;
+        if (keep + sev < 0 && this.cash > sev + this.buffer()) {
+          this.spend({ type: 'fireExecutive', dept: e.dept }, sev);
+          board.splice(board.indexOf(e), 1);
+        }
+      }
+    const wanted = DEPARTMENT_KEYS.filter((d) => !board.some((e) => e.dept === d))
+      .map((d) => {
+        const best = EXEC_GRADE_KEYS.map((grade) => ({ d, grade, net: this.execNet(d, grade, true) })).sort(
+          (a, b) => b.net - a.net,
+        )[0]!;
+        return best;
+      })
+      .filter((w) => w.net > 0)
+      .sort((a, b) => b.net - a.net);
+    let seats = this.me.seats - board.length;
+    for (const w of wanted) {
+      if (seats <= 0) {
+        // a new seat: the move costs the price minus the book value it keeps, and more upkeep
+        if (this.me.hq >= 3) break;
+        const next = HQ_LEVELS[(this.me.hq + 1) as 1 | 2 | 3];
+        const extra = (next.upkeep - HQ_LEVELS[this.me.hq].upkeep) * this.left;
+        if (w.net < next.cost * 0.2 + extra || next.cost > this.freeRoom() * 0.5 || !this.afford(next.cost)) break;
+        this.spend({ type: 'upgradeHq' }, next.cost);
+        seats++;
+      }
+      const fee = EXEC_GRADES[w.grade].fee;
+      if (this.cash < fee + this.buffer()) break;
+      this.spend({ type: 'hireExecutive', dept: w.d, grade: w.grade }, fee);
+      seats--;
+    }
+  }
+
+  /** Value of an option of the open decision card (expected money, minus its price). */
+  private optionValue(o: DecisionOptionView): number {
+    const d = this.me.decision!;
+    const x = d.siteId ? this.v.sites.find((s) => s.id === d.siteId) : undefined;
+    const exp = o.gain * (o.chance ?? 1) - o.cost;
+    switch (d.key) {
+      case 'citizens': {
+        if (!x?.type) return exp;
+        const atStake = plantDef(x.type, x.size).permit + 2 * this.quarterRevenue(x, x.type, x.size);
+        if (o.key === 'ignore') return -(o.chance ?? 0) * this.quarterRevenue(x, x.type, x.size);
+        return (o.key === 'report' ? 0.12 : 0.1) * atStake - o.cost;
+      }
+      case 'supplier': {
+        if (o.key === 'decline') return 0;
+        const pct = o.key === 'frame' ? 0.15 : 0.1;
+        let builds = 0;
+        for (const y of this.mine())
+          if (y.type && !y.built && y.permit !== 'rejected') builds += costsFor(this.v, y.size)[y.type].build;
+        return pct * builds - o.cost;
+      }
+      case 'heatwave': {
+        if (o.key !== 'join') return 0;
+        let lost = 0;
+        for (const y of this.mine())
+          if (y.type && y.grid && PLANTS[y.type].cls === 'store') lost += y.own?.storeRevenue ?? 0;
+        return o.gain - lost;
+      }
+      case 'poach': {
+        if (o.key === 'release') return 0;
+        const e = this.me.board.find((b) => b.dept === d.dept);
+        return e ? this.execNet(e.dept, e.grade, false) / this.p.boardEdge - o.cost : -o.cost;
+      }
+      case 'mayor': {
+        if (o.key !== 'lease' || !x || this.v.quartersLeft < 8) return 0;
+        const b = this.bestType(x, 'new');
+        return b ? b.value + x.lease - o.cost : -o.cost;
+      }
+      default:
+        return exp;
+    }
+  }
+
+  /** Decides the open decision card if an option beats the default (which applies anyway at the quarter end). */
+  private decision(): void {
+    const d = this.me.decision;
+    if (!d) return;
+    const opts = d.options.filter((o) => o.minHq <= this.me.hq).map((o) => ({ o, value: this.optionValue(o) }));
+    const def = opts.find((x) => x.o.default);
+    const best = opts.sort((a, b) => b.value - a.value)[0];
+    if (!best || best === def || best.value <= (def?.value ?? 0)) return;
+    if (this.cash < best.o.cost + this.buffer()) return;
+    this.spend({ type: 'decide', option: best.o.key }, best.o.cost);
+    this.cash += best.o.key === 'join' ? best.o.gain : 0;
   }
 
   private repay(): void {

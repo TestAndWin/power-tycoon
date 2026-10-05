@@ -2,12 +2,13 @@
  * Skill minigames ("challenges") inside building, connecting and repairing. A human player
  * plays them in the browser; rivals and players with `autoMinigames` get a random outcome.
  */
-import { DUEL_REFUND, DUEL_RESERVE_QUARTERS, LAYOUT_RANGE, PLANTS, SELF_REPAIR_COST } from './data.js';
+import { DUEL_REFUND, DUEL_RESERVE_QUARTERS, EXEC_EFFECTS, LAYOUT_RANGE, PLANTS, SELF_REPAIR_COST } from './data.js';
 import { emit } from './events.js';
 import { clamp, nextUint, rand, randomOf } from './rng.js';
 import {
   autoMinigame,
   consumeReserve,
+  execPower,
   unreservedGrid,
   myReserve,
   siteById,
@@ -32,8 +33,9 @@ function autoOutcome(g: GameState, ch: OpenChallenge): number | boolean {
   const r = randomOf(g);
   const M = autoMinigame(g.settings.difficulty, g.players[ch.playerId]!.human);
   if (ch.kind === 'layout') return Math.round(rand(r, M.layout[0], M.layout[1]) * 100) / 100;
-  // a cable duel against a rival is harder than the solo puzzle
-  return r() < (ch.rival ? M.cableDuel : M[ch.kind]);
+  // a cable duel against a rival is harder than the solo puzzle; the grid board member helps
+  const duel = M.cableDuel + EXEC_EFFECTS.grid.duelChance * execPower(g.players[ch.playerId], 'grid');
+  return r() < (ch.rival ? duel : M[ch.kind]);
 }
 
 /** Opens a challenge for `step` on site `x`; resolves it at once if the player does not play minigames. */

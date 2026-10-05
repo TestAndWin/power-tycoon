@@ -10,6 +10,8 @@ const player = (worth: number, hist: (number | null)[] = [], out = false): Playe
   loan: 0,
   out,
   worth,
+  hq: 0,
+  awards: [],
   sites: 0,
   mw: 0,
   genLast: 0,

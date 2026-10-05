@@ -11,6 +11,8 @@ function isNews(g: GameState, e: GameEvent): boolean {
     case 'playerBankrupt':
     case 'trickSucceeded':
     case 'gridReserved':
+    case 'hqUpgraded':
+    case 'awardWon':
       return true;
     case 'trickFailed':
       // the human learns about attempts on own sites (whose actor stays unknown unless caught)
@@ -26,7 +28,10 @@ function isNews(g: GameState, e: GameEvent): boolean {
     case 'gridConnected':
     case 'siteSold':
     case 'contractAccepted':
+    case 'executiveHired':
       return human(e.playerId);
+    case 'executiveLeft':
+      return human(e.playerId) && e.poached;
     default:
       return false;
   }
@@ -57,6 +62,10 @@ export function eventForViewer(e: GameEvent, viewer: PlayerId): GameEvent | null
     case 'actionRejected':
     case 'detectivesHired':
     case 'detectivesExpired':
+    case 'executiveHired':
+    case 'executiveLeft':
+    case 'decisionOffered':
+    case 'decisionTaken':
       return e.playerId === viewer ? e : null;
     case 'spied':
       return e.playerId === viewer || e.caught ? e : null;

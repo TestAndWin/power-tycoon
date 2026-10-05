@@ -1,5 +1,14 @@
 import { checkAction, isBlocking } from './actions.js';
-import { DETECTIVE_KEYS, PLANT_SIZE_KEYS, PLANT_TYPE_KEYS, REGION_KEYS, TRICK_KEYS } from './data.js';
+import {
+  DECISIONS,
+  DEPARTMENT_KEYS,
+  DETECTIVE_KEYS,
+  EXEC_GRADE_KEYS,
+  PLANT_SIZE_KEYS,
+  PLANT_TYPE_KEYS,
+  REGION_KEYS,
+  TRICK_KEYS,
+} from './data.js';
 import { creditLimit } from './rules.js';
 import type { Action, ActionOption, GameState, PlayerId } from './types.js';
 
@@ -37,6 +46,12 @@ function candidates(g: GameState, pid: PlayerId): Action[] {
   for (const q of g.players) if (q.id !== pid) c.push({ type: 'spy', targetId: q.id });
   for (const level of DETECTIVE_KEYS) c.push({ type: 'hireDetectives', level });
   for (const o of g.offers) c.push({ type: 'acceptContract', offerId: o.id });
+  for (const dept of DEPARTMENT_KEYS) {
+    for (const grade of EXEC_GRADE_KEYS) c.push({ type: 'hireExecutive', dept, grade });
+    c.push({ type: 'fireExecutive', dept });
+  }
+  c.push({ type: 'upgradeHq' });
+  if (p.decision) for (const o of DECISIONS[p.decision.key].options) c.push({ type: 'decide', option: o.key });
   const room = Math.floor((creditLimit(g, p) - p.loan) / 1e6) * 1e6;
   for (const amount of new Set([5e6, 20e6, 50e6, room])) if (amount > 0) c.push({ type: 'borrow', amount });
   for (const amount of [5e6, 20e6]) c.push({ type: 'repay', amount });

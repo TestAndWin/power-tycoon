@@ -1,6 +1,19 @@
 /** Quarter end: port of legacy `endQuarter()` / `randomEvent()` with the same order of steps. */
 import { applyActionInPlace } from './actions.js';
-import { AI_DEF, CAPTURE, CO2, INTEREST, PLANTS, plantDef, PRICE_FOLLOW, PRICE_SEASON, TARGET_DRIFT } from './data.js';
+import { checkAwards } from './awards.js';
+import { closeDecisions, dealDecisions } from './decisions.js';
+import {
+  AI_DEF,
+  CAPTURE,
+  CO2,
+  HQ_LEVELS,
+  INTEREST,
+  PLANTS,
+  plantDef,
+  PRICE_FOLLOW,
+  PRICE_SEASON,
+  TARGET_DRIFT,
+} from './data.js';
 import { concerns, emit, eventsForViewer, isConfrontation } from './events.js';
 import { clamp, createRng, gauss, nextUint, randomOf } from './rng.js';
 import {
@@ -10,7 +23,9 @@ import {
   genOffers,
   isStore,
   operating,
+  rejectChance,
   resetSite,
+  salaries,
   siteDef,
   storeIncome,
   updateSpread,
@@ -106,7 +121,7 @@ function decidePermits(g: GameState, out: GameEvent[]): void {
     if (x.alt && x.type) {
       const alt = x.alt;
       if (--alt.left <= 0) {
-        const ok = r() >= plantDef(alt.type, alt.size).reject,
+        const ok = r() >= rejectChance(g, x, plantDef(alt.type, alt.size).reject),
           previous = x.type;
         x.alt = null;
         if (ok)
@@ -132,8 +147,9 @@ function decidePermits(g: GameState, out: GameEvent[]): void {
     if (x.permit !== 'pending' || !x.type) continue;
     x.permitLeft--;
     if (x.permitLeft > 0) continue;
-    const rej = x.killed || r() < siteDef(x).reject;
+    const rej = x.killed || r() < rejectChance(g, x, siteDef(x).reject);
     x.killed = false;
+    x.rejectMod = 0;
     x.permit = rej ? 'rejected' : 'approved';
     out.push({ type: 'permitDecided', playerId: x.owner, siteId: x.id, plantType: x.type, approved: !rej });
   }
@@ -260,9 +276,13 @@ function settle(g: GameState, p: Player, s: Output, price: number, out: GameEven
     if (x.built && x.type) op += siteDef(x).opex;
   }
   const interest = p.loan * INTEREST;
-  p.cash -= Math.round(op + ls + interest);
+  const board = salaries(p);
+  const hq = HQ_LEVELS[p.hq].upkeep;
+  p.cash -= Math.round(op + ls + interest + board + hq);
   lines.push({ kind: 'opex', amount: -Math.round(op) });
   lines.push({ kind: 'lease', amount: -Math.round(ls) });
+  lines.push({ kind: 'board', amount: -Math.round(board) });
+  lines.push({ kind: 'hq', amount: -Math.round(hq) });
   lines.push({ kind: 'interest', amount: -Math.round(interest) });
   return lines;
 }
@@ -307,6 +327,7 @@ function nextQuarter(g: GameState, out: GameEvent[]): void {
       out.push({ type: 'detectivesExpired', playerId: p.id });
     }
     for (const k of Object.keys(p.intel)) if (p.intel[k]! < g.turn) delete p.intel[k];
+    if (p.discount && p.discount.until < g.turn) p.discount = null;
   }
   if (g.q > 3) {
     g.q = 0;
@@ -319,8 +340,10 @@ function nextQuarter(g: GameState, out: GameEvent[]): void {
   g.priceHist.push(Math.round(g.price));
   g.spreadHist.push(g.spread);
   for (const p of g.players) p.hist.push(p.out ? null : worth(g, p));
+  checkAwards(g, out);
   if (!g.over && g.year >= g.endYear) g.over = 'time';
   if (!g.over && g.players.every((p) => p.human || p.out)) g.over = 'monopoly';
+  if (!g.over) dealDecisions(g, out);
 }
 
 /**
@@ -350,6 +373,7 @@ export async function endQuarter(
   g.phase = 'quarterEnd';
   const rivals = await rivalTurns(g, opponents, human);
   g.phase = 'players';
+  closeDecisions(g, events);
   const output = produce(g, price, events);
   let lines: ReportLine[] = [];
   for (const p of g.players) {

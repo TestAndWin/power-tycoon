@@ -3,11 +3,17 @@
  * error messages and report lines. The engine only emits structured events and codes.
  */
 import type {
+  AwardKey,
+  DecisionKey,
+  DecisionView,
+  Department,
   DetectiveLevel,
   Difficulty,
+  ExecGrade,
   GameEvent,
   HistoricDef,
   HistoricKey,
+  HqLevel,
   PlantSize,
   PlantType,
   PlayerView,
@@ -17,7 +23,7 @@ import type {
   TrickType,
   WorldEventKey,
 } from '@power-tycoon/engine';
-import { isConfrontation, REGIONS } from '@power-tycoon/engine';
+import { DECISION_DATA, EXEC_EFFECTS, isConfrontation, REGIONS } from '@power-tycoon/engine';
 import { esc, eur, money, mwh } from './format.js';
 
 export const REGION_TEXT: Record<RegionKey, { name: string; desc: string }> = {
@@ -191,6 +197,10 @@ export const ERROR_TEXT: Record<string, string> = {
   invalidTarget: 'Dieses Ziel kommt gerade nicht infrage.',
   noSpyReport: 'Erst einen Spion schicken: Ohne Spionagebericht über den Konzern kein Auftrag.',
   detectivesActive: 'Du hast schon eine Detektei unter Vertrag.',
+  boardFull: 'Kein freier Platz im Vorstand. Ein größerer Firmensitz bietet mehr Plätze.',
+  noDecision: 'Gerade liegt keine Entscheidung auf dem Tisch.',
+  invalidOption: 'Diese Option gibt es nicht.',
+  hqLocked: 'Diese Option gibt es erst mit einem größeren Firmensitz.',
   unknownTrick: 'Unbekannte Lobby-Aktion.',
   unknownSite: 'Unbekannte Fläche.',
   unknownRegion: 'Unbekannte Region.',
@@ -287,6 +297,10 @@ export function reportLineText(l: ReportLine): string {
       return 'Betrieb & Wartung';
     case 'lease':
       return 'Flächenpacht';
+    case 'board':
+      return 'Gehälter Vorstand';
+    case 'hq':
+      return 'Unterhalt Firmensitz';
     case 'interest':
       return 'Kreditzinsen';
   }
@@ -462,9 +476,32 @@ export function newsTexts(view: PlayerView, e: GameEvent): { kind: NewsKind; tex
       return [
         { kind: 'comp', text: `${nameOf(c, e.playerId)} ist insolvent. Alle Flächen gehen zurück an den Markt.` },
       ];
+    case 'hqUpgraded':
+      return e.playerId === me
+        ? [{ kind: 'good', text: `Umzug geschafft: Dein Konzern sitzt jetzt ${HQ_TEXT[e.level].at}.` }]
+        : [{ kind: 'comp', text: `${nameOf(c, e.playerId)} zieht um: neuer Firmensitz ${HQ_TEXT[e.level].at}.` }];
+    case 'executiveHired':
+      return [
+        {
+          kind: 'info',
+          text: `${execName(e.dept, e.grade)} verstärkt deinen Vorstand (${DEPT_TEXT[e.dept].name}).`,
+        },
+      ];
+    case 'executiveLeft':
+      return [
+        { kind: 'bad', text: `${execName(e.dept, e.grade)} wechselt zur Konkurrenz. Der Platz im Vorstand ist frei.` },
+      ];
+    case 'awardWon':
+      return [{ kind: e.playerId === me ? 'good' : 'comp', text: awardNews(c, e) }];
     default:
       return [];
   }
+}
+
+function awardNews(c: Ctx, e: Extract<GameEvent, { type: 'awardWon' }>): string {
+  const who = e.playerId === c.view.playerId ? 'Dein Konzern' : nameOf(c, e.playerId);
+  if (e.award === 'cup') return `Jahrespokal ${e.year}: ${who} hat das Vermögen im Jahr am stärksten gesteigert.`;
+  return `Auszeichnung „${AWARD_TEXT[e.award].name}“ ${e.gold ? 'in Gold' : 'in Silber'} für ${who}: ${AWARD_TEXT[e.award].cond}.`;
 }
 
 /** Lines in the quarterly report (legacy `rep.events`). */
@@ -513,6 +550,16 @@ export function reportEventText(view: PlayerView, e: GameEvent): { kind: TextKin
     }
     case 'playerBankrupt':
       return { kind: 'good', text: `${nameOf(c, e.playerId)} ist insolvent!` };
+    case 'awardWon':
+      return e.playerId === view.playerId
+        ? { kind: 'good', text: awardNews(c, e) }
+        : { kind: 'info', text: awardNews(c, e) };
+    case 'executiveLeft':
+      return e.poached ? { kind: 'bad', text: newsTexts(view, e)[0]!.text } : null;
+    case 'decisionTaken':
+      return e.auto ? { kind: 'warn', text: decisionResultText(view, e) } : null;
+    case 'decisionOffered':
+      return { kind: 'info', text: `Dein Handy klingelt: ${DECISION_TEXT[e.key].kicker}.` };
     case 'trickSucceeded':
     case 'trickFailed': {
       const n = newsTexts(view, e)[0];
@@ -560,7 +607,267 @@ export function rivalActionText(view: PlayerView, e: GameEvent): string | null {
       return `reserviert ${e.mw} MW Netz in ${REGION_TEXT[e.region].name}`;
     case 'contractAccepted':
       return `schließt einen Liefervertrag mit ${e.buyer}`;
+    case 'hqUpgraded':
+      return `zieht um: ${HQ_TEXT[e.level].name}`;
     default:
       return null;
   }
 }
+
+/* ---------------- Headquarters (phase 8) ---------------- */
+
+export const DEPT_TEXT: Record<Department, { name: string; short: string; effect: (power: number) => string }> = {
+  dev: {
+    name: 'Projektentwicklung',
+    short: 'Projekte',
+    effect: (n) =>
+      `Genehmigungen werden ${Math.round(EXEC_EFFECTS.dev.reject * n * 100)} Prozentpunkte seltener abgelehnt, ${EXEC_EFFECTS.dev.surveys * n} Ertragsgutachten mehr pro Quartal.`,
+  },
+  grid: {
+    name: 'Netz & Technik',
+    short: 'Netz',
+    effect: (n) =>
+      `${Math.round(EXEC_EFFECTS.grid.duelTime * n * 100)} % mehr Zeit im Kabel-Duell, Repowering ${Math.round(EXEC_EFFECTS.grid.repower * n * 100)} % günstiger.`,
+  },
+  trade: {
+    name: 'Handel',
+    short: 'Handel',
+    effect: (n) =>
+      `Neue Lieferverträge ${EXEC_EFFECTS.trade.ppa * n} €/MWh teurer verkauft, Speicher holen ${Math.round(EXEC_EFFECTS.trade.storeShare * n * 100)} Prozentpunkte mehr vom Spread aus Börsenstrom.`,
+  },
+  law: {
+    name: 'Recht & Kommunikation',
+    short: 'Recht',
+    effect: (n) =>
+      `Erwischte Täter zahlen dir ${Math.round(EXEC_EFFECTS.law.damages * n * 100)} % mehr Schadensersatz, deine eigenen Tricks fliegen ${Math.round(EXEC_EFFECTS.law.caught * n * 100)} % seltener auf.`,
+  },
+};
+
+export const GRADE_TEXT: Record<ExecGrade, string> = { junior: 'Junior', senior: 'Senior' };
+
+/** The candidates of each department (fictitious persons): who joins the board for which grade. */
+export const EXEC_PEOPLE: Record<Department, Record<ExecGrade, { name: string; age: number; cv: string }>> = {
+  dev: {
+    junior: {
+      name: 'Lukas Brandt',
+      age: 29,
+      cv: 'Projektierer bei einem Bürgerwindpark in Nordfriesland, kennt jedes Amt persönlich.',
+    },
+    senior: {
+      name: 'Jana Petersen',
+      age: 47,
+      cv: 'Hat zwanzig Windparks durch die Genehmigung gebracht. Gilt als Flüsterin der Landratsämter.',
+    },
+  },
+  grid: {
+    junior: {
+      name: 'Lena Kowalski',
+      age: 31,
+      cv: 'Netzplanerin bei einem Übertragungsnetzbetreiber, sechs Jahre Leitwarte.',
+    },
+    senior: {
+      name: 'Dr. Henrik Voss',
+      age: 54,
+      cv: 'Ehemaliger Technikvorstand eines Offshore-Betreibers. Hat Kabel in jeder Nordsee-Tiefe verlegt.',
+    },
+  },
+  trade: {
+    junior: {
+      name: 'Murat Aydın',
+      age: 33,
+      cv: 'Stromhändler an der Börse in Leipzig, schnell am Telefon und mit den Zahlen.',
+    },
+    senior: {
+      name: 'Sophie Laurent',
+      age: 45,
+      cv: 'Leitete den Energiehandel eines Chemiekonzerns. Verhandelt Lieferverträge wie andere Schach spielen.',
+    },
+  },
+  law: {
+    junior: { name: 'Paul Wendt', age: 34, cv: 'Prozessanwalt für Planungsrecht, frisch aus einer großen Kanzlei.' },
+    senior: {
+      name: 'Dr. Miriam Falk',
+      age: 51,
+      cv: 'Ehemalige Richterin am Verwaltungsgericht. Weiß, wie man Klagen gewinnt – und wie man sie vermeidet.',
+    },
+  },
+};
+export const execName = (d: Department, grade: ExecGrade): string => EXEC_PEOPLE[d][grade].name;
+/** The assistant who speaks for vacant departments. */
+export const ASSISTANT = { name: 'Frau Hansen', role: 'Assistenz der Geschäftsführung' };
+
+export const HQ_TEXT: Record<HqLevel, { name: string; at: string; desc: string }> = {
+  0: {
+    name: 'Baucontainer',
+    at: 'im Baucontainer',
+    desc: 'Ein Bürocontainer auf der ersten Baustelle: ein Schreibtisch, ein Telefon, ein Platz für den Vorstand.',
+  },
+  1: {
+    name: 'Altbau-Etage',
+    at: 'in einer Altbau-Etage',
+    desc: 'Stuck, Parkett und eine Adresse in der Altstadt. Platz für zwei Vorstandsmitglieder.',
+  },
+  2: {
+    name: 'Bürohaus',
+    at: 'in einem eigenen Bürohaus',
+    desc: 'Ein eigenes Haus mit Konferenzraum. Drei Plätze im Vorstand, und bei manchen Entscheidungen gibt es eine dritte Option.',
+  },
+  3: {
+    name: 'Glasturm',
+    at: 'im Glasturm mit Blick auf die Nordsee',
+    desc: 'Der Turm über dem Hafen. Vier Plätze im Vorstand und die besten Optionen bei allen Entscheidungen.',
+  },
+};
+
+interface DecisionText {
+  kicker: string;
+  title: (c: { site: string; region: string; person: string }) => string;
+  body: (c: { site: string; region: string; person: string }) => string;
+  options: Record<string, string>;
+}
+export const DECISION_TEXT: Record<DecisionKey, DecisionText> = {
+  citizens: {
+    kicker: 'Anruf aus dem Landratsamt',
+    title: (c) => `Bürgerinitiative gegen ${c.site}`,
+    body: () =>
+      'Anwohner sammeln Unterschriften gegen dein Projekt. Der Landrat bittet um ein Gespräch, bevor die Behörde über die Genehmigung entscheidet.',
+    options: { talk: 'Bürgerbeteiligung anbieten', ignore: 'Aussitzen', report: 'Unabhängiges Gutachten' },
+  },
+  supplier: {
+    kicker: 'Anruf vom Anlagenbauer',
+    title: () => 'Hersteller bietet Rabatt gegen Vorkasse',
+    body: () =>
+      'Das Lager ist voll: Der Hersteller gewährt Rabatt auf alle Bauprojekte der nächsten Quartale, wenn du jetzt anzahlst.',
+    options: { order: 'Vorkasse leisten', decline: 'Ablehnen', frame: 'Rahmenvertrag abschließen' },
+  },
+  heatwave: {
+    kicker: 'Anruf vom Netzbetreiber',
+    title: () => 'Hitzewelle: Das Netz braucht deine Speicher',
+    body: () =>
+      'Die Klimaanlagen laufen am Anschlag. Der Netzbetreiber will deine Speicher dieses Quartal exklusiv nutzen und zahlt dafür einen festen Betrag.',
+    options: { join: 'Speicher bereitstellen', decline: 'Selbst vermarkten' },
+  },
+  grant: {
+    kicker: 'Post vom Wirtschaftsministerium',
+    title: () => 'Förderprogramm Energiewende',
+    body: () => 'Das Land fördert Vorzeigeprojekte. Der Antrag ist aufwendig, die Jury wählerisch.',
+    options: { apply: 'Antrag selbst stellen', skip: 'Verzichten', lobbyist: 'Fördermittelberater beauftragen' },
+  },
+  poach: {
+    kicker: 'Anruf aus dem Vorstand',
+    title: (c) => `${c.person} hat ein Angebot der Konkurrenz`,
+    body: () =>
+      'Ein Headhunter bietet deutlich mehr Gehalt. Ohne Gegenangebot ist der Platz im Vorstand zum Quartalsende leer.',
+    options: { raise: 'Gehalt aufbessern', release: 'Ziehen lassen', options: 'Aktienoptionen anbieten' },
+  },
+  mayor: {
+    kicker: 'Anruf aus dem Rathaus',
+    title: (c) => `Die Gemeinde bietet ${c.site} an`,
+    body: (c) =>
+      `Die Gemeinde in ${c.region} kennt deinen Konzern und bietet ${c.site} ohne Bieterverfahren zum Vorzugspreis an.`,
+    options: { lease: 'Fläche pachten', decline: 'Ablehnen' },
+  },
+};
+
+/** Context of a decision card for its texts. */
+export function decisionContext(
+  view: PlayerView,
+  d: Pick<DecisionView, 'siteId' | 'dept'>,
+): { site: string; region: string; person: string } {
+  const x = d.siteId ? view.sites.find((s) => s.id === d.siteId) : undefined;
+  const e = d.dept ? view.me.board.find((b) => b.dept === d.dept) : undefined;
+  return {
+    site: x ? siteName(x) : '',
+    region: x ? REGION_TEXT[x.r].name : '',
+    person: e ? execName(e.dept, e.grade) : 'Ein Vorstandsmitglied',
+  };
+}
+
+/** What an option of the open card does, from its numbers. */
+export function decisionEffect(view: PlayerView, d: DecisionView, o: DecisionView['options'][number]): string {
+  const D = DECISION_DATA;
+  switch (d.key) {
+    case 'citizens':
+      if (o.key === 'ignore')
+        return `Kostenlos, aber ${Math.round((o.chance ?? 0) * 100)} % Risiko: Die Genehmigung verzögert sich um ein Quartal.`;
+      return `Ablehnungsrisiko ${Math.round((o.key === 'talk' ? D.citizens.talk.reject : D.citizens.report.reject) * 100)} Prozentpunkte niedriger.`;
+    case 'supplier': {
+      if (o.key === 'decline') return 'Alles bleibt beim Listenpreis.';
+      const s = o.key === 'frame' ? D.supplier.frame : D.supplier.order;
+      return `${Math.round(s.pct * 100)} % Rabatt auf Bau und Montage für ${s.quarters} Quartale.`;
+    }
+    case 'heatwave':
+      return o.key === 'join'
+        ? `+${money(o.gain)} fest. Deine Speicher verdienen dieses Quartal sonst nichts.`
+        : 'Deine Speicher handeln wie gewohnt am Markt.';
+    case 'grant':
+      if (o.key === 'skip') return 'Kein Aufwand, kein Geld.';
+      return `${Math.round((o.chance ?? 0) * 100)} % Chance auf ${money(o.gain)}.`;
+    case 'poach': {
+      const e = view.me.board.find((b) => b.dept === d.dept);
+      if (o.key === 'release')
+        return e ? `${execName(e.dept, e.grade)} verlässt den Vorstand.` : 'Der Platz wird frei.';
+      return 'Das Vorstandsmitglied bleibt an Bord.';
+    }
+    case 'mayor': {
+      const x = view.sites.find((s) => s.id === d.siteId);
+      return o.key === 'lease'
+        ? `Statt ${money(x?.lease ?? 0)} zahlst du nur den Vorzugspreis.`
+        : 'Die Fläche geht in die normale Vergabe.';
+    }
+  }
+}
+
+/** Outcome of a decided card (for toasts and the report). */
+export function decisionResultText(view: PlayerView, e: Extract<GameEvent, { type: 'decisionTaken' }>): string {
+  const T = DECISION_TEXT[e.key];
+  const pre = e.auto
+    ? `Keine Entscheidung zu „${T.title(decisionContext(view, e))}“ – es gilt: ${T.options[e.option]}.`
+    : `Entschieden: ${T.options[e.option]}.`;
+  switch (e.key) {
+    case 'citizens':
+      if (e.option === 'ignore' && e.success === false) return `${pre} Die Genehmigung verzögert sich um ein Quartal.`;
+      if (e.option === 'ignore') return `${pre} Die Proteste verlaufen im Sand.`;
+      return pre;
+    case 'grant':
+      if (e.option === 'skip') return pre;
+      return e.success ? `${pre} Die Jury bewilligt ${money(e.gain ?? 0)}!` : `${pre} Die Jury lehnt ab.`;
+    case 'heatwave':
+      return e.gain ? `${pre} Der Netzbetreiber zahlt ${money(e.gain)}.` : pre;
+    default:
+      return pre;
+  }
+}
+
+export const AWARD_TEXT: Record<AwardKey, { name: string; cond: string }> = {
+  firstPlant: { name: 'Erster Spatenstich', cond: 'erste eigene Anlage am Netz' },
+  offshore: { name: 'Offshore-Pionier', cond: 'erster Offshore-Windpark in Betrieb' },
+  europe: { name: 'Europäer', cond: 'Flächen in allen vier Regionen' },
+  mw500: { name: '500 MW', cond: '500 MW Leistung in Betrieb' },
+  co2: { name: 'Klimaschützer', cond: '1 Mio. t CO₂ vermieden' },
+  storage: { name: 'Speicherprofi', cond: '1 GWh Speicher in Betrieb' },
+  cup: { name: 'Jahrespokal', cond: 'größter Zuwachs an Nettovermögen in einem Spieljahr' },
+};
+
+/** Phone calls of the rival CEOs. */
+export type CallKind = 'overtook' | 'duelWon' | 'caught' | 'tricked';
+export const CALL_TEXT: Record<number, Record<CallKind, string>> = {
+  1: {
+    overtook: 'Moin! Schau mal auf die Rangliste – Möwenkraft liegt jetzt vor dir. Nimm’s sportlich.',
+    duelWon: 'Tja, beim Kabelziehen sind wir an der Küste eben schneller. Schönen Gruß!',
+    caught: 'Hab gehört, du schickst mir Ärger auf den Hals. Das merk ich mir, mein Freund.',
+    tricked: 'Pech mit deinem Projekt? Sowas passiert. Ganz zufällig natürlich.',
+  },
+  2: {
+    overtook: '¡Hola! Siestasol ist an dir vorbeigezogen. El sol no espera – ich hatte es dir gesagt.',
+    duelWon: 'Das Netz gehört jetzt uns. Más rápido, amigo.',
+    caught: 'Spione bei Siestasol? Meine Anwälte freuen sich schon auf dich.',
+    tricked: 'Ärger mit den Behörden? Qué pena. Wirklich schade.',
+  },
+  3: {
+    overtook: 'Grüezi. Gletscherwerk hat Sie überholt. Geduld zahlt sich eben aus.',
+    duelWon: 'Wir waren beim Netzanschluss einen Moment schneller. Nichts für ungut.',
+    caught: 'Wir haben Ihren kleinen Versuch bemerkt. Das Gericht wird sich freuen.',
+    tricked: 'Ihr Projekt verzögert sich? Das tut mir aufrichtig leid. Fast.',
+  },
+};

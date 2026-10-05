@@ -5,11 +5,15 @@
  * Rivals go through exactly the same code.
  */
 import {
+  DEPARTMENT_KEYS,
   DETECTIVE_QUARTERS,
   DETECTIVES,
   duelSeconds,
+  EXEC_EFFECTS,
+  EXEC_GRADES,
+  EXEC_SEVERANCE,
+  HQ_LEVELS,
   MAX_CONTRACTS,
-  MAX_SURVEYS,
   MAX_TRICKS,
   PLANT_SIZE_KEYS,
   PLANTS,
@@ -25,29 +29,31 @@ import {
   TRICKS,
 } from './data.js';
 import { finishBuild, publicChallenge, resolveChallenge, startChallenge } from './challenges.js';
+import { applyDecision, checkDecision, decisionPrice, freeSeats } from './decisions.js';
 import { emit } from './events.js';
 import { pick, randint, randomOf } from './rng.js';
 import {
-  buildCost,
+  buildPrice,
   clone,
   consumeReserve,
   creditLimit,
   duelRivals,
+  execPower,
   freeGrid,
   hasIntel,
   plantTypesFor,
   regionOk,
-  repowerCost,
   repowerGridCost,
   repowerMw,
+  repowerPrice,
   resetSite,
-  retryCost,
   sellValue,
   serviceCost,
   siteById,
   siteDef,
   siteMw,
   surveyCost,
+  surveyLimit,
   termStart,
   trickOdds,
   trickTargets,
@@ -56,6 +62,7 @@ import type {
   Action,
   ActionResult,
   ActionType,
+  Department,
   ErrorCode,
   GameEvent,
   GameState,
@@ -90,6 +97,7 @@ interface Handler<A extends Action> {
   execute(c: Ctx<A>, cost: number, out: GameEvent[]): void;
 }
 
+const boardMember = (p: Player, d: Department) => p.board.find((e) => e.dept === d);
 const ownSite = (c: { x: Site; pid: PlayerId }): ErrorCode | null => (c.x.owner === c.pid ? null : 'notOwner');
 const freeSite = (c: { x: Site }): ErrorCode | null => (c.x.owner >= 0 ? 'siteTaken' : null);
 const isAmount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0;
@@ -123,7 +131,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     site: true,
     validate: (c) =>
       freeSite(c) ??
-      (c.x.surveyed.includes(c.pid) ? 'alreadySurveyed' : c.p.surveyUsed >= MAX_SURVEYS ? 'surveyLimit' : null),
+      (c.x.surveyed.includes(c.pid) ? 'alreadySurveyed' : c.p.surveyUsed >= surveyLimit(c.p) ? 'surveyLimit' : null),
     price: (c) => surveyCost(c.x),
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
@@ -182,6 +190,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       x.permitPaid = cost;
       x.permit = 'pending';
       x.killed = false;
+      x.rejectMod = 0;
       x.permitLeft = left;
       emit(g, out, {
         type: 'permitApplied',
@@ -207,7 +216,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
   build: {
     site: true,
     validate: (c) => ownSite(c) ?? (c.x.permit !== 'approved' || c.x.built ? 'invalidState' : null),
-    price: ({ g, x }) => (x.fail ? retryCost(g, x.type!, x.size) : buildCost(g, x.type!, x.size)),
+    price: ({ g, p, x }) => buildPrice(g, p, x.type!, x.size, x.fail),
     execute({ g, p, pid, x }, cost, out) {
       const t = x.type!;
       p.cash -= cost;
@@ -237,7 +246,9 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       p.cash -= cost;
       const rival = duelRival(g, pid, x);
       if (rival === null) return startChallenge(g, pid, 'cable', x, 'connect', out);
-      const seconds = duelSeconds(g.settings.difficulty, x.r);
+      // the grid & engineering board member wins time in the duel
+      const extra = 1 + EXEC_EFFECTS.grid.duelTime * execPower(p, 'grid');
+      const seconds = Math.round(duelSeconds(g.settings.difficulty, x.r) * extra);
       startChallenge(g, pid, 'cable', x, 'connect', out, { playerId: rival, seconds });
     },
   },
@@ -251,7 +262,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (freeGrid(g, x.r, pid) < repowerMw(x.type)) return 'noGridCapacity';
       return null;
     },
-    price: (c) => repowerCost(c.g, c.x.type!),
+    price: (c) => repowerPrice(c.g, c.p, c.x.type!),
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
       x.size = 'large';
@@ -311,21 +322,16 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     execute({ g, p, pid, a }, _cost, out) {
       const o = g.offers.find((o) => o.id === a.offerId)!;
       g.offers = g.offers.filter((q) => q !== o);
-      p.contracts.push({
-        id: o.id,
-        buyer: o.buyer,
-        vol: o.vol,
-        quarters: o.quarters,
-        price: o.price,
-        left: o.quarters,
-      });
+      // the trading board member negotiates a better price
+      const price = o.price + EXEC_EFFECTS.trade.ppa * execPower(p, 'trade');
+      p.contracts.push({ id: o.id, buyer: o.buyer, vol: o.vol, quarters: o.quarters, price, left: o.quarters });
       emit(g, out, {
         type: 'contractAccepted',
         playerId: pid,
         offerId: o.id,
         buyer: o.buyer,
         vol: o.vol,
-        price: o.price,
+        price,
         quarters: o.quarters,
       });
     },
@@ -371,13 +377,14 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       p.trickUsed++;
       const targetId = x.owner as PlayerId;
       const target = g.players[targetId]!;
-      const odds = trickOdds(a.trick, target.detectives?.level);
-      // a caught actor pays the fine to the state and damages to the target (court)
+      const odds = trickOdds(a.trick, target.detectives?.level, execPower(p, 'law'));
+      // a caught actor pays the fine to the state and damages to the target (court; the target's lawyers get more)
       const court = (caught: boolean) => {
         if (!caught) return { caught, fine: 0, damages: 0 };
-        p.cash -= T.fine + T.damages;
-        target.cash += T.damages;
-        return { caught, fine: T.fine, damages: T.damages };
+        const damages = Math.round(T.damages * (1 + EXEC_EFFECTS.law.damages * execPower(target, 'law')));
+        p.cash -= T.fine + damages;
+        target.cash += damages;
+        return { caught, fine: T.fine, damages };
       };
       if (r() < odds.success) {
         applyTrick(g, a.trick, x);
@@ -434,6 +441,46 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       emit(g, out, { type: 'detectivesHired', playerId: pid, level: a.level, quarters: DETECTIVE_QUARTERS, cost });
     },
   },
+  hireExecutive: {
+    validate({ p, a }) {
+      if (!DEPARTMENT_KEYS.includes(a.dept) || !Object.hasOwn(EXEC_GRADES, a.grade)) return 'invalidTarget';
+      if (p.board.some((e) => e.dept === a.dept)) return 'invalidState';
+      return freeSeats(p) <= 0 ? 'boardFull' : null;
+    },
+    price: (c) => EXEC_GRADES[c.a.grade].fee,
+    execute({ g, p, pid, a }, cost, out) {
+      p.cash -= cost;
+      p.board.push({ dept: a.dept, grade: a.grade, since: g.turn });
+      emit(g, out, { type: 'executiveHired', playerId: pid, dept: a.dept, grade: a.grade, cost });
+    },
+  },
+  fireExecutive: {
+    validate: ({ p, a }) => (boardMember(p, a.dept) ? null : 'invalidTarget'),
+    price: ({ p, a }) => EXEC_GRADES[boardMember(p, a.dept)!.grade].salary * EXEC_SEVERANCE,
+    execute({ g, p, pid, a }, cost, out) {
+      const e = boardMember(p, a.dept)!;
+      p.cash -= cost;
+      p.board = p.board.filter((b) => b !== e);
+      emit(g, out, { type: 'executiveLeft', playerId: pid, dept: e.dept, grade: e.grade, cost, poached: false });
+    },
+  },
+  upgradeHq: {
+    validate: ({ p }) => (p.hq >= 3 ? 'invalidState' : null),
+    price: ({ p }) => HQ_LEVELS[(p.hq + 1) as 1 | 2 | 3].cost,
+    execute({ g, p, pid }, cost, out) {
+      p.cash -= cost;
+      p.hq = (p.hq + 1) as 1 | 2 | 3;
+      p.hqPaid += cost;
+      emit(g, out, { type: 'hqUpgraded', playerId: pid, level: p.hq, cost });
+    },
+  },
+  decide: {
+    validate: ({ g, p, a }) => checkDecision(g, p, a.option),
+    price: ({ g, p, a }) => decisionPrice(g, p, a.option),
+    execute({ g, p, a }, cost, out) {
+      applyDecision(g, p, a.option, cost, false, out);
+    },
+  },
   minigameResult: {
     duringChallenge: true,
     validate({ g, pid, a }) {
@@ -460,6 +507,8 @@ const BLOCKING = new Set<ErrorCode>([
   'surveyLimit',
   'noSpyReport',
   'detectivesActive',
+  'boardFull',
+  'hqLocked',
 ]);
 export const isBlocking = (e: ErrorCode): boolean => BLOCKING.has(e);
 

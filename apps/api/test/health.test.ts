@@ -106,6 +106,19 @@ describe('POST /api/games', () => {
     const bad = await act(g.gameId, g.token, { type: 'applyPermit', siteId: 'nd0', plantType: 'wind', size: 'huge' });
     expect(bad.statusCode).toBe(400);
   });
+  it('accepts the phase 8 actions', async () => {
+    const g = await newGame();
+    const hire = await act(g.gameId, g.token, { type: 'hireExecutive', dept: 'dev', grade: 'junior' });
+    expect(hire.json().events[0]).toMatchObject({ type: 'executiveHired', dept: 'dev' });
+    expect((await act(g.gameId, g.token, { type: 'hireExecutive', dept: 'law', grade: 'junior' })).json()).toEqual({
+      error: 'boardFull',
+    });
+    expect((await act(g.gameId, g.token, { type: 'upgradeHq' })).json().view.me.hq).toBe(1);
+    expect((await act(g.gameId, g.token, { type: 'fireExecutive', dept: 'dev' })).statusCode).toBe(200);
+    expect((await act(g.gameId, g.token, { type: 'decide', option: 'apply' })).json()).toEqual({ error: 'noDecision' });
+    expect((await act(g.gameId, g.token, { type: 'hireExecutive', dept: 'hr', grade: 'junior' })).statusCode).toBe(400);
+    expect((await act(g.gameId, g.token, { type: 'decide' })).statusCode).toBe(400);
+  });
   it('validates the body', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/games', payload: { companyName: 5 } });
     expect(res.statusCode).toBe(400);

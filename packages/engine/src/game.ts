@@ -53,6 +53,7 @@ function makeSite(r: Random, k: RegionKey, i: number): Site {
     alt: null,
     size: 'std',
     offline: 0,
+    rejectMod: 0,
   };
   s.wind = R.wind ? Math.round(rand(r, R.wind[0], R.wind[1]) * 10) / 10 : null;
   s.sun = R.sun ? Math.round(rand(r, R.sun[0], R.sun[1]) / 10) * 10 : null;
@@ -81,6 +82,12 @@ function mkPlayer(id: PlayerId, name: string, human: boolean): Player {
     surveyUsed: 0,
     intel: {},
     detectives: null,
+    board: [],
+    hq: 0,
+    hqPaid: 0,
+    decision: null,
+    discount: null,
+    awards: [],
   };
 }
 

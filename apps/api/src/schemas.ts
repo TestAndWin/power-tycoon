@@ -1,6 +1,8 @@
 import { Type } from 'typebox';
 import {
+  DEPARTMENT_KEYS,
   DETECTIVE_KEYS,
+  EXEC_GRADE_KEYS,
   DIFFICULTY_KEYS,
   GAME_YEAR_OPTIONS,
   PLANT_SIZE_KEYS,
@@ -39,6 +41,10 @@ export const ActionSchema = Type.Union([
   Type.Object({ type: Type.Literal('lobby'), trick: oneOf(TRICK_KEYS), siteId: SiteId }),
   Type.Object({ type: Type.Literal('spy'), targetId: Type.Integer({ minimum: 0, maximum: 3 }) }),
   Type.Object({ type: Type.Literal('hireDetectives'), level: oneOf(DETECTIVE_KEYS) }),
+  Type.Object({ type: Type.Literal('hireExecutive'), dept: oneOf(DEPARTMENT_KEYS), grade: oneOf(EXEC_GRADE_KEYS) }),
+  Type.Object({ type: Type.Literal('fireExecutive'), dept: oneOf(DEPARTMENT_KEYS) }),
+  Type.Object({ type: Type.Literal('upgradeHq') }),
+  Type.Object({ type: Type.Literal('decide'), option: Type.String({ minLength: 1, maxLength: 16 }) }),
   Type.Object({
     type: Type.Literal('minigameResult'),
     challengeId: Type.Integer({ minimum: 0 }),
