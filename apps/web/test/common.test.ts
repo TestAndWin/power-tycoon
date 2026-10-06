@@ -58,6 +58,24 @@ describe('buttons from the engine options', () => {
 });
 
 describe('bank', () => {
+  const borrowLabels = () => [...vBank().matchAll(/data-act="borrow"[^>]*>([^<]*)/g)].map((m) => m[1]!.trim());
+  it('lets the player use up the whole credit limit', () => {
+    game(() => {});
+    const limit = S.view!.me.creditLimit;
+    game((g) => {
+      g.players[0]!.loan = limit - 4e6;
+    });
+    expect(borrowLabels()).toEqual(['Rahmen ausschöpfen']);
+    expect(vBank()).toContain('Rahmen ausschöpfen <small>4,0 Mio. €</small>');
+    expect(vBank()).toMatch(/data-act="borrow" data-v="4000000" >/);
+  });
+  it('keeps the fixed amounts (disabled) at the credit limit', () => {
+    game((g) => {
+      g.players[0]!.loan = 1e9;
+    });
+    expect(borrowLabels()).toEqual(['+ 5,0 Mio. €', '+ 20,0 Mio. €', '+ 50,0 Mio. €']);
+    expect(vBank().match(/data-act="borrow"[^>]*disabled/g)).toHaveLength(3);
+  });
   const repayLabels = () => [...vBank().matchAll(/data-act="repay"[^>]*>([^<]*)/g)].map((m) => m[1]!.trim());
   it('offers fixed repayments only below the loan and shows the exact rest', () => {
     game((g) => {
