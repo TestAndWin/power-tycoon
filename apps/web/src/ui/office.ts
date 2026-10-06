@@ -61,6 +61,8 @@ function officeData(): OfficeData {
     price: v.market.price,
     priceDelta: ph.length > 1 ? ph[ph.length - 1]! - ph[ph.length - 2]! : 0,
     priceHist: ph,
+    cash: v.me.cash,
+    loan: v.me.loan,
     ticker,
     pins: v.sites.filter((x) => x.owner >= 0).map((x) => ({ r: x.r, i: x.i, owner: x.owner, hot: hot.has(x.id) })),
     trophies: v.me.awards.map((a) => ({ cup: a.key === 'cup', gold: a.gold })),

@@ -4,6 +4,7 @@
  * objects in the room are hotspots (HTML buttons laid over the canvas, see `OFFICE_HOTSPOTS`).
  */
 import type { HqLevel, RegionKey } from '@power-tycoon/engine';
+import { money } from '../format.js';
 import { RMO } from '../state.js';
 import { mix } from './color.js';
 import { SEASONS } from './palette.js';
@@ -26,6 +27,9 @@ export interface OfficeData {
   price: number;
   priceDelta: number;
   priceHist: number[];
+  /** Bank terminal on the desk: cash and loan in euros. */
+  cash: number;
+  loan: number;
   ticker: string;
   /** Site pins on the wall map: region, index in the region, owner, needs action. */
   pins: { r: RegionKey; i: number; owner: number; hot: boolean }[];
@@ -80,6 +84,7 @@ export function officeHotspots(hq: HqLevel): { k: string; label: string; r: [num
       label: 'Fenster · Lagebericht',
       r: [w.x, w.y, Math.min(w.w, 1370 - w.x), Math.min(w.h, 520 - w.y)],
     },
+    { k: 'bank', label: 'Bildschirm · Bank', r: [1060, 606, 190, 156] },
     { k: 'board', label: 'Namensschild · Vorstand & Firmensitz', r: [572, 740, 256, 60] },
     { k: 'news', label: 'Zeitung · Nachrichten', r: [536, 812, 310, 180] },
     { k: 'decision', label: 'Handy · Entscheidung', r: [880, 752, 172, 236] },
@@ -1131,6 +1136,39 @@ function desk(hq: HqLevel): void {
   c.stroke();
   c.setLineDash([]);
 }
+/** The bank terminal at the back right of the desk: a small display with cash and loan, a keyboard in front. */
+function terminal(d: OfficeData): void {
+  const c = ctx!;
+  line(1155, 728, 1155, 752, INK, 7);
+  shape(ell(1155, 755, 38, 7), '#3a3530', 2.5);
+  shape(rr(1060, 606, 190, 124, 10), '#3a3530', 3, 6);
+  shape(rr(1072, 618, 166, 96, 5), '#17222b', 2);
+  text('BANK', 1084, 638, `700 13px ${DISPLAY}`, '#c9a65a');
+  text('KASSE', 1084, 664, `500 10px ${MONO}`, '#8fa3b0');
+  text(money(d.cash), 1228, 664, `600 14px ${MONO}`, d.cash < 0 ? '#ff8a7a' : '#7fd18b', 'right');
+  text('KREDIT', 1084, 690, `500 10px ${MONO}`, '#8fa3b0');
+  text(money(d.loan), 1228, 690, `600 14px ${MONO}`, d.loan > 0 ? '#f2b53a' : '#9fd4a8', 'right');
+  if (!RMO && Math.sin(T * 4) > 0) shape(rr(1084, 698, 8, 10, 1), '#9fd4a8', 0);
+  shape(
+    poly([
+      [1066, 928],
+      [1226, 928],
+      [1238, 968],
+      [1054, 968],
+    ]),
+    '#e6dcc6',
+    3,
+    4,
+  );
+  c.fillStyle = 'rgba(42,32,22,.35)';
+  for (let row = 0; row < 3; row++) {
+    const y = 933 + row * 11,
+      f = (y - 928) / 40,
+      x0 = 1066 - f * 12 + 6,
+      x1 = 1226 + f * 12 - 6;
+    for (let k = 0; k < 9; k++) c.fillRect(x0 + (k * (x1 - x0)) / 9, y, (x1 - x0) / 9 - 3, 7);
+  }
+}
 function lamp(q: number): void {
   const c = ctx!,
     lit = q === 0 || q === 3;
@@ -1343,6 +1381,7 @@ function draw(): void {
   nameplate();
   pen();
   phone(d);
+  terminal(d);
   mug(d.colors[0] ?? '#2f5bd3');
   stamp();
   c.fillStyle = SEASON_LIGHT[d.q]!;

@@ -2433,8 +2433,6 @@ body.desk .app {
 .office-wrap {
   position: relative;
   margin: 12px auto 0;
-  width: min(100%, calc((100dvh - 130px) * 1.6));
-  min-width: min(100%, 720px);
   container-type: inline-size;
 }
 .office {
@@ -2614,6 +2612,8 @@ body.desk .app {
   inset: 0;
   z-index: 30;
   display: grid;
+  /* the column never grows with the binder tabs: they scroll inside the folder */
+  grid-template-columns: minmax(0, 1fr);
   place-items: end center;
   padding: 16px;
   padding-top: max(16px, env(safe-area-inset-top, 0px));
@@ -2622,7 +2622,8 @@ body.desk .app {
 }
 .folder {
   position: relative;
-  width: min(1180px, 100%);
+  /* as wide as the header (.app content width) */
+  width: min(1408px, 100%);
   max-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;

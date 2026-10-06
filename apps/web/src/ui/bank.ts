@@ -10,7 +10,7 @@ export function vBank(): string {
     lim = v.me.creditLimit,
     free = Math.max(0, lim - P.loan);
   return `<div class="grid g2e"><section class="panel stack"><h2>Hausbank</h2>
-    <dl class="facts"><dt>Kredit</dt><dd>${money(P.loan)}</dd><dt>Kreditrahmen</dt><dd>${money(lim)}</dd><dt>Noch verfügbar</dt><dd>${money(free)}</dd><dt>Zinsen</dt><dd>${(v.constants.interest * 100).toLocaleString('de-DE')} % / Quartal</dd><dt>Zinslast</dt><dd>${money(P.loan * v.constants.interest)} / Quartal</dd></dl>
+    <dl class="facts"><dt>Kasse</dt><dd class="${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</dd><dt>Kredit</dt><dd>${money(P.loan)}</dd><dt>Kreditrahmen</dt><dd>${money(lim)}</dd><dt>Noch verfügbar</dt><dd>${money(free)}</dd><dt>Zinsen</dt><dd>${(v.constants.interest * 100).toLocaleString('de-DE')} % / Quartal</dd><dt>Zinslast</dt><dd>${money(P.loan * v.constants.interest)} / Quartal</dd></dl>
     <div class="row">${[5e6, 20e6, 50e6].map((a) => `<button class="btn" data-act="borrow" data-v="${a}" ${disabledUnless({ type: 'borrow', amount: a })}>+ ${money(a, true)}</button>`).join('')}</div>
     <div class="row">${repayButtons(P.loan)}</div>
   </section><section class="panel"><h3 style="margin-bottom:8px">Projektfinanzierung</h3>
