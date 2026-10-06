@@ -42,6 +42,14 @@ describe('cable duel', () => {
     g.grid.nd = PLANTS.wind.mw;
     expect(ok(g, { type: 'connectGrid', siteId: 'nd0' }).challenge).toMatchObject({ kind: 'cable' });
   });
+  it('no duel against a rival that only owns a site in the region', () => {
+    const g = newGame();
+    setupSite(g, 'nd0', 0, 'built', 'wind');
+    g.sites.find((s) => s.id === 'nd1')!.owner = 2;
+    g.grid.nd = PLANTS.wind.mw;
+    expect(ok(g, { type: 'connectGrid', siteId: 'nd0' }).challenge!.rival).toBeUndefined();
+    expect(playerView(g, 0).sites.find((s) => s.id === 'nd0')!.own!.duelRisk).toBe(false);
+  });
   it('winning connects the plant', () => {
     const r = ok(scarce(PLANTS.wind.mw), { type: 'connectGrid', siteId: 'nd0' });
     const w = ok(r.state, { type: 'minigameResult', challengeId: r.challenge!.id, outcome: true });

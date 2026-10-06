@@ -109,7 +109,7 @@ Modules of `packages/engine/src`:
 - Book value (`siteValue`) is built from what was paid: `Site.permitPaid`, `invested` (building, depreciated
   with age, plus the repowering) and `gridPaid` (the repowering adds the bigger connection there).
 - Cable duel: when the free grid capacity is below `DUEL_SCARCITY` × the plant's MW, the player's own
-  reservations do not cover the plant and another player has a site in the region (`duelRivals`; the view
+  reservations do not cover the plant and another player has a project waiting for the grid in the region (`duelRivals`; the view
   flags it as `own.duelRisk`), `connectGrid` opens the `cable` challenge with `rival: { playerId, seconds }` (`duelSeconds`: `DUEL_PACE` × puzzle size `CABLE_COLS` × `CABLE_ROWS`). Lost:
   `DUEL_REFUND` of the costs back, the rival reserves capacity for its own waiting project
   (`DUEL_RESERVE_QUARTERS`). Rivals and `autoMinigames` roll `AUTO_MINIGAME.cableDuel`.

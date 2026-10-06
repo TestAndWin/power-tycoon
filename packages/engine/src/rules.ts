@@ -181,15 +181,16 @@ export const unreservedGrid = (g: GameState, r: RegionKey): number => g.grid[r] 
 
 /**
  * Other players that could race player `pid` for the grid connection of `x` in a cable duel: only when the free
- * capacity is scarce and the player's own reservations do not cover the plant; those with a project waiting
- * for the grid in the region first, else everybody with a site there.
+ * capacity is scarce and the player's own reservations do not cover the plant; only those with a project of
+ * their own waiting for the grid in the region (a mere site there is no reason for a duel).
  */
 export function duelRivals(g: GameState, pid: PlayerId, x: Site): PlayerId[] {
   const mw = siteMw(x);
   if (freeGrid(g, x.r, pid) >= DUEL_SCARCITY * mw || myReserve(g, x.r, pid) >= mw) return [];
-  const here = g.sites.filter((y) => y.r === x.r && y.owner >= 0 && y.owner !== pid && !g.players[y.owner]!.out);
-  const waiting = here.filter(waitingForGrid);
-  return [...new Set((waiting.length ? waiting : here).map((y) => y.owner))].sort((a, b) => a - b);
+  const waiting = g.sites.filter(
+    (y) => y.r === x.r && y.owner >= 0 && y.owner !== pid && !g.players[y.owner]!.out && waitingForGrid(y),
+  );
+  return [...new Set(waiting.map((y) => y.owner))].sort((a, b) => a - b);
 }
 
 export function consumeReserve(g: GameState, r: RegionKey, pid: PlayerId, mw: number): void {

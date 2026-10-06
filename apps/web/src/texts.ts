@@ -67,7 +67,7 @@ export const GAME_LENGTH_TEXT: Record<number, string> = {
 
 /** Shown before a grid connection that will turn into a cable duel. */
 export const DUEL_HINT =
-  'Die Kapazität ist knapp: Der Anschluss wird zum Kabel-Duell gegen einen Konkurrenten aus der Region. Wer schneller verkabelt, bekommt das Netz.';
+  'Die Kapazität ist knapp: Der Anschluss wird zum Kabel-Duell gegen einen Konkurrenten, der in der Region selbst auf seinen Anschluss wartet. Wer schneller verkabelt, bekommt das Netz.';
 
 export const DETECTIVE_TEXT: Record<DetectiveLevel, { name: string; desc: string }> = {
   basic: {
