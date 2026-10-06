@@ -84,11 +84,11 @@ export function officeScene(): string {
   const v = V(),
     n = todo().length;
   const hots = officeHotspots(v.me.hq)
-    .map(({ k, label, r: [x, y, w, h] }) => {
+    .map(({ k, label, r: [x, y, w, h], desk }) => {
       const badge = k === 'sites' && n ? n : k === 'decision' && v.me.decision ? '!' : '';
-      const act = k === 'endQuarter' ? 'data-act="endQuarter"' : `data-act="tab" data-v="${k}"`;
-      const dis = k === 'endQuarter' && (v.over || S.busy) ? 'disabled' : '';
-      return `<button class="hot${y < 160 ? ' below' : ''}" ${act} ${dis} style="left:${(x / OFFICE_W) * 100}%;top:${(y / OFFICE_H) * 100}%;width:${(w / OFFICE_W) * 100}%;height:${(h / OFFICE_H) * 100}%" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
+      // vertical position in the cropped office (CSS variables set by the canvas, see `officeCrop`)
+      const top = `calc(100% * (${y} - var(${desk ? '--cut' : '--top'}, 0)) / var(--vh, ${OFFICE_H}))`;
+      return `<button class="hot${y < 160 ? ' below' : ''}" data-act="tab" data-v="${k}" style="left:${(x / OFFICE_W) * 100}%;top:${top};width:${(w / OFFICE_W) * 100}%;height:calc(100% * ${h} / var(--vh, ${OFFICE_H}))" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
     })
     .join('');
   return `<div class="office"><canvas data-office aria-label="Das Büro des Vorstandsvorsitzes" role="img"></canvas>${hots}</div>`;

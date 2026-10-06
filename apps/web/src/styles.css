@@ -2433,11 +2433,15 @@ body.desk .app {
 .office-wrap {
   position: relative;
   margin: 12px auto 0;
+  /* full width; only on very wide, low windows narrower so the 2 : 1 office still fits */
+  width: min(100%, calc((100dvh - 130px) * 2));
+  min-width: min(100%, 720px);
   container-type: inline-size;
 }
 .office {
   position: relative;
-  aspect-ratio: 16 / 10;
+  /* 16 : 10, cropped down to 2 : 1 so the office fits below the header without scrolling */
+  height: clamp(calc(100cqw / 2), calc(100dvh - 130px), calc(100cqw / 1.6));
   border: 3px solid var(--edge);
   border-radius: 18px;
   overflow: hidden;

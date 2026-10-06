@@ -70,8 +70,25 @@ const KEY: Record<HqLevel, 'container' | 'altbau' | 'buero' | 'turm'> = {
   3: 'turm',
 };
 
-/** Hotspots: area key (as in `UI.tab`), label and rectangle in office coordinates. */
-export function officeHotspots(hq: HqLevel): { k: string; label: string; r: [number, number, number, number] }[] {
+/** Lowest virtual height: on wide, low windows the office is cropped down to 2 : 1. */
+export const OFFICE_MIN_H = 800;
+
+/**
+ * Cropping for a virtual height `vh`: the ceiling loses `top`, the desk (and everything on it) moves up by
+ * `cut` in total so it still stands at the bottom edge.
+ */
+export function officeCrop(vh: number): { top: number; cut: number } {
+  const cut = Math.max(0, Math.min(H - OFFICE_MIN_H, H - vh));
+  return { top: Math.round(cut * 0.3), cut };
+}
+
+/**
+ * Hotspots: area key (as in `UI.tab`), label, rectangle in office coordinates, and whether it sits on the
+ * desk (moves with the desk when the office is cropped).
+ */
+export function officeHotspots(
+  hq: HqLevel,
+): { k: string; label: string; r: [number, number, number, number]; desk?: boolean }[] {
   const w = WINDOW[hq];
   return [
     { k: 'sites', label: 'Landkarte · Standorte', r: [236, 104, 380, 330] },
@@ -84,11 +101,10 @@ export function officeHotspots(hq: HqLevel): { k: string; label: string; r: [num
       label: 'Fenster · Lagebericht',
       r: [w.x, w.y, Math.min(w.w, 1370 - w.x), Math.min(w.h, 520 - w.y)],
     },
-    { k: 'bank', label: 'Bildschirm · Bank', r: [1060, 606, 190, 156] },
-    { k: 'board', label: 'Namensschild · Vorstand & Firmensitz', r: [572, 740, 256, 60] },
-    { k: 'news', label: 'Zeitung · Nachrichten', r: [536, 812, 310, 180] },
-    { k: 'decision', label: 'Handy · Entscheidung', r: [880, 752, 172, 236] },
-    { k: 'endQuarter', label: 'Stempel · Quartal beenden', r: [1244, 730, 204, 248] },
+    { k: 'bank', label: 'Bildschirm · Bank', r: [920, 580, 280, 220], desk: true },
+    { k: 'board', label: 'Namensschild · Vorstand & Firmensitz', r: [572, 740, 256, 60], desk: true },
+    { k: 'news', label: 'Zeitung · Nachrichten', r: [536, 812, 310, 180], desk: true },
+    { k: 'decision', label: 'Handy · Entscheidung', r: [1300, 760, 140, 200], desk: true },
   ];
 }
 
@@ -98,6 +114,9 @@ let cv: HTMLCanvasElement | null = null;
 let ctx: Ctx | null = null;
 let data: OfficeData | null = null;
 let scale = 1;
+/** Virtual height of the visible part and its cropping (see `officeCrop`). */
+let vh = H;
+let crop = officeCrop(H);
 let T = 0;
 let raf = 0;
 let last = 0;
@@ -127,6 +146,12 @@ export function resizeOffice(): void {
   if (cv.width !== w) cv.width = w;
   if (cv.height !== h) cv.height = h;
   scale = w / W;
+  vh = Math.round(h / scale);
+  crop = officeCrop(vh);
+  const box = cv.parentElement;
+  box?.style.setProperty('--vh', String(vh));
+  box?.style.setProperty('--top', String(crop.top));
+  box?.style.setProperty('--cut', String(crop.cut));
   grain ??= makeGrain(ctx);
   draw();
 }
@@ -1136,37 +1161,37 @@ function desk(hq: HqLevel): void {
   c.stroke();
   c.setLineDash([]);
 }
-/** The bank terminal at the back right of the desk: a small display with cash and loan, a keyboard in front. */
+/** The bank terminal on the desk: a display with cash and loan, a keyboard in front. */
 function terminal(d: OfficeData): void {
   const c = ctx!;
-  line(1155, 728, 1155, 752, INK, 7);
-  shape(ell(1155, 755, 38, 7), '#3a3530', 2.5);
-  shape(rr(1060, 606, 190, 124, 10), '#3a3530', 3, 6);
-  shape(rr(1072, 618, 166, 96, 5), '#17222b', 2);
-  text('BANK', 1084, 638, `700 13px ${DISPLAY}`, '#c9a65a');
-  text('KASSE', 1084, 664, `500 10px ${MONO}`, '#8fa3b0');
-  text(money(d.cash), 1228, 664, `600 14px ${MONO}`, d.cash < 0 ? '#ff8a7a' : '#7fd18b', 'right');
-  text('KREDIT', 1084, 690, `500 10px ${MONO}`, '#8fa3b0');
-  text(money(d.loan), 1228, 690, `600 14px ${MONO}`, d.loan > 0 ? '#f2b53a' : '#9fd4a8', 'right');
-  if (!RMO && Math.sin(T * 4) > 0) shape(rr(1084, 698, 8, 10, 1), '#9fd4a8', 0);
+  line(1060, 748, 1060, 790, INK, 9);
+  shape(ell(1060, 794, 50, 9), '#3a3530', 2.5);
+  shape(rr(920, 580, 280, 170, 12), '#3a3530', 3, 7);
+  shape(rr(934, 594, 252, 138, 6), '#17222b', 2);
+  text('BANK', 952, 624, `700 18px ${DISPLAY}`, '#c9a65a');
+  text('KASSE', 952, 664, `500 12px ${MONO}`, '#8fa3b0');
+  text(money(d.cash), 1170, 664, `600 19px ${MONO}`, d.cash < 0 ? '#ff8a7a' : '#7fd18b', 'right');
+  text('KREDIT', 952, 702, `500 12px ${MONO}`, '#8fa3b0');
+  text(money(d.loan), 1170, 702, `600 19px ${MONO}`, d.loan > 0 ? '#f2b53a' : '#9fd4a8', 'right');
+  if (!RMO && Math.sin(T * 4) > 0) shape(rr(952, 712, 10, 13, 1), '#9fd4a8', 0);
   shape(
     poly([
-      [1066, 928],
-      [1226, 928],
-      [1238, 968],
-      [1054, 968],
+      [890, 874],
+      [1094, 874],
+      [1112, 940],
+      [872, 940],
     ]),
     '#e6dcc6',
     3,
-    4,
+    5,
   );
   c.fillStyle = 'rgba(42,32,22,.35)';
-  for (let row = 0; row < 3; row++) {
-    const y = 933 + row * 11,
-      f = (y - 928) / 40,
-      x0 = 1066 - f * 12 + 6,
-      x1 = 1226 + f * 12 - 6;
-    for (let k = 0; k < 9; k++) c.fillRect(x0 + (k * (x1 - x0)) / 9, y, (x1 - x0) / 9 - 3, 7);
+  for (let row = 0; row < 4; row++) {
+    const y = 881 + row * 14,
+      f = (y - 874) / 66,
+      x0 = 890 - f * 18 + 8,
+      x1 = 1094 + f * 18 - 8;
+    for (let k = 0; k < 12; k++) c.fillRect(x0 + (k * (x1 - x0)) / 12, y, (x1 - x0) / 12 - 3, 9);
   }
 }
 function lamp(q: number): void {
@@ -1238,8 +1263,9 @@ function phone(d: OfficeData): void {
   const jx = buzz ? Math.sin(T * 90) * 2.5 : 0,
     jy = buzz ? Math.cos(T * 70) * 1.5 : 0;
   c.save();
-  c.translate(965 + jx, 868 + jy);
-  c.rotate(-0.12);
+  c.translate(1370 + jx, 862 + jy);
+  c.rotate(-0.1);
+  c.scale(0.8, 0.8);
   shape(rr(-62, -108, 124, 216, 18), '#1d1d22', 3, 6);
   shape(rr(-53, -96, 106, 188, 10), ring ? '#20354a' : '#11161b', 1.5);
   shape(rr(-14, -103, 28, 5, 3), '#000', 0);
@@ -1267,10 +1293,10 @@ function phone(d: OfficeData): void {
   if (buzz)
     for (const s of [-1, 1])
       for (let k = 0; k < 2; k++) {
-        const bx = 965 + s * (84 + k * 14);
+        const bx = 1370 + s * (68 + k * 12);
         c.beginPath();
-        c.moveTo(bx, 830);
-        c.quadraticCurveTo(bx + s * 8, 868, bx, 906);
+        c.moveTo(bx, 832);
+        c.quadraticCurveTo(bx + s * 7, 862, bx, 892);
         c.strokeStyle = INK;
         c.lineWidth = 3;
         c.stroke();
@@ -1292,6 +1318,8 @@ function nameplate(): void {
 }
 function mug(col: string): void {
   const c = ctx!;
+  c.save();
+  c.translate(90, 0);
   shape(rr(1110, 840, 64, 74, 8), col, 3, 4);
   c.beginPath();
   c.arc(1180, 876, 18, -1.3, 1.3);
@@ -1325,32 +1353,6 @@ function mug(col: string): void {
       c.lineWidth = 3;
       c.stroke();
     }
-}
-function stamp(): void {
-  shape(rr(1250, 900, 190, 70, 8), '#3b332c', 3, 5);
-  shape(rr(1264, 912, 162, 46, 4), '#a6332a', 2);
-  const up = RMO ? 0 : Math.max(0, Math.sin(T * 1.4)) * 4;
-  shape(rr(1300, 838 - up, 110, 34, 5), '#3b332c', 3, 4);
-  shape(rr(1336, 774 - up, 38, 66, 6), '#a8794a', 3);
-  shape(ell(1355, 768 - up, 38, 26), '#c0392b', 3);
-  text('QUARTAL', 1355, 855 - up, `700 12px ${DISPLAY}`, '#e9d8c4', 'center');
-}
-function pen(): void {
-  const c = ctx!;
-  c.save();
-  c.translate(800, 960);
-  c.rotate(-0.35);
-  shape(rr(-90, -7, 180, 14, 7), '#1d1d22', 2.5);
-  shape(rr(60, -7, 30, 14, 3), '#e2b13c', 2);
-  shape(
-    poly([
-      [-90, -6],
-      [-112, 0],
-      [-90, 6],
-    ]),
-    '#e2b13c',
-    2,
-  );
   c.restore();
 }
 
@@ -1366,7 +1368,8 @@ function draw(): void {
     d = data;
   if (!c || !d || !cv?.width) return;
   c.setTransform(scale, 0, 0, scale, 0, 0);
-  c.clearRect(0, 0, W, H);
+  c.clearRect(0, 0, W, vh);
+  c.translate(0, -crop.top);
   wall(d.hq);
   floor(d.hq);
   windowFrame(d);
@@ -1375,17 +1378,18 @@ function draw(): void {
   shelf(d);
   door(d);
   plant(1490);
+  // the desk stands at the bottom edge whatever the cropping
+  c.translate(0, crop.top - crop.cut);
   desk(d.hq);
   lamp(d.q);
   newspaper(d);
   nameplate();
-  pen();
-  phone(d);
   terminal(d);
+  phone(d);
   mug(d.colors[0] ?? '#2f5bd3');
-  stamp();
+  c.setTransform(scale, 0, 0, scale, 0, 0);
   c.fillStyle = SEASON_LIGHT[d.q]!;
-  c.fillRect(0, 0, W, H);
+  c.fillRect(0, 0, W, vh);
   if (grain) {
     c.save();
     c.setTransform(1, 0, 0, 1, 0, 0);
@@ -1394,9 +1398,9 @@ function draw(): void {
     c.restore();
     c.setTransform(scale, 0, 0, scale, 0, 0);
   }
-  const v = c.createRadialGradient(W / 2, H * 0.45, H * 0.45, W / 2, H * 0.5, H * 1.05);
+  const v = c.createRadialGradient(W / 2, vh * 0.45, vh * 0.45, W / 2, vh * 0.5, vh * 1.05);
   v.addColorStop(0, 'rgba(42,32,22,0)');
   v.addColorStop(1, 'rgba(42,32,22,.38)');
   c.fillStyle = v;
-  c.fillRect(0, 0, W, H);
+  c.fillRect(0, 0, W, vh);
 }
