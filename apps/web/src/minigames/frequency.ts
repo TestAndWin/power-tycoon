@@ -5,7 +5,7 @@ import { $ } from '../state.js';
 import { siteName } from '../texts.js';
 import { animate, finishAnimated, listenKeys, setupCanvas } from './common.js';
 
-const W = 320,
+const W = 640,
   H = 280;
 /** Seconds needed in the green band, and the time limit. */
 export const NEED = 15;
@@ -104,7 +104,7 @@ export function miniFreq(x: SiteView, R: Random): Promise<boolean> {
       <p class="muted" style="margin:0">Nach der Störung schwankt das Netz. Halte die Frequenz nahe 50 Hz, indem du die Einspeisung mit ← → oder den Tasten regelst. Sammle ${NEED} Sekunden im grünen Band. Fällt die Frequenz unter 49,1 Hz oder steigt über 50,9 Hz, gibt es einen Blackout.</p>
       <div class="hud"><span id="fS">Stabil 0/${NEED} s</span><span id="fT">${LIMIT} s</span></div>
       <div class="timebar"><i id="fBar" style="width:0%;background:var(--good)"></i></div>
-      <div class="game-wrap"><canvas id="mg"></canvas></div>
+      <div class="game-wrap wide"><canvas id="mg"></canvas></div>
       <div class="row" style="justify-content:center" id="mgCtl"><button class="btn big" id="fDn">− Leistung</button><button class="btn primary big" id="fGo">Start</button><button class="btn big" id="fUp">+ Leistung</button></div>`,
       { locked: true, minigame: true },
     );
