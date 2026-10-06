@@ -872,3 +872,9 @@ export const CALL_TEXT: Record<number, Record<CallKind, string>> = {
     tricked: 'Ihr Projekt verzögert sich? Das tut mir aufrichtig leid. Fast.',
   },
 };
+
+/** Own grid reservations with their remaining time, e.g. "50 MW reserviert, noch 3 Quartale". */
+export const reservationText = (res: { mw: number; left: number }[]): string =>
+  res
+    .map((o) => `${o.mw} MW reserviert, ${o.left > 1 ? `noch ${o.left} Quartale` : 'nur noch bis Quartalsende'}`)
+    .join('; ');

@@ -567,6 +567,8 @@ export interface GridView {
   usedBy: Record<string, number>;
   reserved: number;
   myReserved: number;
+  /** The viewer's reservations in the region; `left` counts the current quarter (1 = expires at its end). */
+  myReservations: { mw: number; left: number }[];
   /** Free capacity for the viewer (own reservations count as free). */
   free: number;
 }

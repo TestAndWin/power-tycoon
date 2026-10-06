@@ -21,7 +21,16 @@ import { esc, money, mwh, QN } from '../format.js';
 import { playerColor } from '../players.js';
 import { geo, quad, redrawStill } from '../scene/index.js';
 import { UI } from '../state.js';
-import { DUEL_HINT, PLANT_NAME, REGION_TEXT, siteName, siteQuality, SIZE_NAME, sizeSuffix } from '../texts.js';
+import {
+  DUEL_HINT,
+  PLANT_NAME,
+  REGION_TEXT,
+  reservationText,
+  siteName,
+  siteQuality,
+  SIZE_NAME,
+  sizeSuffix,
+} from '../texts.js';
 import { crest } from './companies.js';
 import { btn, disabledUnless, shortName, siteOptions, siteStatus, V } from './common.js';
 
@@ -33,7 +42,7 @@ function gridBar(r: RegionKey): string {
     .filter((s) => s.mw > 0);
   return `<div class="gridwrap"><div class="row" style="justify-content:space-between"><span class="label">Netzkapazität</span><span class="mono" style="font-size:12px">${g.used} + ${g.reserved} res. / ${cap} MW</span></div>
     <div class="gridbar" role="img" aria-label="${g.used} MW belegt, ${g.reserved} MW reserviert, ${cap} MW gesamt">${seg.map((s) => `<i style="width:${(s.mw / cap) * 100}%;background:${s.c}"></i>`).join('')}${g.reserved ? `<i class="res" style="width:${(g.reserved / cap) * 100}%"></i>` : ''}</div>
-    <span class="muted" style="font-size:12px">Frei für dich: ${g.free} MW${g.myReserved ? ` (davon ${g.myReserved} MW reserviert)` : ''}</span></div>`;
+    <span class="muted" style="font-size:12px">Frei für dich: ${g.free} MW${g.myReserved ? ` (davon ${reservationText(g.myReservations)})` : ''}</span></div>`;
 }
 export function ownBar(r: RegionKey): string {
   const Sx = V().sites.filter((x) => x.r === r);

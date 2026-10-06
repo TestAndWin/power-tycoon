@@ -259,7 +259,12 @@ describe('grid', () => {
     r = ok(r.state, { type: 'minigameResult', challengeId: r.challenge!.id, outcome: true });
     expect(site(r.state, 'nd0').grid).toBe(true);
     expect(r.state.res).toEqual([{ pid: 0, r: 'nd', mw: 26, left: 4 }]);
-    expect(playerView(r.state, 0).grid.nd).toMatchObject({ used: 24, capacity: 300, myReserved: 26 });
+    expect(playerView(r.state, 0).grid.nd).toMatchObject({
+      used: 24,
+      capacity: 300,
+      myReserved: 26,
+      myReservations: [{ mw: 26, left: 4 }],
+    });
   });
   it('a failed connection keeps the money spent', () => {
     const g = newGame();

@@ -157,6 +157,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       usedBy,
       reserved: reserved(g, r),
       myReserved: myReserve(g, r, pid),
+      myReservations: g.res.filter((o) => o.r === r && o.pid === pid).map((o) => ({ mw: o.mw, left: o.left })),
       free: Math.max(0, freeGrid(g, r, pid)),
     };
   }
