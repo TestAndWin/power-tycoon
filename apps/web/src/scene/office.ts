@@ -989,8 +989,6 @@ function map(d: OfficeData): void {
 }
 function monitor(d: OfficeData): void {
   const c = ctx!;
-  line(785, 300, 785, 320, INK, 6);
-  shape(rr(750, 316, 70, 10, 3), '#3a3530', 2);
   shape(rr(650, 116, 272, 186, 12), '#3a3530', 3, 7);
   shape(rr(664, 130, 244, 142, 6), '#17222b', 2);
   text('STROMPREIS · €/MWh', 678, 148, `500 11px ${MONO}`, '#c9a65a');
