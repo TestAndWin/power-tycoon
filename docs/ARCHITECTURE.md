@@ -86,7 +86,7 @@ Modules of `packages/engine/src`:
   with an approved permit it runs as `Site.alt` next to it – granted, it replaces type and permit, rejected,
   the approved permit stays (`permitDecided.previous`). Starting the build drops it.
 - Lobby tricks: max 2 per player per quarter (legacy only limited the human; apply it to all).
-- Yield surveys: max `MAX_SURVEYS` (4) per player per quarter (`surveyLimit`, `PlayerView.me.surveysLeft`).
+- Yield surveys: max `MAX_SURVEYS` (4) per player per quarter (`surveyLimit`, `PlayerView.me.surveysLeft` / `surveyLimit`; the development board member adds more).
 
 ### Phase 7 additions (ideas from Oil Imperium)
 

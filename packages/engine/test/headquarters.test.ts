@@ -64,6 +64,7 @@ describe('board', () => {
   it('project development: more surveys and fewer rejections', async () => {
     let g = ok(newGame(), { type: 'hireExecutive', dept: 'dev', grade: 'senior' }).state;
     expect(playerView(g, 0).me.surveysLeft).toBe(MAX_SURVEYS + 2 * EXEC_EFFECTS.dev.surveys);
+    expect(playerView(g, 0).me.surveyLimit).toBe(MAX_SURVEYS + 2 * EXEC_EFFECTS.dev.surveys);
     // a permit that would be rejected with 3 % chance is never rejected with a senior (−10 %, at least 1 %)
     let rejected = 0;
     for (let seed = 1; seed <= 40; seed++) {

@@ -595,6 +595,8 @@ export interface PlayerView {
     contracts: Contract[];
     tricksLeft: number;
     surveysLeft: number;
+    /** Surveys per quarter, including the bonus of the development board member. */
+    surveyLimit: number;
     /** Expected generation this quarter without weather events. */
     nextGen: number;
     contractVolume: number;
@@ -631,7 +633,6 @@ export interface PlayerView {
     reserveQuarters: number;
     selfRepairCost: number;
     maxTricks: number;
-    maxSurveys: number;
     minCredit: number;
     spyCost: number;
     spyQuarters: number;
