@@ -6,7 +6,16 @@
 import { operating, REGION_KEYS, type Department, type RegionKey } from '@power-tycoon/engine';
 import { esc } from '../format.js';
 import { readPlayerColors } from '../players.js';
-import { LAMP_HOTSPOT, officeHotspots, OFFICE_H, OFFICE_W, showOffice, type OfficeData } from '../scene/office.js';
+import {
+  LAMP_HOTSPOT,
+  MUG_HOTSPOT,
+  officeHotspots,
+  PLANT_HOTSPOT,
+  OFFICE_H,
+  OFFICE_W,
+  showOffice,
+  type OfficeData,
+} from '../scene/office.js';
 import { $, S } from '../state.js';
 import {
   ASSISTANT,
@@ -57,6 +66,7 @@ function officeData(): OfficeData {
   return {
     hq: v.me.hq,
     q: v.q,
+    turn: v.year * 4 + v.q,
     region: windowRegion(),
     colors,
     price: v.market.price,
@@ -101,7 +111,10 @@ export function officeScene(): string {
       .map(({ k, label, r, desk }) =>
         hot('tab', k, label, r, desk, k === 'sites' && n ? n : k === 'decision' && v.me.decision ? '!' : ''),
       )
-      .join('') + hot('lamp', '', 'Schreibtischlampe · an/aus', LAMP_HOTSPOT, true);
+      .join('') +
+    hot('lamp', '', 'Schreibtischlampe · an/aus', LAMP_HOTSPOT, true) +
+    hot('plant', '', 'Zimmerpflanze', PLANT_HOTSPOT) +
+    hot('coffee', '', 'Kaffeetasse', MUG_HOTSPOT, true);
   return `<div class="office"><canvas data-office aria-label="Das Büro des Vorstandsvorsitzes" role="img"></canvas>${hots}</div>`;
 }
 

@@ -21,6 +21,8 @@ export interface OfficeData {
   hq: HqLevel;
   /** Quarter 0–3 (season in the window). */
   q: number;
+  /** Quarters played so far (year and quarter in one number): the coffee is refilled every quarter. */
+  turn: number;
   /** Region in the window: the one with the largest own capacity. */
   region: RegionKey;
   colors: string[];
@@ -113,6 +115,9 @@ export const PHONE_TIME = ['08:15', '09:41', '10:30', '17:05'];
 
 /** The desk lamp: a light switch, not an area. */
 export const LAMP_HOTSPOT: [number, number, number, number] = [356, 600, 190, 190];
+/** Little things to click that are not areas: the plant rustles, the coffee gets drunk. */
+export const PLANT_HOTSPOT: [number, number, number, number] = [1376, 420, 228, 236];
+export const MUG_HOTSPOT: [number, number, number, number] = [1196, 796, 100, 124];
 
 /* ---------- drawing state ---------- */
 
@@ -141,6 +146,26 @@ export function toggleLamp(): void {
   if (!data) return;
   lampSwitch = { q: data.q, on: !lampLit(data.q) };
   draw();
+}
+
+/** When the plant was last touched (seconds, animation clock), and the quarter the coffee was drunk in. */
+let plantTouched = -99;
+let mugDrunk = -1;
+const now = (): number => performance.now() / 1000;
+
+/** Touches the plant: its leaves sway and one falls (not with reduced motion). Returns false while it still sways. */
+export function touchPlant(): boolean {
+  if (now() - plantTouched < 1.6) return false;
+  if (!RMO) plantTouched = now();
+  return true;
+}
+
+/** Drinks the coffee. Returns false if the mug is already empty this quarter. */
+export function drinkCoffee(): boolean {
+  if (!data || mugDrunk === data.turn) return false;
+  mugDrunk = data.turn;
+  draw();
+  return true;
 }
 
 /** Shows the office in `canvas` (call after every render; the canvas may be the same as before). */
@@ -638,8 +663,9 @@ function door(d: OfficeData): void {
     key = KEY[d.hq];
   const trim = { container: '#7c8a87', altbau: '#f1e5c6', buero: '#d9d2c3', turm: '#4a4f54' }[key];
   const leaf = { container: '#5f6e6b', altbau: '#7a4a2a', buero: '#b48a5a', turm: '#2e3236' }[key];
-  shape(rr(26, 156, 178, 500, 4), trim, 3, 5);
-  shape(rr(44, 174, 144, 478, 2), '#1d1610', 3);
+  // the frame stands on the floor: no drop shadow below it, a threshold in front
+  shape(rr(26, 156, 178, FLOOR - 156, 4), trim, 3);
+  shape(rr(44, 174, 144, FLOOR - 174, 2), '#1d1610', 3);
   // ajar with warm light when a spy report is valid; closed otherwise
   const open = d.spy ? 22 : 0;
   if (open) {
@@ -653,8 +679,8 @@ function door(d: OfficeData): void {
     poly([
       [44, 174],
       [190 - open, 174 + open * 0.55],
-      [190 - open, 652 - open * 0.55],
-      [44, 652],
+      [190 - open, FLOOR - open * 0.55],
+      [44, FLOOR],
     ]),
     leaf,
     3,
@@ -677,18 +703,34 @@ function door(d: OfficeData): void {
     c.fill();
     c.restore();
   }
+  shape(
+    poly([
+      [26, FLOOR],
+      [204, FLOOR],
+      [214, FLOOR + 10],
+      [16, FLOOR + 10],
+    ]),
+    mix(trim, '#000000', 0.25),
+    2.5,
+  );
   shape(rr(70, 120, 92, 26, 4), '#e2b13c', 2.5);
   text('PRIVAT', 116, 133, `700 13px ${DISPLAY}`, INK, 'center');
 }
 function plant(x: number): void {
-  for (const [a, l, col] of [
-    [-1.1, 120, '#3f7a43'],
-    [-0.5, 150, '#4d8f4f'],
-    [0.1, 140, '#3f7a43'],
-    [0.7, 120, '#4d8f4f'],
-    [-0.2, 100, '#5ba25b'],
-  ] as const) {
-    const ex = x + Math.sin(a) * l,
+  const c = ctx!,
+    age = T - plantTouched,
+    sway = age < 1.6 ? Math.sin(age * 14) * 0.12 * (1 - age / 1.6) : 0;
+  for (const [i, [a0, l, col]] of (
+    [
+      [-1.1, 120, '#3f7a43'],
+      [-0.5, 150, '#4d8f4f'],
+      [0.1, 140, '#3f7a43'],
+      [0.7, 120, '#4d8f4f'],
+      [-0.2, 100, '#5ba25b'],
+    ] as const
+  ).entries()) {
+    const a = a0 + sway * (i % 2 ? 1 : -0.8),
+      ex = x + Math.sin(a) * l,
       ey = 580 - Math.cos(a) * l;
     line(x, 590, ex, ey + 20, '#2f5b33', 4);
     shape(ell(ex, ey, 30, 18, a - 0.4), col, 2.5);
@@ -705,6 +747,18 @@ function plant(x: number): void {
     5,
   );
   shape(rr(x - 52, 562, 104, 16, 4), '#d27a4a', 3);
+  // a leaf drifts down to the floor and fades there
+  if (age < 2.6) {
+    const f = age / 2.6;
+    c.save();
+    c.globalAlpha = f < 0.8 ? 1 : (1 - f) / 0.2;
+    shape(
+      ell(x + 70 + Math.sin(age * 5) * 22, 470 + f * (FLOOR + 30 - 470), 16, 9, Math.sin(age * 5) * 0.8),
+      '#5ba25b',
+      2,
+    );
+    c.restore();
+  }
 }
 
 /* rough Europe, lon −12…28, lat 35…60, drawn into the map frame */
@@ -1338,7 +1392,7 @@ function nameplate(): void {
   );
   text('VORSTANDSVORSITZ', 700, 773, `700 13px ${DISPLAY}`, '#3d2a08', 'center');
 }
-function mug(col: string): void {
+function mug(col: string, full: boolean): void {
   const c = ctx!;
   c.save();
   c.translate(90, 0);
@@ -1351,7 +1405,7 @@ function mug(col: string): void {
   c.strokeStyle = col;
   c.lineWidth = 4;
   c.stroke();
-  shape(ell(1142, 842, 30, 7), '#4a2e1a', 2.5);
+  shape(ell(1142, 842, 30, 7), full ? '#4a2e1a' : mix(col, '#000000', 0.55), 2.5);
   c.save();
   c.translate(1142, 878);
   c.fillStyle = '#fff';
@@ -1365,7 +1419,7 @@ function mug(col: string): void {
   c.closePath();
   c.fill();
   c.restore();
-  if (!RMO)
+  if (!RMO && full)
     for (let i = 0; i < 2; i++) {
       const o = (T * 20 + i * 30) % 60;
       c.beginPath();
@@ -1408,7 +1462,7 @@ function draw(): void {
   nameplate();
   terminal(d);
   phone(d);
-  mug(d.colors[0] ?? '#2f5bd3');
+  mug(d.colors[0] ?? '#2f5bd3', mugDrunk !== d.turn);
   c.setTransform(scale, 0, 0, scale, 0, 0);
   c.fillStyle = SEASON_LIGHT[d.q]!;
   c.fillRect(0, 0, W, vh);

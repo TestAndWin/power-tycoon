@@ -104,6 +104,16 @@ export const SND = {
   buzz() {
     for (let i = 0; i < 3; i++) this.tone(150, 0.12, 'sawtooth', 0.03, 140, i * 0.2);
   },
+  /** Leaves of the office plant rustle. */
+  rustle() {
+    this.noise(0.18, 0.035, 5200, 0, 0.9);
+    this.noise(0.22, 0.03, 4200, 0.12, 0.9);
+  },
+  /** A sip of coffee, the mug back on the desk. */
+  sip() {
+    this.noise(0.35, 0.03, 1400, 0, 2);
+    this.tone(180, 0.08, 'triangle', 0.05, 140, 0.45);
+  },
   /** The quarter stamp hits the report. */
   stamp() {
     this.tone(110, 0.12, 'square', 0.05, 60);

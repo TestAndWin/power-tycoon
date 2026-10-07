@@ -21,7 +21,7 @@ import { money } from './format.js';
 import { playChallenge } from './minigames/index.js';
 import { closeModal, modalLocked, openModal, toast } from './modal.js';
 import { registerScenes, setHover } from './scene/index.js';
-import { toggleLamp } from './scene/office.js';
+import { drinkCoffee, toggleLamp, touchPlant } from './scene/office.js';
 import { SND, toggleSound } from './sound.js';
 import { $, isPhone, S, UI } from './state.js';
 import {
@@ -281,6 +281,12 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
     render();
   },
   lamp: () => toggleLamp(),
+  plant: () => {
+    if (touchPlant()) SND.rustle();
+  },
+  coffee: () => {
+    if (drinkCoffee()) SND.sip();
+  },
   hangUp: () => {
     S.call = null;
     render();
