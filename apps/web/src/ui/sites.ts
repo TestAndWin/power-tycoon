@@ -67,7 +67,8 @@ function ownerLegend(r: RegionKey): string {
 export function vSites(): string {
   const v = V(),
     r = UI.region,
-    R = REGIONS[r];
+    R = REGIONS[r],
+    d = detail();
   // the regions as picture cards, each with its own little landscape
   const cards = REGION_KEYS.map((k) => {
     const n = v.sites.filter((x) => x.r === k && x.owner === v.playerId).length;
@@ -93,9 +94,10 @@ export function vSites(): string {
         <button class="btn reserve" data-act="reserve" data-v="${r}" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)} · ${v.constants.reserveQuarters} Q</small></button>
       </div>
       ${ownerLegend(r)}
-      <p class="rdesc muted">${REGION_TEXT[r].desc} Rahmen, Fahne und Etikett in Konzernfarbe zeigen, wem eine Fläche gehört; ★ markiert deine eigenen.</p>
+      <p class="rdesc muted">${REGION_TEXT[r].desc} ★ markiert deine Flächen.</p>
     </section>
-    <aside class="panel" id="detail">${detail()}</aside>
+    <aside class="panel" id="detail">${d.card}</aside>
+    <section class="panel siteacts" id="siteacts" aria-label="Aktionen"${d.acts ? '' : ' hidden'}>${d.acts}</section>
   </div>`;
 }
 /**
@@ -103,10 +105,14 @@ export function vSites(): string {
  * so the landscape canvas keeps running instead of flickering.
  */
 export function selectSite(id: string): boolean {
-  const panel = document.getElementById('detail');
-  if (!panel) return false;
+  const panel = document.getElementById('detail'),
+    acts = document.getElementById('siteacts');
+  if (!panel || !acts) return false;
   document.querySelectorAll<HTMLElement>('.hits .hit').forEach((h) => h.classList.toggle('sel', h.dataset.v === id));
-  panel.innerHTML = detail();
+  const d = detail();
+  panel.innerHTML = d.card;
+  acts.innerHTML = d.acts;
+  acts.hidden = !d.acts;
   redrawStill();
   return true;
 }
@@ -141,13 +147,19 @@ function storeFeeders(r: RegionKey): string {
     ? `Lädt mit Strom deiner Anlagen ${feeders.map(siteName).join(', ')} und verkauft ihn zu teuren Zeiten – dafür gibt es den vollen Spread. ${rule}`
     : `Keine eigene Anlage in dieser Region liefert Strom. ${rule} Bau hier eigene Kraftwerke dazu.`;
 }
-/** Facts and actions of the selected site. The actions are exactly the engine's options for it. */
-function detail(): string {
+/**
+ * Facts (the card on the right) and actions (below the landscape, where there is room) of the selected site.
+ * The actions are exactly the engine's options for it.
+ */
+function detail(): { card: string; acts: string } {
   const v = V();
   const x = v.sites.find((s) => s.id === UI.sel);
   if (!x)
-    return `<h3>Standort wählen</h3><p class="muted">Tipp auf eine Fläche, um Details zu sehen.</p>
-    <dl class="facts"><dt>1. Pachten</dt><dd>Fläche sichern</dd><dt>2. Genehmigung</dt><dd>1–5 Quartale</dd><dt>3. Bauen</dt><dd>Standortsuche & Montage</dd><dt>4. Netz</dt><dd>Anschluss-Puzzle</dd></dl>`;
+    return {
+      acts: '',
+      card: `<h3>Standort wählen</h3><p class="muted">Tipp auf eine Fläche, um Details zu sehen.</p>
+    <dl class="facts"><dt>1. Pachten</dt><dd>Fläche sichern</dd><dt>2. Genehmigung</dt><dd>1–5 Quartale</dd><dt>3. Bauen</dt><dd>Standortsuche & Montage</dd><dt>4. Netz</dt><dd>Anschluss-Puzzle</dd></dl>`,
+    };
   const s = siteStatus(x),
     own = x.owner >= 0,
     mine = x.owner === v.playerId;
@@ -259,8 +271,8 @@ function detail(): string {
         x.permit === 'approved'
           ? `Umplanen: Die Genehmigung für ${PLANT_NAME[x.type!]} bleibt gültig, bis über den neuen Antrag entschieden ist.${x.own?.alt ? ' Bauen verwirft den laufenden Antrag.' : ''}`
           : 'Umplanen: Ein neuer Antrag ersetzt den laufenden – dessen Kosten sind verloren.'
-      }</p>`,
-      ...permits.map(({ t, opt }) => btn('permit', pv(t), 'Stattdessen beantragen: ' + pname(t), opt)),
+      } Stattdessen beantragen:</p>`,
+      ...permits.map(({ t, opt }) => btn('permit', pv(t), pname(t), opt)),
     );
     permits.length = 0;
   }
@@ -289,7 +301,10 @@ function detail(): string {
         `<button class="btn" data-act="trickGo" data-v="${x.id}|${lt}"><span>Lobby-Aktion planen …</span></button>`,
       );
   }
-  return `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl>${mine ? stamps(x) : ''}${storeNote}<div class="actions">${a.join('')}</div>`;
+  return {
+    card: `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl>${mine ? stamps(x) : ''}${storeNote}`,
+    acts: a.length ? `<div class="actions">${a.join('')}</div>` : '',
+  };
 }
 
 /** The stamps on the papers of an own site: lease contract and the authority's decision. */

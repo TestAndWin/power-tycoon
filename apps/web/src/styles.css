@@ -1014,9 +1014,31 @@ h3 {
 .sites {
   display: grid;
   grid-template-columns: clamp(130px, 13vw, 180px) minmax(0, 1fr) 340px;
-  grid-template-areas: 'regions board detail';
+  grid-template-areas:
+    'regions board detail'
+    'regions acts detail';
+  grid-template-rows: auto 1fr;
   gap: 18px;
   align-items: start;
+}
+/* the actions of the selected site lie below the landscape, side by side */
+.siteacts {
+  grid-area: acts;
+}
+.siteacts .actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  align-items: start;
+}
+.siteacts .actions > p {
+  grid-column: 1 / -1;
+}
+.siteacts .actions > .sizes {
+  grid-column: span 2;
+}
+.siteacts .sizeopt {
+  padding: 6px 10px;
+  font-size: 11.5px;
 }
 .rcards {
   grid-area: regions;
@@ -1323,7 +1345,7 @@ h3 {
 @media (min-width: 981px) {
   .sites .scene {
     width: 100%;
-    max-width: max(420px, calc((100dvh - 300px) * 5 / 3));
+    max-width: max(360px, calc((100dvh - 580px) * 5 / 3));
     margin-inline: auto;
   }
 }
@@ -2291,7 +2313,8 @@ svg.live .pulse {
   }
   .sites {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'regions' 'board' 'detail';
+    grid-template-areas: 'regions' 'board' 'detail' 'acts';
+    grid-template-rows: none;
   }
   .rcards {
     display: grid;
@@ -2322,6 +2345,9 @@ svg.live .pulse {
   }
   .sites #detail {
     position: static;
+  }
+  .siteacts .actions > .sizes {
+    grid-column: 1 / -1;
   }
 }
 @media (max-width: 760px) {
