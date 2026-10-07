@@ -2,20 +2,25 @@
 import { money } from '../format.js';
 import { disabledUnless, meP, V } from './common.js';
 
+const pct = (x: number): string => `${(x * 100).toLocaleString('de-DE')} %`;
+
 const BORROW_STEPS = [5e6, 20e6, 50e6];
 const REPAY_STEPS = [5e6, 20e6];
 
 export function vBank(): string {
   const v = V(),
     P = meP(),
+    C = v.constants,
+    cr = v.me.credit,
     lim = v.me.creditLimit,
     free = Math.max(0, lim - P.loan);
   return `<div class="grid g2e"><section class="panel stack"><h2>Hausbank</h2>
     <dl class="facts"><dt>Kasse</dt><dd class="${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</dd><dt>Kredit</dt><dd>${money(P.loan)}</dd><dt>Kreditrahmen</dt><dd>${money(lim)}</dd><dt>Noch verfügbar</dt><dd>${money(free)}</dd><dt>Zinsen</dt><dd>${(v.constants.interest * 100).toLocaleString('de-DE')} % / Quartal</dd><dt>Zinslast</dt><dd>${money(P.loan * v.constants.interest)} / Quartal</dd></dl>
     <div class="row">${borrowButtons(free)}</div>
     <div class="row">${repayButtons(P.loan)}</div>
-  </section><section class="panel"><h3 style="margin-bottom:8px">Projektfinanzierung</h3>
-    <p class="muted" style="margin:0 0 8px">Der Rahmen beträgt 60 % deiner Vermögenswerte, mindestens ${money(v.constants.minCredit)}. Erneuerbare sind kapitalintensiv: Ein Offshore-Park lässt sich kaum ohne Kredit bauen.</p>
+  </section><section class="panel stack"><h3 style="margin-bottom:0">So setzt sich dein Rahmen zusammen</h3>
+    <dl class="facts"><dt>Anlagen &amp; Flächen (${pct(C.creditAssets)} des Buchwerts)</dt><dd>${money(cr.assets)}</dd><dt>Ertrag (${C.creditSales}× Ø Stromerlös der letzten ${C.creditSalesQuarters} Quartale)</dt><dd>${money(cr.sales)}</dd><dt>Förderkredit (Aufholbonus)</dt><dd>${cr.boost ? money(cr.boost) : '–'}</dd></dl>
+    <p class="muted" style="margin:0">Die Kasse zählt nicht: Geliehenes Geld erhöht den Rahmen nicht. Liegt dein Firmenwert mindestens ${pct(C.creditBoostFrom)} hinter dem Spitzenreiter, gibt die Förderbank ${pct(C.creditBoost)} des Rückstands dazu. Der Rahmen beträgt mindestens ${money(C.minCredit)}.</p>
     <p class="muted" style="margin:0">Rutscht die Kasse zum Quartalsende ins Minus, gibt es einen Notkredit. Reicht der Rahmen nicht, ist dein Konzern insolvent.</p></section></div>`;
 }
 

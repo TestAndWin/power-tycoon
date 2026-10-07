@@ -327,8 +327,9 @@ describe('contracts and bank', () => {
     expect(playerView(g, 0).me.creditLimit).toBe(20e6);
     let s = ok(g, { type: 'borrow', amount: 20e6 }).state;
     expect(s.players[0]).toMatchObject({ cash: 50e6, loan: 20e6 });
-    expect(playerView(s, 0).me.creditLimit).toBe(30e6);
-    fails(s, { type: 'borrow', amount: 11e6 }, 'creditLimit');
+    // cash does not count: the borrowed money does not raise the limit
+    expect(playerView(s, 0).me.creditLimit).toBe(20e6);
+    fails(s, { type: 'borrow', amount: 1e6 }, 'creditLimit');
     fails(g, { type: 'borrow', amount: -5 }, 'invalidAmount');
     fails(g, { type: 'repay', amount: 'all' }, 'invalidAmount');
     s = ok(s, { type: 'repay', amount: 5e6 }).state;

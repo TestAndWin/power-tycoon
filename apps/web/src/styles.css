@@ -3554,3 +3554,28 @@ body.zoom #view {
 .spylist .secret {
   margin-top: 4px;
 }
+
+/* ---------- rules sheet ---------- */
+.paper.rules {
+  column-width: 260px;
+  column-gap: 22px;
+  column-rule: 1px solid var(--line);
+}
+.paper.rules .mast {
+  column-span: all;
+  margin-bottom: 10px;
+}
+.paper.rules section {
+  break-inside: avoid;
+  margin-bottom: 10px;
+}
+.paper.rules h3 {
+  font-family: var(--display);
+  font-size: 17px;
+  margin: 0 0 2px;
+}
+.paper.rules p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.4;
+}

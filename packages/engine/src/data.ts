@@ -222,6 +222,14 @@ export const RESERVE_COST = 0.8e6;
 export const RESERVE_QUARTERS = 4;
 export const SELF_REPAIR_COST = 0.1e6;
 export const MIN_CREDIT = 20e6;
+/** Credit limit: share of the book value of plants, sites and headquarters (cash does not count). */
+export const CREDIT_ASSETS = 0.5;
+/** Credit limit: multiple of the average power sales of the last `CREDIT_SALES_QUARTERS` quarters. */
+export const CREDIT_SALES = 2;
+export const CREDIT_SALES_QUARTERS = 4;
+/** Development loan: share of the gap to the leader's net worth, from a gap of `CREDIT_BOOST_FROM` of it. */
+export const CREDIT_BOOST = 0.3;
+export const CREDIT_BOOST_FROM = 0.1;
 export const NEWS_LIMIT = 80;
 /** Probability that a failed trick with a fine is discovered (legacy: human 0.4, AI 0.35). */
 export const TRICK_CAUGHT = 0.4;

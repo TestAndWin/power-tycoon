@@ -76,6 +76,7 @@ function mkPlayer(id: PlayerId, name: string, human: boolean): Player {
     out: false,
     hist: [],
     genLast: 0,
+    sales: [],
     co2: 0,
     contracts: [],
     trickUsed: 0,

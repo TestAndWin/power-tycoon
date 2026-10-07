@@ -11,6 +11,10 @@ import {
   HQ_BOOK,
   HQ_LEVELS,
   MAX_SURVEYS,
+  CREDIT_ASSETS,
+  CREDIT_BOOST,
+  CREDIT_BOOST_FROM,
+  CREDIT_SALES,
   MIN_CREDIT,
   PLANTS,
   REGIONS,
@@ -224,8 +228,28 @@ export function worth(g: GameState, p: Player): number {
   for (const x of g.sites) if (x.owner === p.id) v += siteValue(x);
   return Math.round(v);
 }
-export const creditLimit = (g: GameState, p: Player): number =>
-  Math.max(MIN_CREDIT, Math.floor(((worth(g, p) + p.loan) * 0.6) / 1e6) * 1e6);
+/**
+ * The credit limit and its parts: a share of the assets (without cash, so borrowed money does not raise it),
+ * a multiple of the average power sales, and a development loan for players far behind the leader.
+ */
+export function creditParts(g: GameState, p: Player): { assets: number; sales: number; boost: number; limit: number } {
+  const assets = (worth(g, p) + p.loan - p.cash) * CREDIT_ASSETS;
+  const hist = p.sales ?? [];
+  const sales = hist.length
+    ? (Math.max(
+        0,
+        hist.reduce((a, b) => a + b, 0),
+      ) /
+        hist.length) *
+      CREDIT_SALES
+    : 0;
+  const lead = Math.max(...g.players.filter((q) => !q.out).map((q) => worth(g, q)));
+  const gap = lead - worth(g, p);
+  const boost = lead > 0 && gap >= lead * CREDIT_BOOST_FROM ? gap * CREDIT_BOOST : 0;
+  const limit = Math.max(MIN_CREDIT, Math.floor((assets + sales + boost) / 1e6) * 1e6);
+  return { assets: Math.round(assets), sales: Math.round(sales), boost: Math.round(boost), limit };
+}
+export const creditLimit = (g: GameState, p: Player): number => creditParts(g, p).limit;
 export function rankOf(g: GameState, p: Player): number {
   return (
     g.players
