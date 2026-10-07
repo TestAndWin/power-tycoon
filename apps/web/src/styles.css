@@ -421,7 +421,6 @@ h3 {
 .plot:focus-visible,
 .tab:focus-visible,
 .cell:focus-visible,
-.rpill:focus-visible,
 .mini:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
@@ -1011,91 +1010,179 @@ h3 {
   color: color-mix(in srgb, var(--oc) 70%, var(--ink));
 }
 
-/* ---------- sites ---------- */
-.regions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-}
-.rclimate {
+/* ---------- sites (the map table) ---------- */
+.sites {
   display: grid;
-  grid-template-columns: auto auto;
-  gap: 2px 10px;
-  align-items: baseline;
-  margin: 0;
+  grid-template-columns: clamp(130px, 13vw, 180px) minmax(0, 1fr) 340px;
+  grid-template-areas: 'regions board detail';
+  gap: 18px;
+  align-items: start;
 }
-.rclimate dd {
-  margin: 0;
+.rcards {
+  grid-area: regions;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rcard {
+  appearance: none;
+  padding: 0;
+  border: 2px solid var(--edge);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  transform: rotate(var(--tilt, -0.8deg));
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.rcard:nth-child(2n) {
+  --tilt: 0.7deg;
+}
+.rcard:hover:not([aria-pressed='true']) {
+  transform: translateY(-2px) rotate(0deg);
+  box-shadow: 0 5px 0 var(--edge);
+}
+.rcard[aria-pressed='true'] {
+  transform: translateX(8px) rotate(0deg);
+  box-shadow:
+    0 0 0 3px var(--gold),
+    0 5px 0 var(--edge);
+}
+.rcard:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+.rcard canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-bottom: 2px solid var(--edge);
+}
+.rcap {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 6px;
+  align-items: baseline;
+  padding: 6px 10px 8px;
+  background: var(--grain), var(--surface);
+}
+.rcard[aria-pressed='true'] .rcap {
+  background: var(--grain), #fbe7b4;
+}
+.rcap b {
   font-size: 13px;
-  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.region-bar .reserve {
+.rcap .n {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.rcap .obar {
+  grid-column: 1 / -1;
+}
+.rboard {
+  grid-area: board;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+/* the region's name plate lies on the sky of the landscape */
+.rplate {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 14px 7px;
+  border: 2px solid var(--edge);
+  border-radius: 10px;
+  background: var(--grain), var(--surface);
+  box-shadow: var(--shadow-sm);
+  transform: rotate(-1.2deg);
+  pointer-events: none;
+}
+.rplate b {
+  font-family: var(--display);
+  font-size: 17px;
+}
+.rplate span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.rclimate {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ctok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border: 2px solid var(--edge);
+  border-radius: 20px;
+  background: rgba(255, 250, 240, 0.92);
+  font: 600 12px var(--mono);
+  white-space: nowrap;
+}
+.ctok i {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--edge);
+  background: var(--windc);
+  color: #fff;
+  font-style: normal;
+  font-size: 12px;
+}
+.ctok:nth-child(2) i {
+  background: var(--sun);
+  color: var(--ink);
+}
+.ctok .label {
+  font-family: var(--sans);
+}
+.rinfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 2px solid var(--edge);
+  border-radius: 12px;
+  background: var(--grain), var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+.rinfo .reserve {
   flex-direction: column;
   gap: 0;
   line-height: 1.2;
   padding: 6px 12px;
 }
 .rdesc {
-  margin: 0 0 10px;
-  font-size: 13px;
+  margin: 0;
+  font-size: 12.5px;
 }
-.rdesc b {
-  color: var(--ink);
-}
-.rpill {
-  appearance: none;
-  position: relative;
-  overflow: hidden;
-  border: 2px solid var(--edge);
-  background: var(--surface);
-  border-radius: 30px;
-  padding: 7px 14px 10px;
-  cursor: pointer;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-weight: 700;
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform 0.08s,
-    box-shadow 0.08s;
-}
-.rpill:hover:not([aria-pressed='true']) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 0 var(--edge);
-}
-.rpill[aria-pressed='true'] {
-  background: var(--ink);
-  color: #fff4dc;
-  transform: translateY(2px);
-  box-shadow: 0 1px 0 var(--edge);
-}
-.rpill .n {
-  font-family: var(--mono);
-  font-size: 12px;
-  opacity: 0.75;
-}
-.rpill .obar {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 4px;
-  height: 3px;
-}
-.field-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 16px;
-  align-items: start;
-}
-.region-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 22px;
-  align-items: center;
-  margin-bottom: 10px;
+.sites #detail {
+  grid-area: detail;
+  position: sticky;
+  top: 0;
 }
 .gridwrap {
   display: flex;
@@ -1232,15 +1319,11 @@ h3 {
     display: none;
   }
 }
-@media (min-width: 981px) and (max-height: 800px) {
-  .rdesc {
-    display: none;
-  }
-}
-/* on wide screens the landscape shrinks with the window height so it fits below the sticky header */
+/* on wide screens the landscape shrinks with the window height so the table fits on screen */
 @media (min-width: 981px) {
-  .field-layout .scene {
-    max-width: max(420px, calc((100dvh - 290px) * 5 / 3));
+  .sites .scene {
+    width: 100%;
+    max-width: max(420px, calc((100dvh - 300px) * 5 / 3));
     margin-inline: auto;
   }
 }
@@ -2203,9 +2286,42 @@ svg.live .pulse {
   .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .g2,
-  .field-layout {
+  .g2 {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .sites {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'regions' 'board' 'detail';
+  }
+  .rcards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .rcard,
+  .rcard[aria-pressed='true'] {
+    transform: none;
+  }
+  .rcap {
+    grid-template-columns: 1fr;
+    padding: 4px 6px 6px;
+  }
+  .rcap b {
+    font-size: 11.5px;
+  }
+  .rcap .n {
+    display: none;
+  }
+  .rplate {
+    top: 8px;
+    left: 8px;
+    padding: 4px 10px 5px;
+  }
+  .rplate b {
+    font-size: 14px;
+  }
+  .sites #detail {
+    position: static;
   }
 }
 @media (max-width: 760px) {
@@ -2409,7 +2525,7 @@ svg.live .pulse {
 }
 
 /* =====================================================================
- * Headquarters (phase 8): the office as main view, folders on the desk,
+ * Headquarters (phase 8): the office as main view, the areas as objects in it,
  * the board talking, documents, awards and the headquarters plan.
  * ===================================================================== */
 body.desk .tabs {
@@ -2613,105 +2729,447 @@ body.desk .app {
   background: var(--gold);
 }
 
-/* ---------- folders on the desk ---------- */
+/* ---------- opened objects (desktop): laptop, monitor, phone, newspaper, map table, … ---------- */
 .folder-layer {
   position: fixed;
   inset: 0;
   z-index: 30;
   display: grid;
-  /* the column never grows with the binder tabs: they scroll inside the folder */
   grid-template-columns: minmax(0, 1fr);
-  place-items: end center;
+  place-items: center;
   padding: 16px;
   padding-top: max(16px, env(safe-area-inset-top, 0px));
   background: rgba(42, 32, 22, 0.55);
-  backdrop-filter: blur(2px);
 }
-.folder {
+/* while the camera moves, the zoomed office must not make the page scroll */
+body.zoom #view {
+  overflow: clip;
+}
+.dev {
   position: relative;
-  /* as wide as the header (.app content width) */
   width: min(1408px, 100%);
   max-height: calc(100dvh - 32px);
   display: flex;
   flex-direction: column;
-}
-.folder.enter {
-  animation: folderIn 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
-}
-@keyframes folderIn {
-  from {
-    transform: translateY(60px) rotate(-1deg);
-    opacity: 0;
-  }
-}
-.ftabs {
-  display: flex;
-  gap: 4px;
-  padding-left: 22px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  position: relative;
-  z-index: 1;
-  flex: none;
-}
-.ftab {
-  appearance: none;
-  display: flex;
-  gap: 6px;
   align-items: center;
-  border: 2.5px solid var(--edge);
-  border-bottom: 0;
-  border-radius: 10px 10px 0 0;
-  background: #d6b26f;
-  padding: 6px 11px 8px;
-  font: inherit;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
-  margin-bottom: -3px;
-  color: #3d2d14;
+  transform-origin: center;
 }
-.ftab[aria-selected='true'] {
-  background: #e3c182;
-  padding-top: 9px;
-}
-.fbody {
-  background: #e3c182;
-  border: 3px solid var(--edge);
-  border-radius: 6px 16px 16px 16px;
-  box-shadow: var(--shadow);
-  padding: 14px;
+.dframe {
+  position: relative;
+  width: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.fhead {
+.dhead {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  flex: none;
 }
-.fhead h2 {
-  font-size: 19px;
+.dhead h2 {
+  font-size: 17px;
   margin: 0;
 }
-.fhead .clip {
-  width: 46px;
-  height: 14px;
-  border: 3px solid #8b8f96;
-  border-radius: 8px;
-  margin-right: auto;
-}
-.sheet {
-  background: var(--bg);
-  border: 2px solid var(--edge);
-  border-radius: 4px;
-  padding: 18px;
-  box-shadow: 4px 4px 0 rgba(42, 32, 22, 0.25);
+.dev .sheet {
   overflow: auto;
   min-height: 0;
   outline: none;
+  padding: 18px;
+  background: var(--bg);
+}
+.dev .back {
+  flex: none;
+}
+/* brass name plate (map table, pinboard, cabinet, dossier, back room) */
+.plate {
+  display: inline-block;
+  padding: 5px 16px 4px;
+  border: 2px solid var(--edge);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #f6d58a, #d6a540 55%, #b8862a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 2px 0 var(--edge);
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3d2a0c;
+}
+
+/* laptop (Lagebericht, Bank) and exchange monitor (Strommarkt) */
+.dev-laptop,
+.dev-monitor {
+  width: min(1320px, 100%);
+}
+.dev-laptop .dframe,
+.dev-monitor .dframe {
+  background: linear-gradient(180deg, #3a332b, #231d17);
+  border: 3px solid var(--edge);
+  border-radius: 22px 22px 8px 8px;
+  padding: 16px 16px 18px;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    0 18px 40px -16px rgba(0, 0, 0, 0.6);
+}
+.dev-laptop .dframe::before,
+.dev-monitor .dframe::before {
+  /* camera */
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: #121212;
+  box-shadow: 0 0 0 1.5px #4a4238;
+}
+.dev-laptop .dhead,
+.dev-monitor .dhead {
+  background: linear-gradient(180deg, #f8efdc, #eadbbb);
+  border: 2px solid var(--edge);
+  border-bottom-width: 0;
+  border-radius: 8px 8px 0 0;
+  padding: 7px 12px;
+}
+.dev-laptop .sheet,
+.dev-monitor .sheet {
+  border: 2px solid var(--edge);
+  border-radius: 0 0 8px 8px;
+}
+.dhead .dots {
+  display: flex;
+  gap: 6px;
+}
+.dhead .dots i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.5px solid var(--edge);
+  background: var(--c1);
+}
+.dhead .dots i:nth-child(2) {
+  background: var(--gold);
+}
+.dhead .dots i:nth-child(3) {
+  background: var(--good);
+}
+.dhead .dapp {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.dbase {
+  position: relative;
+  width: 110%;
+  max-width: calc(100vw - 16px);
+  height: 18px;
+  margin-top: -2px;
+  border: 3px solid var(--edge);
+  border-radius: 2px 2px 18px 18px;
+  background: linear-gradient(180deg, #d8d0c2, #a69c8b);
+  flex: none;
+}
+.dbase i {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 120px;
+  height: 8px;
+  margin-left: -60px;
+  border: 2px solid var(--edge);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: #b9af9e;
+}
+.dev-monitor .dframe {
+  border-radius: 14px;
+}
+.dev-monitor .dframe::after {
+  /* power light */
+  content: '';
+  position: absolute;
+  right: 18px;
+  bottom: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6fe08a;
+  box-shadow: 0 0 6px #6fe08a;
+}
+.dstand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+}
+.dstand i {
+  width: 70px;
+  height: 22px;
+  border: 3px solid var(--edge);
+  border-top: 0;
+  background: linear-gradient(90deg, #2c251e, #4a4035, #2c251e);
+}
+.dstand b {
+  width: 260px;
+  height: 12px;
+  border: 3px solid var(--edge);
+  border-radius: 10px 10px 4px 4px;
+  background: #3a322a;
+}
+
+/* phone (Entscheidung) */
+.dev-phone {
+  width: min(460px, 100%);
+}
+.dev-phone .dframe {
+  background: #1d1915;
+  border: 3px solid var(--edge);
+  border-radius: 46px;
+  padding: 12px 12px 26px;
+  box-shadow:
+    inset 0 0 0 2px #4a4238,
+    0 22px 44px -16px rgba(0, 0, 0, 0.65);
+}
+.pstatus {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 26px 6px;
+  font: 600 13px var(--mono);
+  color: #f3e6c8;
+  background: linear-gradient(180deg, #33495e, #24384b);
+  border-radius: 34px 34px 0 0;
+}
+.pstatus .notch {
+  width: 96px;
+  height: 22px;
+  border-radius: 14px;
+  background: #0d0b09;
+}
+.pstatus .sig {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+.dev-phone .dhead {
+  padding: 8px 12px;
+  background: #24384b;
+}
+.dev-phone .dhead h2 {
+  color: #f3e6c8;
+}
+.dev-phone .dhead h2 {
+  margin-left: auto;
+  margin-right: auto;
+  transform: translateX(-36px);
+}
+.dev-phone .sheet {
+  border-radius: 0 0 34px 34px;
+  padding: 14px;
+}
+.dev-phone .sheet > .panel {
+  border-radius: 18px;
+}
+.dev-phone .home {
+  position: absolute;
+  left: 50%;
+  bottom: 9px;
+  width: 120px;
+  height: 5px;
+  margin-left: -60px;
+  border-radius: 3px;
+  background: #6d6255;
+}
+
+/* newspaper (Zeitung) */
+.dev-paper {
+  width: min(1100px, 100%);
+}
+.dev-paper .dframe {
+  background: var(--grain), #f7f2e3;
+  border: 2px solid var(--edge);
+  border-radius: 3px;
+  transform: rotate(-0.5deg);
+  box-shadow:
+    6px 8px 0 rgba(42, 32, 22, 0.35),
+    0 24px 40px -18px rgba(0, 0, 0, 0.6);
+}
+.dev-paper .dframe::after {
+  /* the fold */
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 2px;
+  background: linear-gradient(90deg, rgba(42, 32, 22, 0.08), rgba(255, 255, 255, 0.5));
+  pointer-events: none;
+}
+.dev-paper .dhead {
+  padding: 12px 16px 0;
+}
+.dev-paper .sheet {
+  background: transparent;
+  padding: 6px 24px 24px;
+}
+.dev-paper .paper {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+/* wooden frames: map table, pinboard, cabinet, back room */
+.dev-table .dframe,
+.dev-cork .dframe,
+.dev-cabinet .dframe,
+.dev-backroom .dframe {
+  border: 3px solid var(--edge);
+  border-radius: 16px;
+  padding: 0 16px 16px;
+  background:
+    var(--grain), repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #8a5a32, #6b4224);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.18),
+    0 20px 40px -16px rgba(0, 0, 0, 0.6);
+}
+.dev-table .dhead,
+.dev-cork .dhead,
+.dev-cabinet .dhead,
+.dev-backroom .dhead,
+.dev-dossier .dhead {
+  padding: 10px 0;
+}
+.dev-table .dhead h2,
+.dev-cork .dhead h2,
+.dev-cabinet .dhead h2,
+.dev-backroom .dhead h2,
+.dev-dossier .dhead h2 {
+  margin: 0 auto;
+  transform: translateX(-40px);
+}
+.dev-table .sheet,
+.dev-cork .sheet,
+.dev-cabinet .sheet,
+.dev-backroom .sheet {
+  border: 3px solid var(--edge);
+  border-radius: 6px;
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.25);
+}
+/* the map table: the sites lie on a large map */
+.dev-table .sheet {
+  background:
+    linear-gradient(rgba(47, 91, 211, 0.06) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, rgba(47, 91, 211, 0.06) 1px, transparent 1px) 0 0 / 40px 40px,
+    var(--grain),
+    #ecdcb6;
+}
+/* the pinboard: every panel is pinned to the cork */
+.dev-cork {
+  width: min(1360px, 100%);
+}
+.dev-cork .sheet {
+  background:
+    radial-gradient(rgba(90, 55, 20, 0.35) 1px, transparent 1.6px) 0 0 / 7px 7px,
+    radial-gradient(rgba(255, 230, 190, 0.25) 1px, transparent 1.6px) 3px 4px / 9px 9px,
+    #c8955b;
+}
+.dev-cork .panel {
+  position: relative;
+}
+.dev-cork .panel::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--edge);
+  background: radial-gradient(circle at 35% 35%, #ff8a73, var(--c1) 60%);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  z-index: 2;
+}
+/* the trophy cabinet: glass in front of the shelves */
+.dev-cabinet {
+  width: min(1200px, 100%);
+}
+.dev-cabinet .dframe {
+  background:
+    var(--grain), repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.08) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #5d3a20, #432814);
+}
+.dev-cabinet .sheet {
+  background: linear-gradient(180deg, #f3e8cf, #e7d6b0);
+}
+.dev-cabinet .dframe::after {
+  /* reflection on the glass */
+  content: '';
+  position: absolute;
+  inset: 60px 19px 19px;
+  border-radius: 4px;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 0 30%,
+    rgba(255, 255, 255, 0.22) 30% 36%,
+    transparent 36% 62%,
+    rgba(255, 255, 255, 0.14) 62% 65%,
+    transparent 65%
+  );
+}
+/* the dossier of the board: a manila folder with a clip */
+.dev-dossier {
+  width: min(1300px, 100%);
+  padding-top: 18px;
+}
+.dev-dossier .dframe {
+  background: var(--grain), #e3c182;
+  border: 3px solid var(--edge);
+  border-radius: 6px 16px 16px 16px;
+  box-shadow: var(--shadow);
+  padding: 0 14px 14px;
+}
+.dev-dossier .dframe::before {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: 26px;
+  width: 210px;
+  height: 22px;
+  border: 3px solid var(--edge);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  background: #e3c182;
+}
+.dev-dossier .dhead .plate {
+  background: #fffaf0;
+  color: var(--bad);
+  border-color: var(--bad);
+  box-shadow: none;
+  transform: rotate(-2deg);
+}
+.dev-dossier .sheet {
+  border: 2px solid var(--edge);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 rgba(42, 32, 22, 0.25);
+}
+/* the back room: green leather with brass studs, a lamp above the table */
+.dev-backroom {
+  width: min(1240px, 100%);
+}
+.dev-backroom .dframe {
+  background: var(--grain), radial-gradient(ellipse at 50% 0, #3f6a4f, #1f3427 70%);
+  /* a row of brass studs along the edge of the leather */
+  outline: 4px dotted #d6a540;
+  outline-offset: -9px;
+}
+.dev-backroom .sheet {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0, rgba(255, 220, 140, 0.45), transparent 70%), var(--grain), #e4d6b6;
 }
 
 /* ---------- board ---------- */
@@ -3083,7 +3541,6 @@ body.desk .app {
 @media (prefers-reduced-motion: reduce) {
   .hot .badge,
   .say,
-  .folder.enter,
   .stampmark {
     animation: none;
   }

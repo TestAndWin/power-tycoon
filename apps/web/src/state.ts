@@ -11,7 +11,7 @@ export const UI = {
   size: 'std' as PlantSize,
   target: '',
   confirm: null as string | null,
-  /** Desktop: the folder open on the desk (an area key as in `tab`), null = the office. */
+  /** Desktop: the area opened from the office (a key as in `tab`), null = the office. */
   folder: null as string | null,
 };
 
@@ -26,7 +26,7 @@ export const S = {
   call: null as { pid: number; kind: 'overtook' | 'duelWon' | 'caught' | 'tricked' } | null,
 };
 
-/** Phone layout: tabs instead of the office with folders. */
+/** Phone layout: tabs instead of the office with its objects. */
 export const isPhone = (): boolean => typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches;
 
 export const $ = <T extends HTMLElement = HTMLElement>(s: string): T | null => document.querySelector<T>(s);

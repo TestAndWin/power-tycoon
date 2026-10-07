@@ -108,6 +108,9 @@ export function officeHotspots(
   ];
 }
 
+/** Clock on the phone, per quarter (also on the opened phone). */
+export const PHONE_TIME = ['08:15', '09:41', '10:30', '17:05'];
+
 /** The desk lamp: a light switch, not an area. */
 export const LAMP_HOTSPOT: [number, number, number, number] = [356, 600, 190, 190];
 
@@ -1302,7 +1305,7 @@ function phone(d: OfficeData): void {
     shape(circ(26, 62, 14), '#3fae5a', 2);
   } else {
     // the time follows the quarter: winter mornings are dark
-    text(['08:15', '09:41', '10:30', '17:05'][d.q]!, 0, -40, `600 26px ${MONO}`, '#5d6b78', 'center');
+    text(PHONE_TIME[d.q]!, 0, -40, `600 26px ${MONO}`, '#5d6b78', 'center');
   }
   c.restore();
   if (buzz)

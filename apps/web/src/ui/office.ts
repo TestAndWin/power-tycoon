@@ -1,6 +1,7 @@
 /**
- * The office (phase 8): the main view on desktop. The canvas scene shows the company; its objects open the
- * areas as folders. Board members speak about open tasks in speech bubbles, rival CEOs call on the phone.
+ * The office (phase 8): the main view on desktop. The canvas scene shows the company; clicking an object zooms
+ * into it and shows its area (see `devices.ts`). Board members speak about open tasks in speech bubbles, rival
+ * CEOs call on the phone.
  */
 import { operating, REGION_KEYS, type Department, type RegionKey } from '@power-tycoon/engine';
 import { esc } from '../format.js';
