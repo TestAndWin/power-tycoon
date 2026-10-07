@@ -44,9 +44,14 @@ export function renderTop(): void {
     <div class="hq">${crest(0, 38)}<div class="hq-name"><span class="game">${LOGO}Wattmogul · ${HQ_TEXT[v.me.hq].name}</span><b>${esc(P.name)}</b></div></div>
     <div class="stats">
       <div class="stat cal"><span class="label">Quartal</span><span class="v">${qStr(v.year, v.q)} <span class="season s${v.q}">${SEASON_NAME[v.q]}</span></span></div>
-      <button class="stat res linkstat" data-act="tab" data-v="bank" title="Bank öffnen"><i class="tok coin" aria-hidden="true">€</i><span><span class="label">Kasse</span><span class="v ${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</span></span></button>
+      ${
+        // on desktop the office shows cash, loan and price (laptop, exchange monitor); only the phone needs them here
+        isPhone()
+          ? `<button class="stat res linkstat" data-act="tab" data-v="bank" title="Bank öffnen"><i class="tok coin" aria-hidden="true">€</i><span><span class="label">Kasse</span><span class="v ${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</span></span></button>
       <div class="stat res"><i class="tok debt" aria-hidden="true">%</i><span><span class="label">Kredit</span><span class="v">${money(P.loan)}</span></span></div>
-      <div class="stat res"><i class="tok volt" aria-hidden="true">⚡</i><span><span class="label">Strompreis</span><span class="v">${eur(v.market.price)} <span class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'}${Math.abs(d)}</span></span></span></div>
+      <div class="stat res"><i class="tok volt" aria-hidden="true">⚡</i><span><span class="label">Strompreis</span><span class="v">${eur(v.market.price)} <span class="${d >= 0 ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'}${Math.abs(d)}</span></span></span></div>`
+          : ''
+      }
       <div class="stat rank r${v.me.rank}"><i class="ribbon" aria-hidden="true">${v.me.rank}</i><span><span class="label">Rang</span><span class="v">${v.me.rank} von ${alive}</span></span></div>
     </div>
     <div class="row" style="flex-wrap:nowrap"><button class="btn icon" data-act="rules" aria-label="Spielregeln" title="Spielregeln">?</button><button class="btn icon" data-act="sound" aria-label="Ton ${SND.on ? 'aus' : 'an'}schalten" title="Ton ${SND.on ? 'aus' : 'an'}">${SND.on ? SPK_ON : SPK_OFF}</button>
