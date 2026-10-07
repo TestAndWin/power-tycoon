@@ -4,6 +4,7 @@ import { checkAwards } from './awards.js';
 import { closeDecisions, dealDecisions } from './decisions.js';
 import {
   AI_DEF,
+  CREDIT_SALES_QUARTERS,
   CAPTURE,
   CO2,
   HQ_LEVELS,
@@ -267,7 +268,10 @@ function settle(g: GameState, p: Player, s: Output, price: number, out: GameEven
   if (s.storeMarket > 0) lines.push({ kind: 'storage', source: 'market', amount: Math.round(s.storeMarket) });
   for (const c of p.contracts) if (c.left <= 0) out.push({ type: 'contractExpired', playerId: p.id, buyer: c.buyer });
   p.contracts = p.contracts.filter((c) => c.left > 0);
-  p.cash += Math.round(spot + s.storeOwn + s.storeMarket + ppa);
+  const sales = Math.round(spot + s.storeOwn + s.storeMarket + ppa);
+  p.cash += sales;
+  // games saved before the credit rework have no sales history
+  p.sales = [...(p.sales ?? []), sales].slice(-CREDIT_SALES_QUARTERS);
   let op = 0;
   let ls = 0;
   for (const x of g.sites) {

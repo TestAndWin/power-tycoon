@@ -16,7 +16,7 @@ const RULES: [string, string][] = [
   ],
   [
     'Geld',
-    'Strom geht zum Börsenpreis weg, der mit Jahreszeit und Nachrichten schwankt. PPA-Verträge sichern einen festen Preis, verpflichten dich aber zur Lieferung. Speicher kaufen billig und verkaufen teuer. Die Bank leiht dir Geld bis zu einem Rahmen, der mit deinem Vermögen wächst. Reicht er bei leerer Kasse nicht mehr, bist du insolvent.',
+    'Strom geht zum Börsenpreis weg, der mit Jahreszeit und Nachrichten schwankt. PPA-Verträge sichern einen festen Preis, verpflichten dich aber zur Lieferung. Speicher kaufen billig und verkaufen teuer. Die Bank leiht dir Geld bis zu einem Rahmen, der mit deinen Anlagen und deinem Stromerlös wächst; wer weit hinten liegt, bekommt einen Förderkredit dazu. Reicht er bei leerer Kasse nicht mehr, bist du insolvent.',
   ],
   [
     'Konkurrenz',

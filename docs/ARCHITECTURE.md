@@ -108,6 +108,10 @@ Modules of `packages/engine/src`:
   capacity) and takes it offline for `REPOWER_QUARTERS` (`Site.offline`).
 - Book value (`siteValue`) is built from what was paid: `Site.permitPaid`, `invested` (building, depreciated
   with age, plus the repowering) and `gridPaid` (the repowering adds the bigger connection there).
+- Credit limit (`creditParts`): `CREDIT_ASSETS` of the book value without cash (borrowed money does not raise
+  it), plus `CREDIT_SALES` × the average power sales of the last `CREDIT_SALES_QUARTERS` quarters
+  (`Player.sales`), plus a development loan of `CREDIT_BOOST` × the gap to the leader's net worth once the gap
+  is at least `CREDIT_BOOST_FROM` of it; at least `MIN_CREDIT`. Same rule for all players, flat interest.
 - Cable duel: when the free grid capacity is below `DUEL_SCARCITY` × the plant's MW, the player's own
   reservations do not cover the plant and another player has a project waiting for the grid in the region (`duelRivals`; the view
   flags it as `own.duelRisk`), `connectGrid` opens the `cable` challenge with `rival: { playerId, seconds }` (`duelSeconds`: `DUEL_PACE` × puzzle size `CABLE_COLS` × `CABLE_ROWS`). Lost:

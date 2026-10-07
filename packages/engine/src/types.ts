@@ -87,6 +87,8 @@ export interface Player {
   out: boolean;
   hist: (number | null)[];
   genLast: number;
+  /** Power sales (contracts, spot, storage) of the last quarters, oldest first (see `CREDIT_SALES_QUARTERS`). */
+  sales: number[];
   co2: number;
   contracts: Contract[];
   trickUsed: number;
@@ -591,6 +593,8 @@ export interface PlayerView {
     worth: number;
     rank: number;
     creditLimit: number;
+    /** Parts of the credit limit: share of the assets, of the sales, and the development loan. */
+    credit: { assets: number; sales: number; boost: number };
     mw: number;
     co2: number;
     genLast: number;
@@ -636,6 +640,11 @@ export interface PlayerView {
     selfRepairCost: number;
     maxTricks: number;
     minCredit: number;
+    creditAssets: number;
+    creditSales: number;
+    creditSalesQuarters: number;
+    creditBoost: number;
+    creditBoostFrom: number;
     spyCost: number;
     spyQuarters: number;
     detectiveQuarters: number;
