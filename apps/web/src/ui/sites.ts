@@ -1,4 +1,4 @@
-/** Sites tab: region selector, landscape with clickable plots and the detail panel of the selected site. */
+/** Sites (the map table): region cards, landscape with clickable plots and the detail card of the selected site. */
 import {
   costsFor,
   isStore,
@@ -68,22 +68,32 @@ export function vSites(): string {
   const v = V(),
     r = UI.region,
     R = REGIONS[r];
-  const pills = REGION_KEYS.map(
-    (k) =>
-      `<button class="rpill" aria-pressed="${k === r}" data-act="region" data-v="${k}">${REGION_TEXT[k].name}<span class="n">${v.sites.filter((x) => x.r === k && x.owner === v.playerId).length}/${SITES_PER_REGION}</span>${ownBar(k)}</button>`,
-  ).join('');
-  return `<div class="field-layout">
-    <section class="panel">
-      <div class="regions" role="group" aria-label="Region">${pills}</div>
-      <p class="rdesc muted"><b>${R.types.map((t) => PLANT_NAME[t]).join(' · ')}</b> – ${REGION_TEXT[r].desc}</p>
-      <div class="region-bar">
-        <dl class="rclimate">${R.wind ? `<dt class="label">Wind</dt><dd class="mono">${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</dd>` : ''}${R.sun ? `<dt class="label">Sonne</dt><dd class="mono">${R.sun[0]}–${R.sun[1]} kWh/kWp</dd>` : ''}</dl>
+  // the regions as picture cards, each with its own little landscape
+  const cards = REGION_KEYS.map((k) => {
+    const n = v.sites.filter((x) => x.r === k && x.owner === v.playerId).length;
+    return `<button class="rcard" aria-pressed="${k === r}" data-act="region" data-v="${k}"><canvas data-scene="${k}" data-mini="1" aria-hidden="true"></canvas><span class="rcap"><b>${REGION_TEXT[k].name}</b><span class="n">${n}/${SITES_PER_REGION}</span>${ownBar(k)}</span></button>`;
+  }).join('');
+  const climate = [
+    R.wind
+      ? `<span class="ctok"><i aria-hidden="true">≋</i><span class="label">Wind</span>${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</span>`
+      : '',
+    R.sun
+      ? `<span class="ctok"><i aria-hidden="true">☀</i><span class="label">Sonne</span>${R.sun[0]}–${R.sun[1]} kWh/kWp</span>`
+      : '',
+  ].join('');
+  return `<div class="sites">
+    <nav class="rcards" aria-label="Region">${cards}</nav>
+    <section class="rboard">
+      <div class="scene"><canvas data-scene="${r}" aria-hidden="true"></canvas><div class="hits">${hits(r)}</div>
+        <div class="rplate"><b>${REGION_TEXT[r].name}</b><span>${R.types.map((t) => PLANT_NAME[t]).join(' · ')}</span></div>
+      </div>
+      <div class="rinfo">
+        <div class="rclimate">${climate}</div>
         ${gridBar(r)}
         <button class="btn reserve" data-act="reserve" data-v="${r}" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)} · ${v.constants.reserveQuarters} Q</small></button>
       </div>
-      <div class="scene"><canvas data-scene="${r}" aria-hidden="true"></canvas><div class="hits">${hits(r)}</div></div>
       ${ownerLegend(r)}
-      <p class="muted" style="font-size:12px;margin:6px 0 0">Tipp auf eine Parzelle. Rahmen, Fahne und Etikett in Konzernfarbe zeigen, wem die Fläche gehört; ★ markiert deine eigenen.</p>
+      <p class="rdesc muted">${REGION_TEXT[r].desc} Rahmen, Fahne und Etikett in Konzernfarbe zeigen, wem eine Fläche gehört; ★ markiert deine eigenen.</p>
     </section>
     <aside class="panel" id="detail">${detail()}</aside>
   </div>`;

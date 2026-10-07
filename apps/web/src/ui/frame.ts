@@ -1,10 +1,10 @@
 /**
- * Page frame: top bar, and the main view. On desktop the main view is the office and every area opens as a
- * folder on the desk; on a phone the areas are tabs and the office is the head of the first one.
+ * Page frame: top bar, and the main view. On desktop the main view is the office and every area opens as the
+ * object it lives in (see `devices.ts`); on a phone the areas are tabs and the office is the head of the first one.
  */
 import { esc, eur, money, qStr } from '../format.js';
 import { registerScenes, swapKeepingScenes } from '../scene/index.js';
-import { resizeOffice } from '../scene/office.js';
+import { PHONE_TIME, resizeOffice } from '../scene/office.js';
 import { SND } from '../sound.js';
 import { $, isPhone, S, UI } from '../state.js';
 import { HQ_TEXT, SEASON_NAME } from '../texts.js';
@@ -13,6 +13,7 @@ import { vAwards, vBoard, vDecision } from './board.js';
 import { drawChart } from './chart.js';
 import { LOGO, meP, todo, V } from './common.js';
 import { crest } from './companies.js';
+import { deviceHead, deviceHtml, deviceTitle, sameKind, stopClosing, swapIn, zoomIn, zoomOut } from './devices.js';
 import { ICON } from './icons.js';
 import { vLobby } from './lobby.js';
 import { vMarket } from './market.js';
@@ -52,28 +53,24 @@ export function renderTop(): void {
     ${v.over ? '<button class="btn primary big endq" data-act="newGameDlg">Neues Spiel</button>' : `<button class="btn primary big endq" data-act="endQuarter" ${S.busy ? 'disabled' : ''}>Quartal beenden →</button>`}</div>`;
 }
 
-/** Areas: key, folder title and phone tab label. */
+/** Phone tabs: area key and label. */
 const AREAS = [
-  ['overview', 'Lagebericht', 'Büro'],
-  ['sites', 'Standorte', 'Standorte'],
-  ['market', 'Strommarkt', 'Markt'],
-  ['bank', 'Bank', 'Bank'],
-  ['board', 'Vorstand', 'Vorstand'],
-  ['lobby', 'Hinterzimmer', 'Lobby'],
-  ['rivals', 'Konkurrenz', 'Konkurrenz'],
-  ['awards', 'Auszeichnungen', 'Pokale'],
-  ['news', 'Zeitung', 'Zeitung'],
+  ['overview', 'Büro'],
+  ['sites', 'Standorte'],
+  ['market', 'Markt'],
+  ['bank', 'Bank'],
+  ['board', 'Vorstand'],
+  ['lobby', 'Lobby'],
+  ['rivals', 'Konkurrenz'],
+  ['awards', 'Pokale'],
+  ['news', 'Zeitung'],
 ] as const;
-const FOLDER_TITLE: Record<string, string> = {
-  ...Object.fromEntries(AREAS.map(([k, t]) => [k, t])),
-  decision: 'Handy',
-};
 
 function renderTabs(): void {
   const n = todo().length + (V().me.decision ? 1 : 0);
   $('#tabs')!.innerHTML = isPhone()
     ? AREAS.map(
-        ([k, , l]) =>
+        ([k, l]) =>
           `<button class="tab" role="tab" aria-selected="${UI.tab === k}" data-act="tab" data-v="${k}">${ICON[k]}<span>${l}</span>${k === 'overview' && n ? ` <span class="badge">${n}</span>` : ''}</button>`,
       ).join('')
     : '';
@@ -131,35 +128,45 @@ function renderView(): void {
   registerScenes();
 }
 
-/** Desktop: the open folder on the desk, with binder tabs for the areas. */
+/** Desktop: the opened object (laptop, phone, newspaper, …) in front of the office, with a back button. */
 function renderFolder(phone: boolean): void {
   const layer = $('#folder')!;
   const k = phone ? null : UI.folder;
   if (!k) {
-    layer.hidden = true;
-    layer.innerHTML = '';
+    if (shownFolder === null) return;
+    const was = shownFolder;
     shownFolder = null;
+    const hide = () => {
+      layer.hidden = true;
+      layer.innerHTML = '';
+    };
+    if (phone) {
+      stopClosing();
+      hide();
+    } else zoomOut(was, layer, hide);
     return;
   }
+  const time = PHONE_TIME[V().q]!;
   const sheet = layer.querySelector<HTMLElement>('.sheet');
-  const scroll = shownFolder === k && sheet ? sheet.scrollTop : 0;
-  const tabs = AREAS.map(
-    ([a, t]) =>
-      `<button class="ftab" role="tab" aria-selected="${a === k}" data-act="tab" data-v="${a}">${ICON[a]}<span>${t}</span></button>`,
-  ).join('');
-  const html = `<div class="folder${shownFolder === null ? ' enter' : ''}" role="dialog" aria-modal="true" aria-label="${FOLDER_TITLE[k] ?? ''}">
-    <div class="ftabs" role="tablist">${tabs}</div>
-    <div class="fbody"><div class="fhead"><h2>${FOLDER_TITLE[k] ?? ''}</h2><span class="clip" aria-hidden="true"></span><button class="btn small" data-act="closeFolder">✕ Zurück ins Büro</button></div>
-    <div class="sheet" tabindex="-1">${(VIEWS[k] ?? vOverview)()}</div></div></div>`;
-  if (sheet && shownFolder !== null) {
-    // the folder stays open: swap the content, keep the landscape canvases and the scroll position
-    layer.querySelector('.ftabs')!.outerHTML = `<div class="ftabs" role="tablist">${tabs}</div>`;
-    layer.querySelector('.fhead h2')!.textContent = FOLDER_TITLE[k] ?? '';
+  if (sheet && shownFolder !== null && sameKind(shownFolder, k)) {
+    // the object stays: swap the content, keep the landscape canvases (and the scroll position on a re-render)
+    const scroll = shownFolder === k ? sheet.scrollTop : 0;
+    const dev = layer.querySelector<HTMLElement>('.dev')!;
+    if (shownFolder !== k) {
+      dev.dataset.area = k;
+      dev.setAttribute('aria-label', deviceTitle(k));
+      dev.querySelector('.dhead')!.outerHTML = deviceHead(k);
+    }
     swapKeepingScenes(sheet, (VIEWS[k] ?? vOverview)());
     sheet.scrollTop = scroll;
   } else {
-    layer.innerHTML = html;
+    const opening = shownFolder === null;
+    if (opening) stopClosing();
+    layer.innerHTML = deviceHtml(k, (VIEWS[k] ?? vOverview)(), time);
     layer.hidden = false;
+    const dev = layer.querySelector<HTMLElement>('.dev')!;
+    if (opening) zoomIn(k, layer, dev);
+    else swapIn(dev);
     layer.querySelector<HTMLElement>('.sheet')?.focus({ preventScroll: true });
     SND.paper();
   }

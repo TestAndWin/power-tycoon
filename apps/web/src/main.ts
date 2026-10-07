@@ -262,7 +262,7 @@ async function startGame(): Promise<void> {
   }
 }
 
-/** Opens an area: a folder on the desk, or a tab on the phone. */
+/** Opens an area: the object in the office, or a tab on the phone. */
 function openArea(v: string): void {
   UI.tab = v;
   UI.folder = isPhone() ? null : v;
@@ -440,7 +440,7 @@ document.addEventListener('keydown', (e) => {
     else if ($('[data-act="rulesBack"]')) rulesBack();
   } else if (UI.folder) A.closeFolder!('', document.body);
 });
-// a click on the dimmed office around the folder closes it
+// a click on the dimmed office around the opened object closes it
 document.addEventListener('click', (e) => {
   if (e.target === $('#folder') && UI.folder) A.closeFolder!('', document.body);
 });

@@ -41,12 +41,14 @@ the hotspots are real buttons laid over the canvas, so tab order and screen read
 | Smartphone on the desk | Decision cards, calls | vibrates and lights up with the caller when a decision card or a rival call comes in |
 | Big stamp on the desk | End quarter | stamp animation on the quarter report |
 
-The bank has no object in the room (a safe looked out of place in every building): it opens from the cash
-figure in the top bar and from the folder tabs.
+The bank opens from the screen on the desk and from the cash figure in the top bar.
 
-Areas open as a **folder that slides onto the desk** (overlay over the dimmed office) instead of a tab
-switch. The content of today's views is reused, restyled as paper: binder tabs, paper clips, rubber
-stamps, typewriter numbers for figures. `Esc` or a click on the office closes the folder.
+On desktop, clicking an object **zooms the camera into it**: the office scales up around the object and
+blurs, and the area appears as that object at full size – the laptop for the situation report and the bank,
+the exchange monitor for the power market, the phone for decisions, the newspaper, the map table for the
+sites, the pinboard for the rivals, the trophy cabinet, the board's dossier and the back room for the
+lobby. There are no tabs to jump between areas; a "Zurück" button (or `Esc`, or a click on the office)
+zooms back out. Links inside an area (e.g. "Alle" news) swap the object without leaving the zoom.
 
 **Documents instead of dialogs**
 
@@ -171,9 +173,9 @@ rival folder.
 - Office scene: `apps/web/src/scene/office.ts`, drawn in layers (wall, window with landscape crop, furniture,
   objects, people, light), reusing `effects.ts` (texture, vignette) and `palette.ts`. The HQ level picks the
   room. Hotspots are HTML buttons absolutely positioned from the same geometry the scene uses.
-- Folder overlay: `ui/folder.ts`; today's `vSites`, `vMarket`, … render into it unchanged at first, then get
-  the paper look step by step. `UI.tab` stays as the state of the open area so phone tabs and desktop
-  folders share it.
+- Opened objects: `ui/devices.ts` (object per area, camera zoom); `vSites`, `vMarket`, … render into the
+  object's screen or sheet. `UI.tab` stays as the state of the open area so phone tabs and desktop objects
+  share it.
 - Engine: new actions `hireExecutive`, `fireExecutive`, `decide`, `upgradeHq`; new state `Player.board`,
   `Player.hq`, `Player.decision`; view fields for them; new events (`executiveHired`, `decisionOffered`,
   `decisionTaken`, `hqUpgraded`, `awardWon`). All in `API.md` and `ARCHITECTURE.md` once implemented.
