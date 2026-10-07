@@ -927,7 +927,8 @@ class Planner {
     for (const [r, mw] of Object.entries(need) as [RegionKey, number][]) {
       const g = this.v.grid[r];
       let have = g.myReserved;
-      let free = this.free[r];
+      // new reservations only fit into capacity nobody (not even this rival) has reserved
+      let free = this.free[r] - have;
       // only worth it when capacity is getting scarce
       if (g.capacity - g.used - g.reserved > mw + 150) continue;
       // with foresight: as many blocks as needed (e.g. two for an offshore park)

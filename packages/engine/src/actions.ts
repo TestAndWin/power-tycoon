@@ -57,6 +57,7 @@ import {
   termStart,
   trickOdds,
   trickTargets,
+  unreservedGrid,
 } from './rules.js';
 import type {
   Action,
@@ -303,9 +304,10 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     },
   },
   reserveGrid: {
-    validate({ g, pid, a }) {
+    validate({ g, a }) {
       if (!regionOk(a.region)) return 'unknownRegion';
-      return freeGrid(g, a.region, pid) < RESERVE_MW ? 'noGridCapacity' : null;
+      // own reservations do not count as free here, or the same capacity could be reserved twice
+      return unreservedGrid(g, a.region) < RESERVE_MW ? 'noGridCapacity' : null;
     },
     price: () => RESERVE_COST,
     execute({ g, p, pid, a }, cost, out) {

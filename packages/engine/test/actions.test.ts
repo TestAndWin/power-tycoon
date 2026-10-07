@@ -282,6 +282,13 @@ describe('grid', () => {
     fails(g, { type: 'reserveGrid', region: 'nd' }, 'noGridCapacity');
     fails(g, { type: 'reserveGrid', region: 'xx' as 'nd' }, 'unknownRegion');
   });
+  it('does not reserve the same capacity twice', () => {
+    const g = newGame();
+    g.res.push({ pid: 1, r: 'nd', mw: 230, left: 3 });
+    const r = ok(g, { type: 'reserveGrid', region: 'nd' });
+    fails(r.state, { type: 'reserveGrid', region: 'nd' }, 'noGridCapacity');
+    expect(playerView(r.state, 0).grid.nd.free).toBe(70);
+  });
 });
 
 describe('repairs and selling', () => {
