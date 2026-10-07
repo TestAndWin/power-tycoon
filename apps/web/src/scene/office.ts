@@ -108,6 +108,9 @@ export function officeHotspots(
   ];
 }
 
+/** The desk lamp: a light switch, not an area. */
+export const LAMP_HOTSPOT: [number, number, number, number] = [356, 600, 190, 190];
+
 /* ---------- drawing state ---------- */
 
 let cv: HTMLCanvasElement | null = null;
@@ -122,6 +125,20 @@ let raf = 0;
 let last = 0;
 let grain: CanvasPattern | null = null;
 const images = new Map<string, HTMLImageElement>();
+/** Desk lamp switched by the player; only holds for the quarter it was switched in. */
+let lampSwitch: { q: number; on: boolean } | null = null;
+
+/** Desk lamp: lit in winter and autumn unless the player switched it this quarter. */
+function lampLit(q: number): boolean {
+  return lampSwitch?.q === q ? lampSwitch.on : q === 0 || q === 3;
+}
+
+/** Switches the desk lamp on or off. */
+export function toggleLamp(): void {
+  if (!data) return;
+  lampSwitch = { q: data.q, on: !lampLit(data.q) };
+  draw();
+}
 
 /** Shows the office in `canvas` (call after every render; the canvas may be the same as before). */
 export function showOffice(canvas: HTMLCanvasElement | null, d: OfficeData): void {
@@ -1194,7 +1211,7 @@ function terminal(d: OfficeData): void {
 }
 function lamp(q: number): void {
   const c = ctx!,
-    lit = q === 0 || q === 3;
+    lit = lampLit(q);
   if (lit) {
     const g = c.createRadialGradient(470, 760, 10, 470, 760, 260);
     g.addColorStop(0, 'rgba(255,220,130,.45)');
