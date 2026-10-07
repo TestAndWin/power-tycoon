@@ -27,7 +27,7 @@ export interface OfficeData {
   price: number;
   priceDelta: number;
   priceHist: number[];
-  /** Bank terminal on the desk: cash and loan in euros. */
+  /** Laptop on the desk: cash and loan in euros. */
   cash: number;
   loan: number;
   ticker: string;
@@ -101,7 +101,7 @@ export function officeHotspots(
       label: 'Fenster · Lagebericht',
       r: [w.x, w.y, Math.min(w.w, 1370 - w.x), Math.min(w.h, 520 - w.y)],
     },
-    { k: 'bank', label: 'Bildschirm · Bank', r: [920, 580, 280, 220], desk: true },
+    { k: 'bank', label: 'Laptop · Bank', r: [836, 664, 302, 244], desk: true },
     { k: 'board', label: 'Namensschild · Vorstand & Firmensitz', r: [572, 740, 256, 60], desk: true },
     { k: 'news', label: 'Zeitung · Nachrichten', r: [536, 812, 310, 180], desk: true },
     { k: 'decision', label: 'Handy · Entscheidung', r: [1300, 760, 140, 200], desk: true },
@@ -1179,38 +1179,40 @@ function desk(hq: HqLevel): void {
   c.stroke();
   c.setLineDash([]);
 }
-/** The bank terminal on the desk: a display with cash and loan, a keyboard in front. */
+/** The laptop on the desk: the bank app with cash and loan on its screen, the keyboard on its base. */
 function terminal(d: OfficeData): void {
   const c = ctx!;
-  line(1060, 748, 1060, 790, INK, 9);
-  shape(ell(1060, 794, 50, 9), '#3a3530', 2.5);
-  shape(rr(920, 580, 280, 170, 12), '#3a3530', 3, 7);
-  shape(rr(934, 594, 252, 138, 6), '#17222b', 2);
-  text('BANK', 952, 624, `700 18px ${DISPLAY}`, '#c9a65a');
-  text('KASSE', 952, 664, `500 12px ${MONO}`, '#8fa3b0');
-  text(money(d.cash), 1170, 664, `600 19px ${MONO}`, d.cash < 0 ? '#ff8a7a' : '#7fd18b', 'right');
-  text('KREDIT', 952, 702, `500 12px ${MONO}`, '#8fa3b0');
-  text(money(d.loan), 1170, 702, `600 19px ${MONO}`, d.loan > 0 ? '#f2b53a' : '#9fd4a8', 'right');
-  if (!RMO && Math.sin(T * 4) > 0) shape(rr(952, 712, 10, 13, 1), '#9fd4a8', 0);
+  // base with keyboard and touchpad, seen from the front
   shape(
     poly([
-      [890, 874],
-      [1094, 874],
-      [1112, 940],
-      [872, 940],
+      [866, 836],
+      [1104, 836],
+      [1134, 900],
+      [836, 900],
     ]),
-    '#e6dcc6',
+    '#c9c1b2',
     3,
     5,
   );
+  shape(rr(832, 898, 306, 10, 4), '#a59d8f', 2.5);
   c.fillStyle = 'rgba(42,32,22,.35)';
-  for (let row = 0; row < 4; row++) {
-    const y = 881 + row * 14,
-      f = (y - 874) / 66,
-      x0 = 890 - f * 18 + 8,
-      x1 = 1094 + f * 18 - 8;
-    for (let k = 0; k < 12; k++) c.fillRect(x0 + (k * (x1 - x0)) / 12, y, (x1 - x0) / 12 - 3, 9);
+  for (let row = 0; row < 3; row++) {
+    const y = 842 + row * 12,
+      f = (y - 836) / 64,
+      x0 = 866 - f * 30 + 12,
+      x1 = 1104 + f * 30 - 12;
+    for (let k = 0; k < 12; k++) c.fillRect(x0 + (k * (x1 - x0)) / 12, y, (x1 - x0) / 12 - 3, 8);
   }
+  shape(rr(948, 880, 74, 14, 3), '#bdb5a6', 1.5);
+  // lid with the screen
+  shape(rr(870, 664, 230, 174, 12), '#3a3530', 3, 7);
+  shape(rr(882, 676, 206, 150, 6), '#17222b', 2);
+  text('BANK', 898, 704, `700 17px ${DISPLAY}`, '#c9a65a');
+  text('KASSE', 898, 744, `500 11px ${MONO}`, '#8fa3b0');
+  text(money(d.cash), 1074, 744, `600 17px ${MONO}`, d.cash < 0 ? '#ff8a7a' : '#7fd18b', 'right');
+  text('KREDIT', 898, 782, `500 11px ${MONO}`, '#8fa3b0');
+  text(money(d.loan), 1074, 782, `600 17px ${MONO}`, d.loan > 0 ? '#f2b53a' : '#9fd4a8', 'right');
+  if (!RMO && Math.sin(T * 4) > 0) shape(rr(898, 794, 10, 13, 1), '#9fd4a8', 0);
 }
 function lamp(q: number): void {
   const c = ctx!,

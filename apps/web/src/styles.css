@@ -2803,6 +2803,14 @@ body.zoom #view {
 .dev-monitor {
   width: min(1320px, 100%);
 }
+/* both laptops (Lagebericht, Bank) open at the same size, whatever their content */
+.dev-laptop {
+  height: calc(100dvh - 32px);
+}
+.dev-laptop .dframe,
+.dev-laptop .sheet {
+  flex: 1;
+}
 .dev-laptop .dframe,
 .dev-monitor .dframe {
   background: linear-gradient(180deg, #3a332b, #231d17);
