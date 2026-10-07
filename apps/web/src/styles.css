@@ -2924,9 +2924,11 @@ body.zoom #view {
 
 /* phone (Entscheidung) */
 .dev-phone {
-  width: min(460px, 100%);
+  /* a real phone is about 19.5:9 – the width follows the available height */
+  width: min(440px, 100%, (100dvh - 32px) * 9 / 19.5);
 }
 .dev-phone .dframe {
+  aspect-ratio: 9 / 19.5;
   background: #1d1915;
   border: 3px solid var(--edge);
   border-radius: 46px;
@@ -2968,6 +2970,7 @@ body.zoom #view {
   transform: translateX(-36px);
 }
 .dev-phone .sheet {
+  flex: 1;
   border-radius: 0 0 34px 34px;
   padding: 14px;
 }
