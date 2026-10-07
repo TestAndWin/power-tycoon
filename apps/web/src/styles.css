@@ -1014,31 +1014,75 @@ h3 {
 .sites {
   display: grid;
   grid-template-columns: clamp(130px, 13vw, 180px) minmax(0, 1fr) 340px;
-  grid-template-areas:
-    'regions board detail'
-    'regions acts detail';
-  grid-template-rows: auto 1fr;
+  grid-template-areas: 'regions board detail';
   gap: 18px;
   align-items: start;
 }
-/* the actions of the selected site lie below the landscape, side by side */
-.siteacts {
-  grid-area: acts;
+/* hover texts: the region's description next to its card, longer explanations behind an (i) */
+.tip {
+  position: absolute;
+  z-index: 20;
+  width: max-content;
+  max-width: 260px;
+  padding: 8px 10px;
+  border: 2px solid var(--edge);
+  border-radius: 8px;
+  background: #2a2016;
+  color: #f3e6c8;
+  font: 400 12.5px/1.45 var(--sans);
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  white-space: normal;
+  box-shadow: var(--shadow-sm);
+  /* not just transparent: a hidden tip must not widen the page */
+  display: none;
+  pointer-events: none;
 }
-.siteacts .actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  align-items: start;
+.rcwrap {
+  position: relative;
 }
-.siteacts .actions > p {
-  grid-column: 1 / -1;
+.rcwrap > .tip {
+  left: calc(100% + 12px);
+  top: 12px;
 }
-.siteacts .actions > .sizes {
-  grid-column: span 2;
+.rcwrap:hover > .tip,
+.rcwrap:has(.rcard:focus-visible) > .tip {
+  display: block;
 }
-.siteacts .sizeopt {
-  padding: 6px 10px;
-  font-size: 11.5px;
+.info {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--edge);
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--ink);
+  font:
+    italic 700 11px/1 Georgia,
+    serif;
+  vertical-align: middle;
+  cursor: help;
+}
+.info > .tip {
+  right: -8px;
+  top: calc(100% + 6px);
+}
+.info:hover > .tip,
+.info:focus > .tip {
+  display: block;
+}
+.withinfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.withinfo > .btn {
+  flex: 1;
 }
 .rcards {
   grid-area: regions;
@@ -1048,6 +1092,7 @@ h3 {
 }
 .rcard {
   appearance: none;
+  width: 100%;
   padding: 0;
   border: 2px solid var(--edge);
   border-radius: 12px;
@@ -1065,7 +1110,7 @@ h3 {
     transform 0.12s,
     box-shadow 0.12s;
 }
-.rcard:nth-child(2n) {
+.rcwrap:nth-child(2n) .rcard {
   --tilt: 0.7deg;
 }
 .rcard:hover:not([aria-pressed='true']) {
@@ -1147,7 +1192,7 @@ h3 {
 }
 .rclimate {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 6px;
 }
 .ctok {
@@ -1183,23 +1228,26 @@ h3 {
 .rinfo {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 20px;
+  gap: 8px 18px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 7px 12px;
   border: 2px solid var(--edge);
   border-radius: 12px;
   background: var(--grain), var(--surface);
   box-shadow: var(--shadow-sm);
 }
 .rinfo .reserve {
-  flex-direction: column;
-  gap: 0;
-  line-height: 1.2;
-  padding: 6px 12px;
+  flex: none;
 }
-.rdesc {
-  margin: 0;
-  font-size: 12.5px;
+/* one flat row above the map: the symbols say wind and sun */
+.rinfo .ctok .label {
+  display: none;
+}
+.rinfo .gridwrap {
+  min-width: 150px;
+}
+.rinfo .gridwrap .row {
+  white-space: nowrap;
 }
 .sites #detail {
   grid-area: detail;
@@ -1345,7 +1393,7 @@ h3 {
 @media (min-width: 981px) {
   .sites .scene {
     width: 100%;
-    max-width: max(360px, calc((100dvh - 580px) * 5 / 3));
+    max-width: max(420px, calc((100dvh - 250px) * 5 / 3));
     margin-inline: auto;
   }
 }
@@ -1449,50 +1497,6 @@ h3 {
   font: 800 9px/1 var(--sans);
   font-style: normal;
   box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--oc) 70%, #fff);
-}
-.olegend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  margin-top: 12px;
-}
-.ochip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px 3px 3px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 700;
-  background: color-mix(in srgb, var(--oc) 14%, var(--surface));
-  border: 2px solid var(--edge);
-}
-.ochip .crest {
-  box-shadow: none;
-  border-width: 1.5px;
-}
-.ochip b {
-  font-family: var(--mono);
-  font-weight: 600;
-  color: var(--muted);
-}
-.ochip.me {
-  background: color-mix(in srgb, var(--oc) 22%, var(--surface));
-}
-.ochip.zero {
-  opacity: 0.55;
-}
-.ochip.free {
-  --oc: var(--muted);
-  background: var(--surface);
-  border-style: dashed;
-}
-.ochip.free .mb {
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border: 1.5px dashed var(--muted);
-  box-shadow: none;
 }
 .obar {
   display: flex;
@@ -2350,6 +2354,10 @@ svg.live .pulse {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
   }
+  /* the region cards lie side by side: no room for a description next to them */
+  .rcwrap > .tip {
+    display: none !important;
+  }
   .rcard,
   .rcard[aria-pressed='true'] {
     transform: none;
@@ -2374,9 +2382,6 @@ svg.live .pulse {
   }
   .sites #detail {
     position: static;
-  }
-  .siteacts .actions > .sizes {
-    grid-column: 1 / -1;
   }
 }
 @media (max-width: 760px) {
@@ -2541,9 +2546,6 @@ svg.live .pulse {
     font-size: 8px;
     padding: 0 3px;
     white-space: nowrap;
-  }
-  .ochip {
-    font-size: 11px;
   }
   .bdelta b {
     font-size: 15px;
@@ -3125,6 +3127,7 @@ body.zoom #view {
 }
 /* the map table keeps its height: the detail card changes length with every selected site */
 .dev-table {
+  width: min(1760px, 100%);
   height: calc(100dvh - 32px);
 }
 .dev-table .dframe,

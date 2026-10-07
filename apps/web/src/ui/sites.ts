@@ -40,9 +40,10 @@ function gridBar(r: RegionKey): string {
   const seg = V()
     .players.map((p) => ({ c: playerColor(p.id), mw: g.usedBy[p.id] ?? 0 }))
     .filter((s) => s.mw > 0);
-  return `<div class="gridwrap"><div class="row" style="justify-content:space-between"><span class="label">Netzkapazität</span><span class="mono" style="font-size:12px">${g.used} + ${g.reserved} res. / ${cap} MW</span></div>
-    <div class="gridbar" role="img" aria-label="${g.used} MW belegt, ${g.reserved} MW reserviert, ${cap} MW gesamt">${seg.map((s) => `<i style="width:${(s.mw / cap) * 100}%;background:${s.c}"></i>`).join('')}${g.reserved ? `<i class="res" style="width:${(g.reserved / cap) * 100}%"></i>` : ''}</div>
-    <span class="muted" style="font-size:12px">Frei für dich: ${g.free} MW${g.myReserved ? ` (davon ${reservationText(g.myReservations)})` : ''}</span></div>`;
+  // used and reserved capacity in the bar's tooltip, so the row above the map stays flat
+  const detail = `${g.used} MW belegt + ${g.reserved} MW reserviert von ${cap} MW`;
+  return `<div class="gridwrap" title="${detail}"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span class="label">Netz</span><span style="font-size:12px"><span class="mono">${g.free} MW</span> <span class="muted">frei für dich</span>${g.myReserved ? ' ' + info(`Davon ${reservationText(g.myReservations)}.`) : ''}</span></div>
+    <div class="gridbar" role="img" aria-label="${detail}">${seg.map((s) => `<i style="width:${(s.mw / cap) * 100}%;background:${s.c}"></i>`).join('')}${g.reserved ? `<i class="res" style="width:${(g.reserved / cap) * 100}%"></i>` : ''}</div></div>`;
 }
 export function ownBar(r: RegionKey): string {
   const Sx = V().sites.filter((x) => x.r === r);
@@ -53,51 +54,41 @@ export function ownBar(r: RegionKey): string {
     })
     .join('')}</span>`;
 }
-function ownerLegend(r: RegionKey): string {
-  const Sx = V().sites.filter((x) => x.r === r),
-    free = Sx.filter((x) => x.owner < 0).length;
-  return `<div class="olegend" aria-label="Flächen je Konzern">${V()
-    .players.filter((p) => !p.out)
-    .map((p) => {
-      const n = Sx.filter((x) => x.owner === p.id).length;
-      return `<span class="ochip${n ? '' : ' zero'}${p.human ? ' me' : ''}" style="--oc:${playerColor(p.id)}">${crest(p.id, 20)}${esc(p.human ? 'Du · ' + p.name : p.name)}<b>${n}</b></span>`;
-    })
-    .join('')}<span class="ochip free"><i class="mb"></i>Frei<b>${free}</b></span></div>`;
+/** A small (i) that shows a longer explanation on hover or focus. */
+function info(text: string): string {
+  return `<span class="info" tabindex="0" role="note" aria-label="${esc(text)}">i<span class="tip" aria-hidden="true">${esc(text)}</span></span>`;
 }
 export function vSites(): string {
   const v = V(),
     r = UI.region,
-    R = REGIONS[r],
-    d = detail();
+    R = REGIONS[r];
   // the regions as picture cards, each with its own little landscape
   const cards = REGION_KEYS.map((k) => {
     const n = v.sites.filter((x) => x.r === k && x.owner === v.playerId).length;
-    return `<button class="rcard" aria-pressed="${k === r}" data-act="region" data-v="${k}"><canvas data-scene="${k}" data-mini="1" aria-hidden="true"></canvas><span class="rcap"><b>${REGION_TEXT[k].name}</b><span class="n">${n}/${SITES_PER_REGION}</span>${ownBar(k)}</span></button>`;
+    // the region's description appears next to the card on hover
+    return `<div class="rcwrap"><button class="rcard" aria-pressed="${k === r}" data-act="region" data-v="${k}" aria-description="${esc(REGION_TEXT[k].desc)}"><canvas data-scene="${k}" data-mini="1" aria-hidden="true"></canvas><span class="rcap"><b>${REGION_TEXT[k].name}</b><span class="n">${n}/${SITES_PER_REGION}</span>${ownBar(k)}</span></button><span class="tip" aria-hidden="true">${REGION_TEXT[k].desc} ★ markiert deine Flächen.</span></div>`;
   }).join('');
   const climate = [
     R.wind
-      ? `<span class="ctok"><i aria-hidden="true">≋</i><span class="label">Wind</span>${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</span>`
+      ? `<span class="ctok" title="Wind"><i aria-hidden="true">≋</i><span class="label">Wind</span>${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</span>`
       : '',
     R.sun
-      ? `<span class="ctok"><i aria-hidden="true">☀</i><span class="label">Sonne</span>${R.sun[0]}–${R.sun[1]} kWh/kWp</span>`
+      ? `<span class="ctok" title="Sonne"><i aria-hidden="true">☀</i><span class="label">Sonne</span>${R.sun[0]}–${R.sun[1]} kWh/kWp</span>`
       : '',
   ].join('');
   return `<div class="sites">
     <nav class="rcards" aria-label="Region">${cards}</nav>
     <section class="rboard">
-      <div class="scene"><canvas data-scene="${r}" aria-hidden="true"></canvas><div class="hits">${hits(r)}</div>
-        <div class="rplate"><b>${REGION_TEXT[r].name}</b><span>${R.types.map((t) => PLANT_NAME[t]).join(' · ')}</span></div>
-      </div>
       <div class="rinfo">
         <div class="rclimate">${climate}</div>
         ${gridBar(r)}
-        <button class="btn reserve" data-act="reserve" data-v="${r}" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)} · ${v.constants.reserveQuarters} Q</small></button>
+        <button class="btn small reserve" data-act="reserve" data-v="${r}" title="Hält ${v.constants.reserveMw} MW Netzkapazität ${v.constants.reserveQuarters} Quartale für dich frei" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)}</small></button>
       </div>
-      ${ownerLegend(r)}
-      <p class="rdesc muted">${REGION_TEXT[r].desc} ★ markiert deine Flächen.</p>
+      <div class="scene"><canvas data-scene="${r}" aria-hidden="true"></canvas><div class="hits">${hits(r)}</div>
+        <div class="rplate"><b>${REGION_TEXT[r].name}</b><span>${R.types.map((t) => PLANT_NAME[t]).join(' · ')}</span></div>
+      </div>
     </section>
-    <aside class="panel" id="detail">${d.card}</aside>
-    <section class="panel siteacts" id="siteacts" aria-label="Aktionen"${d.acts ? '' : ' hidden'}>${d.acts}</section>
+    <aside class="panel" id="detail">${detail()}</aside>
   </div>`;
 }
 /**
@@ -105,14 +96,10 @@ export function vSites(): string {
  * so the landscape canvas keeps running instead of flickering.
  */
 export function selectSite(id: string): boolean {
-  const panel = document.getElementById('detail'),
-    acts = document.getElementById('siteacts');
-  if (!panel || !acts) return false;
+  const panel = document.getElementById('detail');
+  if (!panel) return false;
   document.querySelectorAll<HTMLElement>('.hits .hit').forEach((h) => h.classList.toggle('sel', h.dataset.v === id));
-  const d = detail();
-  panel.innerHTML = d.card;
-  acts.innerHTML = d.acts;
-  acts.hidden = !d.acts;
+  panel.innerHTML = detail();
   redrawStill();
   return true;
 }
@@ -147,19 +134,13 @@ function storeFeeders(r: RegionKey): string {
     ? `Lädt mit Strom deiner Anlagen ${feeders.map(siteName).join(', ')} und verkauft ihn zu teuren Zeiten – dafür gibt es den vollen Spread. ${rule}`
     : `Keine eigene Anlage in dieser Region liefert Strom. ${rule} Bau hier eigene Kraftwerke dazu.`;
 }
-/**
- * Facts (the card on the right) and actions (below the landscape, where there is room) of the selected site.
- * The actions are exactly the engine's options for it.
- */
-function detail(): { card: string; acts: string } {
+/** Facts and actions of the selected site. The actions are exactly the engine's options for it. */
+function detail(): string {
   const v = V();
   const x = v.sites.find((s) => s.id === UI.sel);
   if (!x)
-    return {
-      acts: '',
-      card: `<h3>Standort wählen</h3><p class="muted">Tipp auf eine Fläche, um Details zu sehen.</p>
-    <dl class="facts"><dt>1. Pachten</dt><dd>Fläche sichern</dd><dt>2. Genehmigung</dt><dd>1–5 Quartale</dd><dt>3. Bauen</dt><dd>Standortsuche & Montage</dd><dt>4. Netz</dt><dd>Anschluss-Puzzle</dd></dl>`,
-    };
+    return `<h3>Standort wählen</h3><p class="muted">Tipp auf eine Fläche, um Details zu sehen.</p>
+    <dl class="facts"><dt>1. Pachten</dt><dd>Fläche sichern</dd><dt>2. Genehmigung</dt><dd>1–5 Quartale</dd><dt>3. Bauen</dt><dd>Standortsuche & Montage</dd><dt>4. Netz</dt><dd>Anschluss-Puzzle</dd></dl>`;
   const s = siteStatus(x),
     own = x.owner >= 0,
     mine = x.owner === v.playerId;
@@ -181,7 +162,7 @@ function detail(): { card: string; acts: string } {
     if (x.built) f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.own.eff * 100)} %</dd>`;
     if (operating(x))
       f += isStore(x.type)
-        ? `<dt>Speicherertrag/Quartal</dt><dd>≈ ${money(x.own.storeRevenue, true)}</dd><dt>Eigener Strom</dt><dd>≈ ${mwh(x.own.storeOwnMwh)} von ${mwh(x.own.storeCapacity)}</dd>`
+        ? `<dt>Speicherertrag/Quartal ${info(storeFeeders(x.r))}</dt><dd>≈ ${money(x.own.storeRevenue, true)}</dd><dt>Eigener Strom</dt><dd>≈ ${mwh(x.own.storeOwnMwh)} von ${mwh(x.own.storeCapacity)}</dd>`
         : `<dt>Erzeugung ${QN[v.q]}</dt><dd>≈ ${mwh(x.own.genEstimate)}</dd>`;
     f += `<dt>Wert</dt><dd>${money(x.own.value, true)}</dd>`;
   }
@@ -193,10 +174,6 @@ function detail(): { card: string; acts: string } {
     else if (x.permit === 'pending')
       f += `<dt>Genehmigung</dt><dd>noch ${Math.max(1, x.intel.permitLeft)} Q <span class="chip sab">Spionage</span></dd>`;
   }
-  const storeNote =
-    mine && x.type && isStore(x.type)
-      ? `<p class="muted" style="font-size:12px;margin:8px 0 0">${storeFeeders(x.r)}</p>`
-      : '';
   const regionTypes = REGIONS[x.r].types;
   // permit buttons carry the chosen size
   const pv = (t: PlantType) => `${x.id}|${t}|${UI.size}`;
@@ -236,13 +213,12 @@ function detail(): { card: string; acts: string } {
         break;
       case 'repower': {
         const L = plantDef(x.type!, 'large');
-        a.push(btn('repower', x.id, `Repowering auf ${L.mw} MW`, opt));
         a.push(
-          `<p class="muted" style="font-size:12px;margin:0">${
+          `<div class="withinfo">${btn('repower', x.id, `Repowering auf ${L.mw} MW`, opt)}${info(
             opt.error === 'noGridCapacity'
               ? `Für das Repowering fehlen ${repowerMw(x.type!)} MW freie Netzkapazität.`
-              : `Größere Anlage auf derselben Fläche: +${repowerMw(x.type!)} MW, dafür ein Quartal Stillstand.`
-          }</p>`,
+              : `Größere Anlage auf derselben Fläche: +${repowerMw(x.type!)} MW, dafür ein Quartal Stillstand.`,
+          )}</div>`,
         );
         break;
       }
@@ -267,11 +243,11 @@ function detail(): { card: string; acts: string } {
   const rethink = !!x.type && x.permit !== 'rejected';
   if (rethink && permits.length) {
     a.push(
-      `<p class="muted" style="font-size:12px;margin:6px 0 0">${
+      `<p class="label" style="margin:6px 0 0">Umplanen – stattdessen beantragen ${info(
         x.permit === 'approved'
-          ? `Umplanen: Die Genehmigung für ${PLANT_NAME[x.type!]} bleibt gültig, bis über den neuen Antrag entschieden ist.${x.own?.alt ? ' Bauen verwirft den laufenden Antrag.' : ''}`
-          : 'Umplanen: Ein neuer Antrag ersetzt den laufenden – dessen Kosten sind verloren.'
-      } Stattdessen beantragen:</p>`,
+          ? `Die Genehmigung für ${PLANT_NAME[x.type!]} bleibt gültig, bis über den neuen Antrag entschieden ist.${x.own?.alt ? ' Bauen verwirft den laufenden Antrag.' : ''}`
+          : 'Ein neuer Antrag ersetzt den laufenden – dessen Kosten sind verloren.',
+      )}</p>`,
       ...permits.map(({ t, opt }) => btn('permit', pv(t), pname(t), opt)),
     );
     permits.length = 0;
@@ -301,10 +277,7 @@ function detail(): { card: string; acts: string } {
         `<button class="btn" data-act="trickGo" data-v="${x.id}|${lt}"><span>Lobby-Aktion planen …</span></button>`,
       );
   }
-  return {
-    card: `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl>${mine ? stamps(x) : ''}${storeNote}`,
-    acts: a.length ? `<div class="actions">${a.join('')}</div>` : '',
-  };
+  return `${band}<div class="phead"><h3>${siteName(x)}</h3><span class="chip ${s.k}">${s.t}</span></div><dl class="facts">${f}</dl>${mine ? stamps(x) : ''}<div class="actions">${a.join('')}</div>`;
 }
 
 /** The stamps on the papers of an own site: lease contract and the authority's decision. */
