@@ -9,15 +9,28 @@ import { crest } from './companies.js';
 function spyRow(p: PlayerSummary): string {
   const v = V(),
     I = p.intel;
+  const fact = (k: string, val: string) => `<span><span class="k">${k}:</span> ${val}</span>`;
+  // the file on the rival: a compact sheet with the report, or one redacted line without it
   const facts = I
-    ? `<div class="secret"><span class="conf">VERTRAULICH</span><br>Gültig bis ${turnStr(v.startYear, I.until)}<br>Lieferverträge: ${I.contracts.length}<br>Vorstand: ${I.board.length ? I.board.map((e) => DEPT_TEXT[e.dept].short + ' (' + GRADE_TEXT[e.grade] + ')').join(', ') : 'niemand'}<br>Schutz: ${detectivesText(I.detectives)}<br>Tricks frei: ${I.tricksLeft}</div>`
-    : '<div class="secret"><span class="conf">VERTRAULICH</span><br>Verträge: <span class="redact" style="width:7em"></span><br>Vorstand: <span class="redact" style="width:9em"></span><br>Schutz: <span class="redact" style="width:6em"></span><br><span style="font-family:var(--sans)" class="muted">Ohne Bericht keine Lobby-Aktion gegen diesen Konzern.</span></div>';
+    ? `<div class="secret"><span class="conf">VERTRAULICH</span><div class="spyfacts">${[
+        fact('Gültig bis', turnStr(v.startYear, I.until)),
+        fact('Lieferverträge', String(I.contracts.length)),
+        fact(
+          'Vorstand',
+          I.board.length
+            ? I.board.map((e) => DEPT_TEXT[e.dept].short + ' (' + GRADE_TEXT[e.grade] + ')').join(', ')
+            : 'niemand',
+        ),
+        fact('Schutz', detectivesText(I.detectives)),
+        fact('Tricks frei', String(I.tricksLeft)),
+      ].join('')}</div></div>`
+    : '<div class="secret redacted"><span class="conf">VERTRAULICH</span><span>Verträge <span class="redact" style="width:2.5em"></span></span><span>Vorstand <span class="redact" style="width:4em"></span></span><span>Schutz <span class="redact" style="width:3em"></span></span></div>';
   const spy = { type: 'spy', targetId: p.id } as const;
-  return `<li class="spyrow">${crest(p.id, 22)}<div class="stack" style="gap:2px;min-width:0"><b>${esc(p.name)}</b>${facts}</div>${
+  return `<li class="spyrow"><div class="spyhead">${crest(p.id, 22)}<b>${esc(p.name)}</b>${
     I
       ? '<span class="chip good">Bericht liegt vor</span>'
-      : `<button class="btn" data-act="spy" data-v="${p.id}" ${disabledUnless(spy)}><span>Spion schicken</span><small>${money(v.constants.spyCost, true)}</small></button>`
-  }</li>`;
+      : `<button class="btn small" data-act="spy" data-v="${p.id}" ${disabledUnless(spy)}><span>Spion schicken</span><small>${money(v.constants.spyCost, true)}</small></button>`
+  }</div>${facts}</li>`;
 }
 
 function detectives(): string {
@@ -52,18 +65,18 @@ export function vLobby(): string {
   const noReport =
     !!target && optionFor({ type: 'lobby', trick: UI.trick, siteId: target.id })?.error === 'noSpyReport';
   const rivals = v.players.filter((p) => p.id !== v.playerId && !p.out);
-  return `<div class="grid g2"><section class="panel stack">
+  // two columns: what you do (tricks, detectives) and what you know (espionage, risk)
+  return `<div class="grid g2 lobby"><div class="stack"><section class="panel stack">
     <div class="phead"><h2>Lobby & Tricks</h2><span class="muted">${v.me.tricksLeft} Aktionen in diesem Quartal übrig</span></div>
     <div class="sab">${TRICK_KEYS.map((k) => `<button class="sabopt" aria-pressed="${UI.trick === k}" data-act="trick" data-v="${k}"><b>${TRICK_TEXT[k].name}</b><span class="mono">${money(v.tricks[k].cost, true)} · ${Math.round(v.tricks[k].chance * 100)} %</span><span class="muted" style="font-size:12px">${TRICK_TEXT[k].desc}</span></button>`).join('')}</div>
     <label for="trickTarget" class="label">Ziel</label>
     <select id="trickTarget" data-act="trickTarget">${ts.length ? '<option value="">Projekt wählen …</option>' + opts : '<option value="">Gerade kein passendes Ziel</option>'}</select>
     ${noReport ? `<p class="muted" style="margin:0;font-size:12px">Über ${esc(v.players[target!.owner]!.name)} liegt kein Spionagebericht vor – erst einen Spion schicken.</p>` : ''}
     <div class="row"><button class="btn primary big" data-act="doTrick" ${UI.target ? disabledUnless({ type: 'lobby', trick: UI.trick, siteId: UI.target }) : 'disabled'}>Auftrag vergeben · ${money(T.cost, true)}</button></div>
-  </section><section class="panel stack"><div class="phead"><h3>Spionage</h3><span class="muted">${money(v.constants.spyCost, true)} · ${v.constants.spyQuarters} Quartale gültig</span></div>
-    <p class="muted" style="margin:0">Ein Spion liefert Standortdaten, Wirkungsgrade, Genehmigungsstände und Lieferverträge eines Konzerns – und ist Voraussetzung für jede Lobby-Aktion gegen ihn. Detektive des Ziels können ihn enttarnen.</p>
+  </section>${detectives()}</div><div class="stack"><section class="panel stack"><div class="phead"><h3>Spionage</h3><span class="muted">${money(v.constants.spyCost, true)} · ${v.constants.spyQuarters} Quartale gültig</span></div>
+    <p class="muted" style="margin:0">Ein Spion liefert Standortdaten, Wirkungsgrade, Genehmigungsstände und Lieferverträge eines Konzerns – und ist Voraussetzung für jede Lobby-Aktion gegen ihn. Ohne Bericht keine Lobby-Aktion gegen diesen Konzern. Detektive des Ziels können ihn enttarnen.</p>
     <ul class="list spylist">${rivals.map(spyRow).join('')}</ul>
-  </section></div>
-  <div class="grid g2" style="margin-top:16px">${detectives()}<section class="panel"><h3 style="margin-bottom:8px">Risiko</h3>
+  </section><section class="panel"><h3 style="margin-bottom:8px">Risiko</h3>
     <p class="muted" style="margin:0 0 8px">Eine Klage ist legal: Scheitert sie, ist nur das Geld weg. Eine aufgeflogene Bürgerinitiative kostet ${money(v.tricks.bi.fine, true)} Strafe und ${money(v.tricks.bi.damages, true)} Schadensersatz, ein aufgeflogener Hackerangriff ${money(v.tricks.hack.fine, true)} Strafe und ${money(v.tricks.hack.damages, true)} Schadensersatz an das Opfer. Hat das Ziel Detektive, gelingen Tricks seltener und Täter fliegen öfter auf – manchmal sogar nach einem Erfolg.</p>
-    <p class="muted" style="margin:0">Sicherer spielst du mit Netzreservierungen unter Standorte: Wer die Kapazität hat, bekommt den Anschluss.</p></section></div>`;
+    <p class="muted" style="margin:0">Sicherer spielst du mit Netzreservierungen unter Standorte: Wer die Kapazität hat, bekommt den Anschluss.</p></section></div></div>`;
 }

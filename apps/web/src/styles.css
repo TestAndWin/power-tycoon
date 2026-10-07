@@ -1679,10 +1679,39 @@ input[type='checkbox'] {
   color: var(--c1);
 }
 .spylist li.spyrow {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.spyhead {
+  display: flex;
   align-items: center;
   gap: 10px;
+}
+.spyhead b {
+  flex: 1;
+  min-width: 0;
+}
+.spyfacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 16px;
+  margin-top: 6px;
+}
+.spyfacts .k {
+  color: var(--muted);
+}
+.secret.redacted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+.secret.redacted > span {
+  white-space: nowrap;
+}
+.lobby > .stack {
+  gap: 16px;
 }
 
 /* plant size choice */
@@ -2465,12 +2494,8 @@ svg.live .pulse {
   .field-grid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .spylist li.spyrow {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .spylist li.spyrow > :last-child {
-    grid-column: 1 / -1;
-    justify-self: start;
+  .spyfacts {
+    grid-template-columns: minmax(0, 1fr);
   }
   .foe-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2829,12 +2854,15 @@ body.zoom #view {
 .dev-monitor {
   width: min(1320px, 100%);
 }
-/* both laptops (Lagebericht, Bank) open at the same size, whatever their content */
-.dev-laptop {
+/* laptops and the exchange monitor keep their size, whatever their content (and when it changes) */
+.dev-laptop,
+.dev-monitor {
   height: calc(100dvh - 32px);
 }
 .dev-laptop .dframe,
-.dev-laptop .sheet {
+.dev-laptop .sheet,
+.dev-monitor .dframe,
+.dev-monitor .sheet {
   flex: 1;
 }
 .dev-laptop .dframe,
