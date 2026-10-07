@@ -41,7 +41,7 @@ the hotspots are real buttons laid over the canvas, so tab order and screen read
 | Smartphone on the desk | Decision cards, calls | vibrates and lights up with the caller when a decision card or a rival call comes in |
 | Big stamp on the desk | End quarter | stamp animation on the quarter report |
 
-The bank opens from the screen on the desk and from the cash figure in the top bar.
+The bank opens from the laptop on the desk and from the cash figure in the top bar.
 
 On desktop, clicking an object **zooms the camera into it**: the office scales up around the object and
 blurs, and the area appears as that object at full size – the laptop for the situation report and the bank,
