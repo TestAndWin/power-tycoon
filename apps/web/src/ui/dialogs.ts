@@ -117,7 +117,7 @@ export function showStart(
     </div>
     <label class="check"><input type="checkbox" id="sAuto"> Minispiele überspringen (Ergebnis wird ausgewürfelt)</label>
     <p class="muted fine">Alle Firmen und Personen im Spiel sind frei erfunden. Ereignisse nach 2026 sind fiktive Szenarien. Dein Spielstand liegt auf dem Server; nur dieser Browser kennt den Zugangsschlüssel.</p>
-    <div class="foot start-foot"><div class="mlegal">${legalLinks()}</div>${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>`,
+    <div class="foot start-foot"><div class="mlegal">${legalLinks()}</div><button class="btn" data-act="rules">So wird gespielt</button>${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>`,
     { wide: true },
   );
 }

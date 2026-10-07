@@ -35,7 +35,17 @@ import {
   siteName,
   siteQuality,
 } from './texts.js';
-import { redrawCharts, render, renderTop, selectSite, showBuilt, showEnd, showReport, showStart } from './ui/index.js';
+import {
+  redrawCharts,
+  render,
+  renderTop,
+  selectSite,
+  showBuilt,
+  showEnd,
+  showReport,
+  showRules,
+  showStart,
+} from './ui/index.js';
 import { recordRivalMoves } from './ui/rivals.js';
 
 /** Game length in years of a running game (for the "new game" dialog). */
@@ -259,6 +269,9 @@ function openArea(v: string): void {
   if (isPhone()) window.scrollTo({ top: 0 });
 }
 
+/** Returns from the rules sheet to the start dialog it was opened from. */
+let rulesBack = (): void => closeModal();
+
 const A: Record<string, (v: string, el: HTMLElement) => void> = {
   tab: (v) => openArea(v),
   closeFolder: () => {
@@ -320,6 +333,24 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
   closeModal: () => closeModal(),
   newGameDlg: () => showStart(false, S.view?.me.name, S.view?.settings.difficulty, yearsOf(S.view)),
   start: () => void startGame(),
+  rules: () => {
+    // from the start dialog: keep its inputs for the way back
+    const name = $<HTMLInputElement>('#sName');
+    if (!name) return showRules('closeModal');
+    const back = {
+      canContinue: !!$('[data-act="continue"]'),
+      name: name.value,
+      auto: !!$<HTMLInputElement>('#sAuto')?.checked,
+      diff: $<HTMLSelectElement>('#sDiff')!.value as Difficulty,
+      years: Number($<HTMLSelectElement>('#sYears')!.value),
+    };
+    rulesBack = () => {
+      showStart(back.canContinue, back.name, back.diff, back.years);
+      $<HTMLInputElement>('#sAuto')!.checked = back.auto;
+    };
+    showRules('rulesBack');
+  },
+  rulesBack: () => rulesBack(),
   continue: () => {
     closeModal();
     render();
@@ -404,6 +435,7 @@ document.addEventListener('keydown', (e) => {
     if (modalLocked) return;
     if ($('[data-act="closeReport"]')) A.closeReport!('', document.body);
     else if ($('[data-act="closeModal"]')) closeModal();
+    else if ($('[data-act="rulesBack"]')) rulesBack();
   } else if (UI.folder) A.closeFolder!('', document.body);
 });
 // a click on the dimmed office around the folder closes it

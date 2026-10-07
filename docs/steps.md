@@ -158,6 +158,7 @@ scene, then the paper look. Balance measured with the simulation script like pha
 - [x] Paper documents: permit form with stamp, lease contract, redacted spy file, newspaper
 - [x] Sounds: folder, phone buzz, stamp; reduced motion (no looping room sound – it would wear on the player)
 - [x] Playwright play-through on desktop and phone width
+- [x] Rules sheet (no step-by-step tutorial): explains the game once, opened from the start dialog and the top bar
 
 ## Step 2 – LLM rivals (separate planning later)
 
