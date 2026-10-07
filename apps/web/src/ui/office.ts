@@ -5,7 +5,7 @@
 import { operating, REGION_KEYS, type Department, type RegionKey } from '@power-tycoon/engine';
 import { esc } from '../format.js';
 import { readPlayerColors } from '../players.js';
-import { officeHotspots, OFFICE_H, OFFICE_W, showOffice, type OfficeData } from '../scene/office.js';
+import { LAMP_HOTSPOT, officeHotspots, OFFICE_H, OFFICE_W, showOffice, type OfficeData } from '../scene/office.js';
 import { $, S } from '../state.js';
 import {
   ASSISTANT,
@@ -83,14 +83,24 @@ function officeData(): OfficeData {
 export function officeScene(): string {
   const v = V(),
     n = todo().length;
-  const hots = officeHotspots(v.me.hq)
-    .map(({ k, label, r: [x, y, w, h], desk }) => {
-      const badge = k === 'sites' && n ? n : k === 'decision' && v.me.decision ? '!' : '';
-      // vertical position in the cropped office (CSS variables set by the canvas, see `officeCrop`)
-      const top = `calc(100% * (${y} - var(${desk ? '--cut' : '--top'}, 0)) / var(--vh, ${OFFICE_H}))`;
-      return `<button class="hot${y < 160 ? ' below' : ''}" data-act="tab" data-v="${k}" style="left:${(x / OFFICE_W) * 100}%;top:${top};width:${(w / OFFICE_W) * 100}%;height:calc(100% * ${h} / var(--vh, ${OFFICE_H}))" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
-    })
-    .join('');
+  const hot = (
+    act: string,
+    val: string,
+    label: string,
+    [x, y, w, h]: [number, number, number, number],
+    desk = false,
+    badge: string | number = '',
+  ) => {
+    // vertical position in the cropped office (CSS variables set by the canvas, see `officeCrop`)
+    const top = `calc(100% * (${y} - var(${desk ? '--cut' : '--top'}, 0)) / var(--vh, ${OFFICE_H}))`;
+    return `<button class="hot${y < 160 ? ' below' : ''}" data-act="${act}" data-v="${val}" style="left:${(x / OFFICE_W) * 100}%;top:${top};width:${(w / OFFICE_W) * 100}%;height:calc(100% * ${h} / var(--vh, ${OFFICE_H}))" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
+  };
+  const hots =
+    officeHotspots(v.me.hq)
+      .map(({ k, label, r, desk }) =>
+        hot('tab', k, label, r, desk, k === 'sites' && n ? n : k === 'decision' && v.me.decision ? '!' : ''),
+      )
+      .join('') + hot('lamp', '', 'Schreibtischlampe · an/aus', LAMP_HOTSPOT, true);
   return `<div class="office"><canvas data-office aria-label="Das Büro des Vorstandsvorsitzes" role="img"></canvas>${hots}</div>`;
 }
 
