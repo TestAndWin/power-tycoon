@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, createRng, playerView } from '../src/index.js';
+import { createGame, createRng, playerView, REGIONS } from '../src/index.js';
 import { newGame } from './helpers.js';
 
 describe('createGame', () => {
@@ -17,12 +17,13 @@ describe('createGame', () => {
     expect(g.news[0]!.event.type).toBe('gameStarted');
   });
 
-  it('generates site values in the legacy ranges', () => {
+  it('generates site values in the ranges of their region', () => {
     const g = newGame(7);
+    const within = (v: number | null, range?: [number, number]) =>
+      range ? v !== null && v >= range[0] && v <= range[1] : v === null;
     for (const x of g.sites) {
-      if (x.r === 'nd') expect(x.wind! >= 5.8 && x.wind! <= 7.8 && x.sun! >= 950 && x.sun! <= 1150).toBe(true);
-      if (x.r === 'ns') expect(x.wind! >= 8.6 && x.wind! <= 10.4 && x.sun === null).toBe(true);
-      if (x.r === 'al') expect(x.wind).toBeNull();
+      expect(within(x.wind, REGIONS[x.r].wind)).toBe(true);
+      expect(within(x.sun, REGIONS[x.r].sun)).toBe(true);
       expect(x.lease % 5e4).toBe(0);
     }
     expect(g.sites.filter((x) => x.hydro).every((x) => x.r === 'al')).toBe(true);

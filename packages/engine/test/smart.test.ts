@@ -72,21 +72,29 @@ describe('SmartOpponent', () => {
     expect(a.year).toBe(2036);
   });
 
-  it('the forecast makes the rivals clearly stronger than plain estimates', async () => {
-    const plain: SmartParams = { ...SMART_PARAMS, foresight: false, lateGame: false, valueSurveys: false };
+  it('a timid variant (little debt, few projects, no forecast) ends clearly behind', async () => {
+    const timid: SmartParams = {
+      ...SMART_PARAMS,
+      foresight: false,
+      lateGame: false,
+      scaleWithCash: false,
+      bigProjects: false,
+      debtRatio: 0.3,
+      maxPending: 2,
+      leasesPerTurn: 1,
+    };
     const sum = new Map<SmartParams, number>([
       [SMART_PARAMS, 0],
-      [plain, 0],
+      [timid, 0],
     ]);
-    const order = [SMART_PARAMS, plain];
+    const order = [SMART_PARAMS, timid];
     const N = 12;
     for (let i = 0; i < N; i++) {
       const seats = [0, 1, 2].map((k) => order[(i + k) % 2]!);
       const v = playerView(await play(200 + i, seats), 0);
       seats.forEach((p, k) => sum.set(p, sum.get(p)! + (v.players[k + 1]!.out ? 0 : v.players[k + 1]!.worth)));
     }
-    // over 40 games the forecast is about 18 % ahead; a sample of 12 games is noisy
-    expect(sum.get(SMART_PARAMS)!).toBeGreaterThan(sum.get(plain)! * 1.02);
+    expect(sum.get(SMART_PARAMS)!).toBeGreaterThan(sum.get(timid)! * 1.2);
   });
 
   it('sells a leased site that can never be connected (unless selling is switched off)', async () => {

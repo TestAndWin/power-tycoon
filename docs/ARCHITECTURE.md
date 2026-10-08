@@ -114,8 +114,9 @@ Modules of `packages/engine/src`:
   it), plus `CREDIT_SALES` × the average power sales of the last `CREDIT_SALES_QUARTERS` quarters
   (`Player.sales`), plus a development loan of `CREDIT_BOOST` × the gap to the leader's net worth once the gap
   is at least `CREDIT_BOOST_FROM` of it; at least `MIN_CREDIT`. Same rule for all players.
-- Interest (`interestRate`, `rateFor`): `INTEREST` plus `INTEREST_RISK` × (loan / credit limit)², capped at a
-  full line; the rate applies to the whole loan, so the last million borrowed is the most expensive.
+- Interest (`interestRate`, `rateFor`): `INTEREST` up to `INTEREST_FREE_SHARE` of the credit line used; above
+  it a premium of up to `INTEREST_RISK` grows with the square of the used share beyond that point. The rate
+  applies to the whole loan, so the last million borrowed is the most expensive.
 - Solar cannibalisation (`solarLoad`, `captureRate`): the solar capture rate of a region drops with its operating
   solar MW (`SOLAR_CANNIBAL` per 100 MW, scaled with the season, at most `SOLAR_CANNIBAL_MAX`); each storage MW
   in the region offsets `SOLAR_STORE_RELIEF` MW. PPAs are paid at their fixed price and are not affected.

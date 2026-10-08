@@ -13,6 +13,7 @@ import {
   CAPTURE,
   EXEC_COST_SCALE,
   INTEREST,
+  INTEREST_FREE_SHARE,
   INTEREST_RISK,
   MAX_SURVEYS,
   PERMIT_CROWD,
@@ -317,8 +318,10 @@ export function creditParts(g: GameState, p: Player): { assets: number; sales: n
 }
 export const creditLimit = (g: GameState, p: Player): number => creditParts(g, p).limit;
 /** Interest rate per quarter for a loan of `loan` with a credit limit of `limit` (see `INTEREST_RISK`). */
-export const rateFor = (loan: number, limit: number): number =>
-  INTEREST + INTEREST_RISK * Math.min(1, loan / Math.max(1, limit)) ** 2;
+export function rateFor(loan: number, limit: number): number {
+  const used = Math.min(1, loan / Math.max(1, limit));
+  return INTEREST + INTEREST_RISK * (Math.max(0, used - INTEREST_FREE_SHARE) / (1 - INTEREST_FREE_SHARE)) ** 2;
+}
 /** Player `p`'s interest rate per quarter right now. */
 export const interestRate = (g: GameState, p: Player): number => rateFor(p.loan, creditLimit(g, p));
 export function rankOf(g: GameState, p: Player): number {

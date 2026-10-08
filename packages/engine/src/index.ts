@@ -8,6 +8,6 @@ export { costsFor, optionsOf, playerView, trickTargetIds } from './view.js';
 export { endQuarter, canEndQuarter, playTurn, rivalProfile, EngineError, MAX_ACTIONS_PER_TURN } from './quarter.js';
 export { eventForViewer, eventsForViewer, isConfrontation } from './events.js';
 export { awardProgress } from './awards.js';
-export { isStore, operating, plantTypesFor, producing, repowerMw, worth } from './rules.js';
+export { isStore, operating, plantTypesFor, producing, rateFor, repowerMw, worth } from './rules.js';
 export { SmartOpponent, SMART_PARAMS, type SmartParams } from './opponents/smart.js';
 export { opponentFor, opponentsFor } from './opponents/index.js';

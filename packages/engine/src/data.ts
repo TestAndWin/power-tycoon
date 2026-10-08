@@ -34,7 +34,7 @@ export const REGION_KEYS: readonly RegionKey[] = ['nd', 'ns', 'ib', 'al'];
 export const REGIONS: Record<RegionKey, RegionDef> = {
   nd: {
     code: 'ND',
-    wind: [5.8, 7.8],
+    wind: [6.2, 8.2],
     sun: [950, 1150],
     types: ['wind', 'solar', 'batt'],
     grid: 300,
@@ -45,7 +45,7 @@ export const REGIONS: Record<RegionKey, RegionDef> = {
   ib: {
     code: 'IB',
     wind: [5.2, 7.4],
-    sun: [1550, 1950],
+    sun: [1500, 1850],
     types: ['solar', 'wind', 'batt'],
     grid: 400,
     lease: [0.3, 1.4],
@@ -217,11 +217,13 @@ export const GAME_YEARS = 10;
 export const GAME_YEAR_OPTIONS: readonly number[] = [3, 5, 10];
 export const HOURS = 2190;
 /**
- * Interest per quarter: a base rate plus a risk premium that grows with the square of the credit used
- * (loan / credit limit, capped at 1). A full credit line costs `INTEREST + INTEREST_RISK` on the whole loan.
+ * Interest per quarter: a base rate, plus a risk premium once more than `INTEREST_FREE_SHARE` of the credit
+ * line is used. The premium grows with the square of the used share above it and reaches `INTEREST_RISK` at
+ * a full line; it applies to the whole loan.
  */
 export const INTEREST = 0.01;
-export const INTEREST_RISK = 0.02;
+export const INTEREST_RISK = 0.015;
+export const INTEREST_FREE_SHARE = 0.5;
 export const MAX_CONTRACTS = 3;
 export const CO2 = 0.4;
 export const START_CASH = 30e6;

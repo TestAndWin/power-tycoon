@@ -52,9 +52,11 @@ describe('credit limit', () => {
 });
 
 describe('interest', () => {
-  it('rises with the share of the credit line used', () => {
+  it('rises with the share of the credit line used above half of it', () => {
     expect(rateFor(0, 20e6)).toBe(INTEREST);
-    expect(rateFor(10e6, 20e6)).toBeCloseTo(INTEREST + INTEREST_RISK / 4);
+    // no premium up to half the line
+    expect(rateFor(10e6, 20e6)).toBe(INTEREST);
+    expect(rateFor(15e6, 20e6)).toBeCloseTo(INTEREST + INTEREST_RISK / 4);
     expect(rateFor(20e6, 20e6)).toBeCloseTo(INTEREST + INTEREST_RISK);
     // above the limit (after the limit fell) it stays at the maximum
     expect(rateFor(30e6, 20e6)).toBeCloseTo(INTEREST + INTEREST_RISK);
