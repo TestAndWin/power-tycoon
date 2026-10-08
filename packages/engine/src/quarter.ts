@@ -371,7 +371,7 @@ function climateBonus(g: GameState, out: GameEvent[]): void {
 }
 
 /**
- * Ends the quarter: world events, permits, reservations, rival turns, generation and revenue,
+ * Ends the quarter: world events, reservations, rival turns, permits, generation and revenue,
  * price, solvency, next quarter. `opponents[i]` plays rival `i + 1`.
  * Throws `EngineError` if a challenge is open or the game is over.
  */
@@ -392,11 +392,12 @@ export async function endQuarter(
   applyWorldEvents(g, events);
   updateSpread(g);
   const price = g.price * g.fx!.price;
-  decidePermits(g, events);
   expireReservations(g);
   g.phase = 'quarterEnd';
   const rivals = await rivalTurns(g, opponents, human);
   g.phase = 'players';
+  // after the rivals' turns: like the human, they act on a decision only in the next quarter
+  decidePermits(g, events);
   closeDecisions(g, events);
   const output = produce(g, price, events);
   let lines: ReportLine[] = [];

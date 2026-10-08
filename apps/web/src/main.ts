@@ -414,10 +414,9 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
   },
   trickGo: (v) => {
     const [id, t] = v.split('|');
-    UI.tab = 'lobby';
     UI.trick = t as TrickType;
     UI.target = id!;
-    render();
+    openArea('lobby');
   },
   doTrick: () => {
     const target = UI.target;

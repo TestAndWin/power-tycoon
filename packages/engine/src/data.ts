@@ -241,6 +241,8 @@ export const SITES_PER_REGION = 16;
 export const PERMIT_CROWD = 0.03;
 export const PERMIT_CROWD_MAX = 0.15;
 export const MAX_TRICKS = 2;
+/** Quarters a site cannot be sued again after a lawsuit (the quarter of the lawsuit included). */
+export const LAWSUIT_PEACE = 3;
 /** Yield surveys a player may order per quarter. */
 export const MAX_SURVEYS = 4;
 export const RESERVE_MW = 50;

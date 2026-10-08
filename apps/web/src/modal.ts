@@ -13,10 +13,13 @@ export function openModal(html: string, o: { wide?: boolean; locked?: boolean; m
   const c = $('#mcard')!;
   c.className = 'mcard' + (o.wide || o.minigame ? ' wide' : '') + (o.minigame ? ' mg' : '');
   c.innerHTML = html;
-  $('#modal')!.hidden = false;
+  const m = $('#modal')!;
+  m.hidden = false;
   modalLocked = !!o.locked;
+  // a new dialog starts at its top, even if the previous one was scrolled or its first button sits at the bottom
+  m.scrollTop = 0;
   const f = c.querySelector<HTMLElement>('input,button');
-  f?.focus();
+  f?.focus({ preventScroll: true });
   registerScenes();
   countUp(c);
 }

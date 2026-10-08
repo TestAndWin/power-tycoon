@@ -50,6 +50,7 @@ import {
   hasIntel,
   interestRate,
   isStore,
+  lawsuitPeace,
   mwOf,
   myReserve,
   overhead,
@@ -167,6 +168,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       size: x.size,
       mw: siteMw(x),
       offline: x.offline,
+      peace: lawsuitPeace(g, x),
     };
     if (spied) v.intel = { eff: x.eff, permitLeft: x.permitLeft };
     if (mine)

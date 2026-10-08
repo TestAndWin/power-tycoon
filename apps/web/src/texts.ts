@@ -112,7 +112,7 @@ export const STANDING_TEXT = {
 export const TRICK_TEXT: Record<TrickType, { name: string; desc: string }> = {
   klage: {
     name: 'Klage gegen Genehmigung',
-    desc: 'Anwälte fechten eine Genehmigung an. Das Projekt verzögert sich um zwei Quartale, manchmal kippt es ganz.',
+    desc: 'Anwälte fechten eine Genehmigung an. Das Projekt verzögert sich um zwei Quartale, manchmal kippt es ganz. Danach ist die Fläche drei Quartale vor Klagen geschützt.',
   },
   bi: {
     name: 'Bürgerinitiative anstiften',
@@ -318,6 +318,8 @@ const regionOfSite = (c: Ctx, id: string): string => REGION_TEXT[siteOf(c, id)?.
 function trickText(c: Ctx, e: Extract<GameEvent, { type: 'trickSucceeded' }>): string {
   const x = sn(c, e.siteId);
   const tgt = nameOf(c, e.targetId);
+  if (e.trick === 'klage' && e.contested)
+    return `Klage gegen die erteilte Genehmigung für ${x} von ${tgt}: Die Behörde prüft sie erneut. Bis dahin darf nicht gebaut werden – mindestens zwei Quartale Verzögerung.`;
   if (e.trick === 'klage')
     return `Klage gegen das Projekt ${x} von ${tgt}: Die Behörde prüft die Genehmigung erneut – mindestens zwei Quartale Verzögerung.`;
   if (e.trick === 'bi') return `Bürgerinitiative gegen ${x} (${tgt}): halbe Leistung für zwei Quartale.`;

@@ -238,6 +238,35 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
 - [x] The 3-year game is removed: too short for projects to pay off under the new rules (start dialog offers
       5 and 10 years; stored 3-year games keep playing). The 3-year rows above are kept for reference
 - [ ] Play-test a 5-year and a 10-year game with the new rules
+- [x] Rivals less aggressive with lobby tricks (play-test: six lawsuits in three quarters, the same three
+      sites sued again and again): a site cannot be sued again for three quarters after a lawsuit, won or
+      lost (`LAWSUIT_PEACE`, shown at the site); rivals aim at the real leader, the human no longer counts
+      1.5× (`humanBias` 1) and is no longer a target from 75 % of the rival's net worth. The quarterly report
+      says when a lawsuit contests a permit that was just granted
+
+  `pnpm simulate`, 200 games each, seeds 1000–1199, successful tricks per game:
+
+  | Game | Seat 0 | Lawsuits vs. seat 0 before → after | Rival vs. rival | Seat 0 worth (wins) before → after | Rivals before → after |
+  |------|--------|------------------------------------|-----------------|------------------------------------|-----------------------|
+  | 5 years | `smart` | 13.2 → 3.5 | 1.2 → 5.4 | 34.9 M€ (2 %) → 40.2 M€ (8 %) | 48.6 → 47.6 M€ |
+  | 5 years | `solar` | 21.2 → 3.5 | 1.1 → 7.3 | 36.4 M€ (2 %) → 40.7 M€ (12 %) | 50.2 → 48.7 M€ |
+  | 10 years | `smart` | 18.0 → 6.5 | 7.2 → 12.3 | 136.7 M€ (0 %) → 154.0 M€ (3 %) | 226.9 → 211.5 M€ |
+
+  Lawsuits on a site sued in the three quarters before dropped from 8.6 to 0.6 per 5-year game (the rest
+  come exactly three quarters later). The same bot still wins far less often in seat 0 than as a rival
+- [x] Why seat 0 still lagged: (1) without minigames the human rolls weaker odds than the rivals
+      (`AUTO_MINIGAME` vs. `AUTO_MINIGAME_HARD`) – kept on purpose as an incentive to play them; with the
+      rivals' odds seat 0 is about even (5 years 22 % wins), with perfect minigames ahead (46 %). (2) Permits
+      were decided before the rival turns, so rivals re-applied right after a rejection and could sue a
+      freshly granted permit before the human could build. Permits are now decided after the rival turns.
+      With the rivals' minigame odds in seat 0 the 10-year game went from 209 vs. 219 M€ (17 % wins) to
+      205 vs. 206 M€ (29 %). 200 games each, `smart` in seat 0:
+
+  | Game | Seat 0 before → after | Rivals before → after |
+  |------|-----------------------|-----------------------|
+  | 5 years | 40.2 (8 %) → 40.5 M€ (9 %) | 47.6 → 46.4 M€ |
+  | 10 years, seeds 5000–5199 | 154.2 (4 %) → 161.3 M€ (6 %) | 216.1 → 217.2 M€ |
+  | 10 years `--skilled` | 270.7 (53 %) → 291.4 M€ (58 %) | 224.2 → 230.9 M€ |
 
 ## Step 2 – LLM rivals (separate planning later)
 

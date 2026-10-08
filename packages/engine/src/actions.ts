@@ -391,7 +391,10 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
         target.cash += damages;
         return { caught, fine: T.fine, damages };
       };
+      // after a lawsuit, won or lost, the site has peace for a while
+      if (a.trick === 'klage') x.suedTurn = g.turn;
       if (r() < odds.success) {
+        const contested = a.trick === 'klage' && x.permit === 'approved';
         applyTrick(g, a.trick, x);
         const verdict = court(odds.caughtIfSucceeded > 0 && r() < odds.caughtIfSucceeded);
         const suspected = verdict.caught || r() < TRICK_SUSPECTED;
@@ -402,6 +405,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
           trick: a.trick,
           siteId: x.id,
           suspected,
+          ...(contested ? { contested } : {}),
           ...(verdict.caught ? verdict : {}),
         });
       } else {
