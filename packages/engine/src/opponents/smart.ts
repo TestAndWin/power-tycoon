@@ -129,6 +129,11 @@ export interface SmartParams {
   boardEdge: number;
   /** Dismiss board members that no longer pay off. */
   boardReview: boolean;
+  /**
+   * Repay idle cash even if projects will need money soon: borrowing again is free, interest is not. Only the
+   * part of the upcoming costs that the free credit line would not cover is kept.
+   */
+  repayIdle: boolean;
 }
 
 /**
@@ -160,6 +165,7 @@ export const SMART_PARAMS: SmartParams = {
   bigProjects: true,
   boardEdge: 1.15,
   boardReview: true,
+  repayIdle: true,
 };
 
 type Cls = 'wind' | 'solar' | 'hydro';
@@ -1313,7 +1319,10 @@ class Planner {
       if (x.type && x.permit === 'pending' && !x.built) upcoming += costsFor(this.v, x.size)[x.type].build;
       if (x.type && x.built && !x.grid) upcoming += plantDef(x.type, x.size).grid;
     }
-    const surplus = this.cash - this.buffer() - upcoming;
+    // with `repayIdle` the free credit line covers most of the upcoming costs (it may shrink a little until then)
+    const room = Math.max(0, this.me.creditLimit * this.p.debtRatio - this.loan);
+    const keep = this.p.repayIdle ? Math.max(0, upcoming - 0.8 * room) : upcoming;
+    const surplus = this.cash - this.buffer() - keep;
     if (surplus < 5e6) return;
     const amount = Math.min(this.loan, Math.floor(surplus / 1e6) * 1e6);
     if (amount >= this.loan) this.acts.push({ type: 'repay', amount: 'all' });

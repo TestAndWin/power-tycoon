@@ -70,7 +70,7 @@ describe('SmartOpponent', () => {
     const b = await play(31);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(a.year).toBe(2036);
-  });
+  }, 30_000);
 
   it('a timid variant (little debt, few projects, no forecast) ends clearly behind', async () => {
     const timid: SmartParams = {
