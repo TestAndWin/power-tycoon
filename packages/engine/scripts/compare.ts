@@ -11,6 +11,8 @@ const variants: Record<string, SmartParams> = {
   noContracts: { ...SMART_PARAMS, contracts: false },
   noReserve: { ...SMART_PARAMS, reservations: false },
   noDiversify: { ...SMART_PARAMS, diversify: false },
+  noLate: { ...SMART_PARAMS, lateGame: false },
+  noValueSurveys: { ...SMART_PARAMS, valueSurveys: false },
 };
 const name = process.argv[2] ?? 'plain';
 const years = Number(process.argv[3] ?? 10);
