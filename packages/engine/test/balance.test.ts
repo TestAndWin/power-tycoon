@@ -144,17 +144,16 @@ describe('board costs', () => {
     const fee = (years: number) =>
       playerView(createGame({ companyName: 'X', autoMinigames: true, seed: 1, years }), 0).execCosts.junior.fee;
     expect(fee(10)).toBe(EXEC_GRADES.junior.fee);
-    expect(fee(3)).toBeLessThan(fee(5));
     expect(fee(5)).toBeLessThan(fee(10));
-    const g = createGame({ companyName: 'X', autoMinigames: true, seed: 1, years: 3 });
+    const g = createGame({ companyName: 'X', autoMinigames: true, seed: 1, years: 5 });
     const r = ok(g, { type: 'hireExecutive', dept: 'dev', grade: 'junior' });
-    expect(g.players[0]!.cash - r.state.players[0]!.cash).toBe(fee(3));
+    expect(g.players[0]!.cash - r.state.players[0]!.cash).toBe(fee(5));
   });
 });
 
 describe('climate bonus', () => {
   it('pays every company for the CO₂ it avoided at the end of the game', async () => {
-    let g = createGame({ companyName: 'X', autoMinigames: true, seed: 3, years: 3 });
+    let g = createGame({ companyName: 'X', autoMinigames: true, seed: 3, years: 5 });
     g.players[0]!.co2 = 100_000;
     g.players[1]!.co2 = 50_000;
     let last;

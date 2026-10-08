@@ -104,7 +104,7 @@ export function showEnd(): void {
 const legalLinks = (): string => [...document.querySelectorAll('.foot-legal a')].map((a) => a.outerHTML).join('');
 export function showStart(canContinue: boolean, name = 'Deichwatt AG', years = GAME_YEARS): void {
   openModal(
-    `<div class="banner start"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Ab 2026 · 3, 5 oder 10 Jahre Energiewende</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
+    `<div class="banner start"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Ab 2026 · 5 oder 10 Jahre Energiewende</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
     <p class="intro">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
     <div class="foes"><span class="label">Deine Gegner</span><div class="foe-row">${[1, 2, 3].map((id) => `<div class="foe" style="--oc:var(--c${id})">${portrait(id, 44)}<span><b>${esc(RIVAL_TEXT[id]!.ceo)}</b><span class="muted">${esc(rivalProfile(id).name)}</span><i>„${esc(RIVAL_TEXT[id]!.motto)}“</i></span></div>`).join('')}</div></div>
     <div class="field-grid">

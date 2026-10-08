@@ -206,6 +206,9 @@ leader); grid capacity stays as it is (cable duels happen in real games).
 | 3 years | `solar` (Iberia solar, full credit) | 37.8 M€ | 41.9 M€ | 27.1 M€ | 36.7 M€ |
 | 3 years | `smart` | 34.5 M€ | 41.4 M€ | 28.8 M€ | 35.4 M€ |
 | 3 years | `smart --skilled` | 41.1 M€ (23 % wins) | 41.7 M€ | 32.6 M€ (8 % wins) | 35.3 M€ |
+| 5 years | `solar` | – | – | 35.3 M€ | 47.9 M€ |
+| 5 years | `smart` | – | – | 34.4 M€ | 47.8 M€ |
+| 5 years | `smart --skilled` | – | – | 44.6 M€ (15 % wins) | 47.4 M€ |
 | 10 years | `solar` | 96.8 M€ | 318.9 M€ | 89.6 M€ | 211.8 M€ |
 | 10 years | `smart` | 188.1 M€ | 332.1 M€ | 126.4 M€ | 206.7 M€ |
 | 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 205.4 M€ (22 % wins) | 206.0 M€ |
@@ -225,7 +228,9 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
       (about even over 30–40 games, before +12–18 %); the test now compares against a timid variant. Check
       `forecastValue` / `gridDelay` against the simple valuation
 
-- [ ] Play-test a 3-year and a 10-year game with the new rules
+- [x] The 3-year game is removed: too short for projects to pay off under the new rules (start dialog offers
+      5 and 10 years; stored 3-year games keep playing). The 3-year rows above are kept for reference
+- [ ] Play-test a 5-year and a 10-year game with the new rules
 
 ## Step 2 – LLM rivals (separate planning later)
 

@@ -1,12 +1,12 @@
 /**
  * Bot-vs-bot simulation: plays N full games and reports the average net worth of seat 0 and the rivals.
  *
- *   pnpm simulate -- --games 200 --seat0 smart --years 3
+ *   pnpm simulate -- --games 200 --seat0 smart --years 5
  *
  * Seat 0 (the "human") is played by `--seat0`: `smart` (the rivals' strategy), `solar` (standard solar parks
  * in Iberia on full credit, the dominant strategy of the October 2026 play-test) or `idle`, with automatic
  * minigames, or with `--skilled` like a practised human who wins every minigame (layout 1.15, no failed
- * assembly or connection). `--years 3|5|10` sets the game length (default 10).
+ * assembly or connection). `--years 5|10` sets the game length (default 10).
  */
 import {
   applyAction,

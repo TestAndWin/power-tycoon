@@ -70,13 +70,15 @@ describe('POST /api/games', () => {
   it('stores the game length (default ten years) and rejects other lengths', async () => {
     const end = (g: { view: unknown }) => (g.view as { endYear: number }).endYear;
     expect(end(await newGame())).toBe(2036);
-    expect(end(await newGame({ companyName: 'X', autoMinigames: true, years: 3 }))).toBe(2029);
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/games',
-      payload: { companyName: 'X', autoMinigames: true, years: 4 },
-    });
-    expect(res.statusCode).toBe(400);
+    expect(end(await newGame({ companyName: 'X', autoMinigames: true, years: 5 }))).toBe(2031);
+    for (const years of [3, 4]) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/games',
+        payload: { companyName: 'X', autoMinigames: true, years },
+      });
+      expect(res.statusCode).toBe(400);
+    }
   });
   it('accepts the phase 7 actions', async () => {
     const g = await newGame();

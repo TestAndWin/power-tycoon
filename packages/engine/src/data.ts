@@ -214,8 +214,8 @@ export const PRICE_FOLLOW = 0.15;
 export const START_YEAR = 2026;
 /** Default game length in years. */
 export const GAME_YEARS = 10;
-/** Game lengths the player can choose. */
-export const GAME_YEAR_OPTIONS: readonly number[] = [3, 5, 10];
+/** Game lengths the player can choose (stored games of 3 years keep their length). */
+export const GAME_YEAR_OPTIONS: readonly number[] = [5, 10];
 export const HOURS = 2190;
 /**
  * Interest per quarter: a base rate, plus a risk premium once more than `INTEREST_FREE_SHARE` of the credit
@@ -457,7 +457,7 @@ export const EXEC_GRADES: Record<ExecGrade, ExecGradeDef> = {
  * Fee and salaries of board members scale with the game length (in years): a short game leaves less time
  * for them to pay off.
  */
-export const EXEC_COST_SCALE: Record<number, number> = { 3: 0.4, 5: 0.65, 10: 1 };
+export const EXEC_COST_SCALE: Record<number, number> = { 3: 0.4, 5: 0.65, 10: 1 }; // 3: stored games only
 /** Severance when a board member is dismissed, in quarterly salaries. */
 export const EXEC_SEVERANCE = 1;
 

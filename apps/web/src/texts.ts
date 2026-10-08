@@ -59,8 +59,7 @@ export const detectivesText = (d: { level: DetectiveLevel; left: number } | null
   d ? `${DETECTIVE_TEXT[d.level].name}, noch ${d.left} Q` : 'keine Detektive';
 
 export const GAME_LENGTH_TEXT: Record<number, string> = {
-  3: 'Kurz – 3 Jahre (12 Quartale)',
-  5: 'Mittel – 5 Jahre (20 Quartale)',
+  5: 'Kurz – 5 Jahre (20 Quartale)',
   10: 'Lang – 10 Jahre (40 Quartale)',
 };
 

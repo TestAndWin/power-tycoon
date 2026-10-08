@@ -4,7 +4,7 @@ import { openModal } from '../modal.js';
 const RULES: [string, string][] = [
   [
     'Ziel',
-    'Führe deinen Energiekonzern durch die Energiewende. Nach 3, 5 oder 10 Jahren gewinnt das größte Vermögen: Kasse minus Kredit plus der Wert deiner Flächen, Kraftwerke und der Zentrale. Am Ende zahlt der Staat jedem Konzern einen Klimabonus für jede Tonne vermiedenes CO₂.',
+    'Führe deinen Energiekonzern durch die Energiewende. Nach 5 oder 10 Jahren gewinnt das größte Vermögen: Kasse minus Kredit plus der Wert deiner Flächen, Kraftwerke und der Zentrale. Am Ende zahlt der Staat jedem Konzern einen Klimabonus für jede Tonne vermiedenes CO₂.',
   ],
   [
     'Ein Quartal',
