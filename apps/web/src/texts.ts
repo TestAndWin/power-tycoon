@@ -318,6 +318,8 @@ const regionOfSite = (c: Ctx, id: string): string => REGION_TEXT[siteOf(c, id)?.
 function trickText(c: Ctx, e: Extract<GameEvent, { type: 'trickSucceeded' }>): string {
   const x = sn(c, e.siteId);
   const tgt = nameOf(c, e.targetId);
+  if (e.trick === 'klage' && e.contested)
+    return `Klage gegen die erteilte Genehmigung für ${x} von ${tgt}: Die Behörde prüft sie erneut. Bis dahin darf nicht gebaut werden – mindestens zwei Quartale Verzögerung.`;
   if (e.trick === 'klage')
     return `Klage gegen das Projekt ${x} von ${tgt}: Die Behörde prüft die Genehmigung erneut – mindestens zwei Quartale Verzögerung.`;
   if (e.trick === 'bi') return `Bürgerinitiative gegen ${x} (${tgt}): halbe Leistung für zwei Quartale.`;

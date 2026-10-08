@@ -409,6 +409,7 @@ describe('lobby tricks', () => {
       g.rng = seed;
       const k = applyAction(g, 0, { type: 'lobby', trick: 'klage', siteId: 'nd1' });
       if (k.ok && k.events[0]!.type === 'trickSucceeded') {
+        expect(k.events[0]!.contested).toBe(true);
         const x = site(k.state, 'nd1');
         expect(x.permit).toBe('pending');
         expect(x.killed ? x.permitLeft === 0 : x.permitLeft === 2).toBe(true);

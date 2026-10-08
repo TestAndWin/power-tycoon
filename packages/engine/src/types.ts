@@ -337,6 +337,8 @@ export type GameEvent =
       trick: TrickType;
       siteId: string;
       suspected: boolean;
+      /** A lawsuit against a permit that was already granted (it is reviewed again before building). */
+      contested?: boolean;
       /** Detectives of the target caught the actor afterwards (fine and damages paid). */
       caught?: boolean;
       fine?: number;
