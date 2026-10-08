@@ -927,11 +927,17 @@ class Planner {
       }
       return;
     }
-    // expected return with regional averages: cheap leases in good regions first
+    // expected return with regional averages: cheap leases in good regions first; only projects that could be
+    // financed soon (as in `newSites`), or the rival pays for surveys of offshore sites it cannot afford
+    const room = this.me.creditLimit * this.p.debtRatio - this.loan + this.cash - this.buffer();
     const unknown = free
       .filter((x) => !x.known)
       .map((x) => ({ x, b: this.bestType(x, 'new') }))
       .filter((s) => s.b && s.b.value > 0)
+      .filter((s) => {
+        const inflow = this.p.bigProjects ? this.cashFlow() * avgPermitQ(plantDef(s.b!.t, s.b!.size)) : 0;
+        return s.b!.capex <= room * 1.2 + inflow;
+      })
       .map((s) => ({ x: s.x, score: s.b!.value / s.b!.capex + (this.ctx.profile.pref.includes(s.x.r) ? 0.05 : 0) }))
       .sort((a, b) => b.score - a.score);
     const n = Math.min(this.p.surveysPerTurn + (this.freeRoom() > 40e6 ? 2 : 0), this.me.surveysLeft);
