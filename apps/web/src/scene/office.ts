@@ -495,12 +495,7 @@ function view(d: OfficeData): void {
       );
       shape(rr(bx + 54, by - 50, 12, 28, 1), '#8a6a52', 2);
     }
-  if (key === 'container') {
-    turbine(x + w * 0.32, y + h + 40, 330, 1, 3);
-    line(x + w * 0.74, y + h, x + w * 0.74, y + 30, '#e0a526', 8);
-    line(x + w * 0.74, y + 34, x + w * 0.3, y + 34, '#e0a526', 6);
-    line(x + w * 0.5, y + 34, x + w * 0.5, y + 90, INK, 2);
-  }
+  if (key === 'container') turbine(x + w * 0.32, y + h + 40, 330, 1, 3);
   if (S0.snow) {
     c.fillStyle = 'rgba(255,255,255,.8)';
     for (let i = 0; i < 40; i++) c.fillRect(x + ((i * 53) % w), y + ((i * 91 + (RMO ? 0 : T * 30)) % h), 3, 3);
