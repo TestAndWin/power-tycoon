@@ -7,6 +7,10 @@ const variants: Record<string, SmartParams> = {
   plain: { ...SMART_PARAMS, foresight: false, lateGame: false, valueSurveys: false },
   noForesight: { ...SMART_PARAMS, foresight: false },
   noRepayIdle: { ...SMART_PARAMS, repayIdle: false },
+  noSell: { ...SMART_PARAMS, sellStuck: false },
+  noContracts: { ...SMART_PARAMS, contracts: false },
+  noReserve: { ...SMART_PARAMS, reservations: false },
+  noDiversify: { ...SMART_PARAMS, diversify: false },
 };
 const name = process.argv[2] ?? 'plain';
 const years = Number(process.argv[3] ?? 10);
