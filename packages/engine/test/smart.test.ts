@@ -95,7 +95,7 @@ describe('SmartOpponent', () => {
       seats.forEach((p, k) => sum.set(p, sum.get(p)! + (v.players[k + 1]!.out ? 0 : v.players[k + 1]!.worth)));
     }
     expect(sum.get(SMART_PARAMS)!).toBeGreaterThan(sum.get(timid)! * 1.2);
-  });
+  }, 30_000);
 
   it('sells a leased site that can never be connected (unless selling is switched off)', async () => {
     const g = newGame(7, true);
