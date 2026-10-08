@@ -1005,8 +1005,10 @@ class Planner {
       let have = g.myReserved;
       // new reservations only fit into capacity nobody (not even this rival) has reserved
       let free = this.free[r] - have;
-      // only worth it when capacity is getting scarce
+      // only worth it when capacity is getting scarce and the others' projects waiting for the grid would take
+      // what is left before ours (a reservation costs about as much as a quarter of a solar park's revenue)
       if (g.capacity - g.used - g.reserved > mw + 150) continue;
+      if (this.p.foresight && this.free[r] - this.othersClaim[r] >= mw) continue;
       // with foresight: as many blocks as needed (e.g. two for an offshore park)
       const blocks = this.p.foresight ? 3 : 1;
       for (let i = 0; i < blocks && have < mw; i++) {
