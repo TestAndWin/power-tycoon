@@ -58,7 +58,7 @@ Modules of `packages/engine/src`:
 | `challenges.ts` | minigame challenge flow (open, auto-resolve, resolve) |
 | `legal.ts` | candidate actions → `legalActions` and `actionOptions` |
 | `world.ts` | historic and random world events |
-| `quarter.ts` | `endQuarter` as named steps (permits, rival turns, production, settlement, price, solvency, next quarter) |
+| `quarter.ts` | `endQuarter` as named steps (rival turns, permits, production, settlement, price, solvency, next quarter) |
 | `events.ts` | event recording, news feed, what a viewer may see |
 | `view.ts` | `playerView` (hidden information removed) and helpers on the view |
 | `opponents/` | `SmartOpponent` (parameters `SMART_PARAMS`) |
@@ -75,9 +75,11 @@ Modules of `packages/engine/src`:
   in the last year); their effects and those of the random world events are data (`HIST`, `WORLD_EVENTS`).
   The upcoming milestones are public: `PlayerView.milestones` lists them with their effects (overview and
   news tab show them), and the rivals plan with them.
-- Quarter end order must stay the same as `endQuarter()` in legacy: historic event → random event →
-  spread → permits → reservations → **rival turns** → generation/revenue/costs → price → solvency →
-  advance quarter → offers → history → game-over check.
+- Quarter end order follows `endQuarter()` in legacy with one deviation: historic event → random event →
+  spread → reservations → **rival turns** → permits → generation/revenue/costs → price → solvency →
+  advance quarter → offers → history → game-over check. Legacy decided the permits before the rival turns,
+  so a rival could re-apply after a rejection or sue a freshly granted permit before the human could act;
+  now everybody acts on a permit decision in the next quarter.
 - Storage (deviation from legacy, where every storage earned capacity × spread): a storage first takes the
   generation of its owner's plants in the same region and earns the full spread on it; the rest of its
   capacity trades with bought power at `STORE_MARKET_SHARE` of the spread (`storeIncome` in `rules.ts`).

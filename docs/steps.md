@@ -250,6 +250,19 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
 
   Lawsuits on a site sued in the three quarters before dropped from 8.6 to 0.6 per 5-year game (the rest
   come exactly three quarters later). The same bot still wins far less often in seat 0 than as a rival
+- [x] Why seat 0 still lagged: (1) without minigames the human rolls weaker odds than the rivals
+      (`AUTO_MINIGAME` vs. `AUTO_MINIGAME_HARD`) – kept on purpose as an incentive to play them; with the
+      rivals' odds seat 0 is about even (5 years 22 % wins), with perfect minigames ahead (46 %). (2) Permits
+      were decided before the rival turns, so rivals re-applied right after a rejection and could sue a
+      freshly granted permit before the human could build. Permits are now decided after the rival turns.
+      With the rivals' minigame odds in seat 0 the 10-year game went from 209 vs. 219 M€ (17 % wins) to
+      205 vs. 206 M€ (29 %). 200 games each, `smart` in seat 0:
+
+  | Game | Seat 0 before → after | Rivals before → after |
+  |------|-----------------------|-----------------------|
+  | 5 years | 40.2 (8 %) → 40.5 M€ (9 %) | 47.6 → 46.4 M€ |
+  | 10 years, seeds 5000–5199 | 154.2 (4 %) → 161.3 M€ (6 %) | 216.1 → 217.2 M€ |
+  | 10 years `--skilled` | 270.7 (53 %) → 291.4 M€ (58 %) | 224.2 → 230.9 M€ |
 
 ## Step 2 – LLM rivals (separate planning later)
 
