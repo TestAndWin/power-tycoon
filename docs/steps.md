@@ -206,12 +206,12 @@ leader); grid capacity stays as it is (cable duels happen in real games).
 | 3 years | `solar` (Iberia solar, full credit) | 37.8 M€ | 41.9 M€ | 27.1 M€ | 36.7 M€ |
 | 3 years | `smart` | 34.5 M€ | 41.4 M€ | 28.8 M€ | 35.4 M€ |
 | 3 years | `smart --skilled` | 41.1 M€ (23 % wins) | 41.7 M€ | 32.6 M€ (8 % wins) | 35.3 M€ |
-| 5 years | `solar` | – | – | 35.9 M€ | 48.7 M€ |
-| 5 years | `smart` | – | – | 35.5 M€ | 48.4 M€ |
-| 5 years | `smart --skilled` | – | – | 46.0 M€ (17 % wins) | 49.6 M€ |
-| 10 years | `solar` | 96.8 M€ | 318.9 M€ | 98.4 M€ | 230.0 M€ |
-| 10 years | `smart` | 188.1 M€ | 332.1 M€ | 140.1 M€ | 231.5 M€ |
-| 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 246.5 M€ (25 % wins) | 226.3 M€ |
+| 5 years | `solar` | – | – | 37.2 M€ | 58.5 M€ |
+| 5 years | `smart` | – | – | 42.3 M€ | 57.0 M€ |
+| 5 years | `smart --skilled` | – | – | 56.6 M€ (10 % wins) | 59.5 M€ |
+| 10 years | `solar` | 96.8 M€ | 318.9 M€ | 90.2 M€ | 271.1 M€ |
+| 10 years | `smart` | 188.1 M€ | 332.1 M€ | 151.4 M€ | 264.1 M€ |
+| 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 300.0 M€ (30 % wins) | 291.8 M€ |
 
 All net worths are lower, mostly because of the depreciation (it also lowers the credit limit, 50 % of the
 book value) and the solar cannibalisation; a first calibration (80 % book value when built, cannibalisation up
@@ -224,9 +224,13 @@ approved parks it could not finance. After the region and interest changes: stil
 euro North German wind and Iberian solar now earn about the same. With the faster wind permits two more
 bot-played 3-year games: still 14–15 of 16 Iberian sites with solar, one wind park in North Germany. Solar
 keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) and the cheaper build.
-- [ ] With the stronger North German wind the forecast (`foresight`) no longer beats the plain estimates
-      (about even over 30–40 games, before +12–18 %); the test now compares against a timid variant. Check
-      `forecastValue` / `gridDelay` against the simple valuation
+- [x] Rivals' weak spots found with `scripts/compare.ts` (paired games: one seat plays a variant, 10 years,
+      120–200 games each): the forecast valuation was 12.5 % (± 4.5) behind the plain estimates. Causes: grid
+      reservations (−10.5 % ± 3.1; now only when the others' waiting projects would take the capacity first) and
+      surveys of every North Sea site without the money for offshore (now only financeable projects). Also: idle
+      cash is repaid. Afterwards forecast and plain estimates are even (+1.8 % ± 4.9), PPAs are worth +13 %,
+      diversification costs about 1 % (kept, it spreads the rivals over the regions). Rivals end at 59 M€
+      (5 years) and 271–292 M€ (10 years) instead of 49 / 226–230 M€
 
 - [x] Rivals' plants at the end (average over 20 games of three rivals): 5 years – Iberian solar 9.9, North
       German wind 1.5, Iberian wind 0.9, others below 0.5; 10 years – North German wind 9.7, Iberian solar 8.6,
