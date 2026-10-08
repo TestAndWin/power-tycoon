@@ -206,12 +206,17 @@ leader); grid capacity stays as it is (cable duels happen in real games).
 | 3 years | `solar` (Iberia solar, full credit) | 37.8 M€ | 41.9 M€ | 27.1 M€ | 36.7 M€ |
 | 3 years | `smart` | 34.5 M€ | 41.4 M€ | 28.8 M€ | 35.4 M€ |
 | 3 years | `smart --skilled` | 41.1 M€ (23 % wins) | 41.7 M€ | 32.6 M€ (8 % wins) | 35.3 M€ |
-| 5 years | `solar` | – | – | 37.2 M€ | 58.5 M€ |
-| 5 years | `smart` | – | – | 42.3 M€ | 57.0 M€ |
-| 5 years | `smart --skilled` | – | – | 56.6 M€ (10 % wins) | 59.5 M€ |
-| 10 years | `solar` | 96.8 M€ | 318.9 M€ | 90.2 M€ | 271.1 M€ |
-| 10 years | `smart` | 188.1 M€ | 332.1 M€ | 151.4 M€ | 264.1 M€ |
-| 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 300.0 M€ (30 % wins) | 291.8 M€ |
+| 5 years | `solar` | – | – | 39.8 M€ | 55.4 M€ |
+| 5 years | `smart` | – | – | 51.6 M€ (17 % wins) | 56.5 M€ |
+| 5 years | `smart --skilled` | – | – | 65.8 M€ (50 % wins) | 58.7 M€ |
+| 10 years | `solar` | 96.8 M€ | 318.9 M€ | 92.4 M€ | 246.4 M€ |
+| 10 years | `smart` | 188.1 M€ | 332.1 M€ | 169.3 M€ (5 % wins) | 235.8 M€ |
+| 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 318.5 M€ (58 % wins) | 264.6 M€ |
+
+The "after" columns are measured on `main` after the calmer lawsuits (three quarters of peace per site, no
+extra focus on the human) and permit decisions after the rival turns. Without the lawsuits aimed at seat 0
+the skilled bot now wins about half of the games (before those two changes: 10 % in 5 years, 30 % in 10
+years).
 
 All net worths are lower, mostly because of the depreciation (it also lowers the credit limit, 50 % of the
 book value) and the solar cannibalisation; a first calibration (80 % book value when built, cannibalisation up
