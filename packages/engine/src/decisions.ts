@@ -3,10 +3,10 @@
  * situation with two or three options. It is decided with the `decide` action; an open card gets its default
  * option at the end of the quarter. Rivals get the same cards.
  */
-import { DECISION_CHANCE, DECISION_DATA, DECISIONS, EXEC_GRADES, HQ_LEVELS, type DecisionOptionDef } from './data.js';
+import { DECISION_CHANCE, DECISION_DATA, DECISIONS, HQ_LEVELS, type DecisionOptionDef } from './data.js';
 import { emit } from './events.js';
 import { pick, randomOf } from './rng.js';
-import { isStore, producing, siteById, storeCapacity } from './rules.js';
+import { execCost, isStore, producing, siteById, storeCapacity } from './rules.js';
 import type {
   DecisionCard,
   DecisionKey,
@@ -87,9 +87,9 @@ export function dealDecisions(g: GameState, out: GameEvent[]): void {
   }
 }
 
-const salaryOf = (p: Player, card: DecisionCard): number => {
+const salaryOf = (g: GameState, p: Player, card: DecisionCard): number => {
   const e = p.board.find((b) => b.dept === card.dept);
-  return e ? EXEC_GRADES[e.grade].salary : 0;
+  return e ? execCost(g, e.grade).salary : 0;
 };
 
 /** Price, gain and chance of option `o` of `p`'s card. */
@@ -118,8 +118,8 @@ function optionNumbers(
         return { cost: D.grant.lobbyist.cost, gain: D.grant.amount, chance: D.grant.lobbyist.chance };
       return none;
     case 'poach':
-      if (o.key === 'raise') return { ...none, cost: D.poach.raise * salaryOf(p, card) };
-      if (o.key === 'options') return { ...none, cost: D.poach.options * salaryOf(p, card) };
+      if (o.key === 'raise') return { ...none, cost: D.poach.raise * salaryOf(g, p, card) };
+      if (o.key === 'options') return { ...none, cost: D.poach.options * salaryOf(g, p, card) };
       return none;
     case 'mayor': {
       const x = siteById(g, card.siteId!)!;

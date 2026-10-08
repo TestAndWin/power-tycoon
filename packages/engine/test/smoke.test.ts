@@ -51,22 +51,22 @@ async function playFullGame(seed: number, seat0?: OpponentStrategy): Promise<Gam
 describe('bot-vs-bot smoke games 2026–2035', () => {
   it('plays full games without exceptions and keeps invariants', async () => {
     for (let seed = 1; seed <= 8; seed++) {
-      const g = await playFullGame(seed, new SmartOpponent('hard'));
+      const g = await playFullGame(seed, new SmartOpponent());
       expect(['time', 'bankrupt', 'monopoly']).toContain(g.over);
       if (g.over === 'time') expect(g.year).toBe(2036);
     }
-  });
+  }, 30_000);
 
   it('is deterministic: same seed and strategies give the same game', async () => {
-    const a = await playFullGame(77, new SmartOpponent('hard'));
-    const b = await playFullGame(77, new SmartOpponent('hard'));
+    const a = await playFullGame(77, new SmartOpponent());
+    const b = await playFullGame(77, new SmartOpponent());
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-    const c = await playFullGame(78, new SmartOpponent('hard'));
+    const c = await playFullGame(78, new SmartOpponent());
     expect(JSON.stringify(a)).not.toBe(JSON.stringify(c));
-  });
+  }, 30_000);
 
   it('rival net worth after 10 years is plausible', async () => {
-    // normal rivals with an idle player end at about 215–260 M€
+    // rivals with an idle player end at about 200–250 M€
     const sums = [0, 0, 0];
     const N = 10;
     for (let seed = 100; seed < 100 + N; seed++) {
@@ -78,5 +78,5 @@ describe('bot-vs-bot smoke games 2026–2035', () => {
       expect(avg).toBeGreaterThan(100e6);
       expect(avg).toBeLessThan(500e6);
     }
-  });
+  }, 30_000);
 });

@@ -4,11 +4,11 @@ import { checkAwards } from './awards.js';
 import { closeDecisions, dealDecisions } from './decisions.js';
 import {
   AI_DEF,
+  REGION_KEYS,
   CREDIT_SALES_QUARTERS,
-  CAPTURE,
   CO2,
+  CO2_BONUS,
   HQ_LEVELS,
-  INTEREST,
   PLANTS,
   plantDef,
   PRICE_FOLLOW,
@@ -18,16 +18,19 @@ import {
 import { concerns, emit, eventsForViewer, isConfrontation } from './events.js';
 import { clamp, createRng, gauss, nextUint, randomOf } from './rng.js';
 import {
+  captureRate,
   clone,
   creditLimit,
   genEstimate,
   genOffers,
+  interestRate,
   isStore,
   operating,
   rejectChance,
   resetSite,
   salaries,
   siteDef,
+  solarLoad,
   storeIncome,
   updateSpread,
   worth,
@@ -205,6 +208,8 @@ function produce(g: GameState, price: number, out: GameEvent[]): Map<PlayerId, O
   }
   const gen = new Map<string, number>();
   const stores: Site[] = [];
+  // the solar load before this quarter's faults: cannibalisation follows the installed parks
+  const load = new Map(REGION_KEYS.map((r) => [r, solarLoad(g.sites, r)]));
   for (const x of g.sites) {
     if (!operating(x) || !x.type) continue;
     x.age++;
@@ -232,7 +237,7 @@ function produce(g: GameState, price: number, out: GameEvent[]): Map<PlayerId, O
       const cls = PLANTS[x.type].cls as 'wind' | 'solar' | 'hydro';
       gen.set(x.id, e);
       s.gen += e;
-      s.val += e * price * CAPTURE[cls][g.q]!;
+      s.val += e * price * captureRate(cls, g.q, load.get(x.r)!);
     }
     if (x.curtail > 0) x.curtail--;
   }
@@ -247,6 +252,8 @@ function produce(g: GameState, price: number, out: GameEvent[]): Map<PlayerId, O
 
 /** Books revenue (contracts first, the rest at the spot market) and running costs. Returns the report lines. */
 function settle(g: GameState, p: Player, s: Output, price: number, out: GameEvent[]): ReportLine[] {
+  // the rate of the quarter, before its revenue changes the credit limit
+  const rate = interestRate(g, p);
   p.genLast = s.gen;
   p.co2 += s.gen * CO2;
   const lines: ReportLine[] = [];
@@ -279,15 +286,15 @@ function settle(g: GameState, p: Player, s: Output, price: number, out: GameEven
     ls += x.lease * 0.02;
     if (x.built && x.type) op += siteDef(x).opex;
   }
-  const interest = p.loan * INTEREST;
-  const board = salaries(p);
+  const interest = p.loan * rate;
+  const board = salaries(g, p);
   const hq = HQ_LEVELS[p.hq].upkeep;
   p.cash -= Math.round(op + ls + interest + board + hq);
   lines.push({ kind: 'opex', amount: -Math.round(op) });
   lines.push({ kind: 'lease', amount: -Math.round(ls) });
   lines.push({ kind: 'board', amount: -Math.round(board) });
   lines.push({ kind: 'hq', amount: -Math.round(hq) });
-  lines.push({ kind: 'interest', amount: -Math.round(interest) });
+  lines.push({ kind: 'interest', amount: -Math.round(interest), rate });
   return lines;
 }
 
@@ -347,7 +354,20 @@ function nextQuarter(g: GameState, out: GameEvent[]): void {
   checkAwards(g, out);
   if (!g.over && g.year >= g.endYear) g.over = 'time';
   if (!g.over && g.players.every((p) => p.human || p.out)) g.over = 'monopoly';
-  if (!g.over) dealDecisions(g, out);
+  // a bankrupt player has lost anyway: no bonus then
+  if (g.over === 'time' || g.over === 'monopoly') climateBonus(g, out);
+  else if (!g.over) dealDecisions(g, out);
+}
+
+/** End of the game: every company gets the climate bonus for the CO₂ it avoided; it counts in the final worth. */
+function climateBonus(g: GameState, out: GameEvent[]): void {
+  for (const p of g.players) {
+    if (p.out || p.co2 <= 0) continue;
+    const amount = Math.round((p.co2 * CO2_BONUS) / 1e4) * 1e4;
+    p.cash += amount;
+    p.hist[p.hist.length - 1] = worth(g, p);
+    emit(g, out, { type: 'climateBonus', playerId: p.id, co2: Math.round(p.co2), amount });
+  }
 }
 
 /**

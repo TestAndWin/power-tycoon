@@ -17,7 +17,7 @@ import {
   type RegionKey,
   type SiteView,
 } from '@power-tycoon/engine';
-import { esc, money, mwh, QN } from '../format.js';
+import { esc, money, mwh, pct, QN } from '../format.js';
 import { playerColor } from '../players.js';
 import { geo, quad, redrawStill } from '../scene/index.js';
 import { UI } from '../state.js';
@@ -32,7 +32,7 @@ import {
   sizeSuffix,
 } from '../texts.js';
 import { crest } from './companies.js';
-import { btn, disabledUnless, shortName, siteOptions, siteStatus, V } from './common.js';
+import { btn, disabledUnless, fundsHint, shortName, siteOptions, siteStatus, V } from './common.js';
 
 function gridBar(r: RegionKey): string {
   const g = V().grid[r],
@@ -76,11 +76,21 @@ export function vSites(): string {
       ? `<span class="ctok" title="Sonne"><i aria-hidden="true">☀</i><span class="label">Sonne</span>${R.sun[0]}–${R.sun[1]} kWh/kWp</span>`
       : '',
   ].join('');
+  const G = v.grid[r];
+  // what the region's plants mean for new projects: more resistance, cheaper solar power
+  const pressure = [
+    G.crowding >= 0.005
+      ? `<span class="ctok warn" title="Viele Anlagen in der Region: Genehmigungen werden öfter abgelehnt"><i aria-hidden="true">§</i><span class="label">Widerstand</span>+${pct(G.crowding, 0)} Ablehnung</span>`
+      : '',
+    G.solarLoss >= 0.005
+      ? `<span class="ctok warn" title="${G.solarMw} MW Solar drücken mittags den Preis. Speicher in der Region fangen einen Teil ab."><i aria-hidden="true">☀</i><span class="label">Solarschwemme</span>−${pct(G.solarLoss, 0)} Solarerlös</span>`
+      : '',
+  ].join('');
   return `<div class="sites">
     <nav class="rcards" aria-label="Region">${cards}</nav>
     <section class="rboard">
       <div class="rinfo">
-        <div class="rclimate">${climate}</div>
+        <div class="rclimate">${climate}${pressure}</div>
         ${gridBar(r)}
         <button class="btn small reserve" data-act="reserve" data-v="${r}" title="Hält ${v.constants.reserveMw} MW Netzkapazität ${v.constants.reserveQuarters} Quartale für dich frei" ${disabledUnless({ type: 'reserveGrid', region: r })}>${v.constants.reserveMw} MW reservieren <small>${money(v.constants.reserveCost, true)}</small></button>
       </div>
@@ -106,21 +116,25 @@ export function selectSite(id: string): boolean {
 /** Always-visible clipboard mark on free plots the player has already surveyed. */
 const SURVEY_MARK =
   '<i class="svy" title="Ertragsgutachten liegt vor"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="9" rx="1"/><path d="M4.5 1.2h3v1.6h-3zM4 6.2l1.4 1.4L8 5"/></svg></i>';
+/** Margin of a plot's button around the plot (percent of the scene; the gaps between plots are wider). */
+const HIT_PAD_X = 0.6;
+const HIT_PAD_Y = 2;
 function hits(r: RegionKey): string {
   const g = geo(100, 100),
     v = V();
   return v.sites
     .filter((x) => x.r === r)
     .map((x) => {
+      // the button covers the plot with a margin into the gaps, so its corner lights and edges select it too
       const qd = quad(g, x.i),
-        l = g.X(qd.u0, qd.cy),
-        w = g.X(qd.u1, qd.cy) - l,
+        l = g.X(qd.u0, qd.cy) - HIT_PAD_X,
+        w = g.X(qd.u1, qd.cy) - l + HIT_PAD_X,
         s = siteStatus(x),
         own = x.owner >= 0;
       const o = own ? v.players[x.owner]! : null,
         svy = !own && x.surveyed,
         val = !own ? (svy ? siteQuality(x) + ' · ' : '') + money(x.lease, true) : o!.human ? s.t : esc(shortName(o!));
-      return `<button class="hit ${UI.sel === x.id ? 'sel' : ''}" style="left:${l}%;top:${qd.y0}%;width:${w}%;height:${qd.y1 - qd.y0}%" data-act="sel" data-v="${x.id}" aria-label="${siteName(x)}: ${own ? (o!.human ? 'deine Fläche' : 'gehört ' + esc(o!.name)) + ', ' + s.t : 'frei, ' + s.t}${svy ? ', Ertragsgutachten liegt vor' : ''}">
+      return `<button class="hit ${UI.sel === x.id ? 'sel' : ''}" style="left:${l}%;top:${qd.y0 - HIT_PAD_Y}%;width:${w}%;height:${qd.y1 - qd.y0 + 2 * HIT_PAD_Y}%" data-act="sel" data-v="${x.id}" aria-label="${siteName(x)}: ${own ? (o!.human ? 'deine Fläche' : 'gehört ' + esc(o!.name)) + ', ' + s.t : 'frei, ' + s.t}${svy ? ', Ertragsgutachten liegt vor' : ''}">
       <span class="stag">${siteName(x)}${own && s.k === 'bad' ? '<i class="alert">!</i>' : ''}${svy ? SURVEY_MARK : ''}<span class="sval">${val}</span></span></button>`;
     })
     .join('');
@@ -134,6 +148,13 @@ function storeFeeders(r: RegionKey): string {
     ? `Lädt mit Strom deiner Anlagen ${feeders.map(siteName).join(', ')} und verkauft ihn zu teuren Zeiten – dafür gibt es den vollen Spread. ${rule}`
     : `Keine eigene Anlage in dieser Region liefert Strom. ${rule} Bau hier eigene Kraftwerke dazu.`;
 }
+/** Odds of the automatic assembly of a wind plant, if the player does not play the minigames. */
+function buildHint(x: SiteView): string {
+  const v = V();
+  if (!v.autoOdds || !x.type || plantDef(x.type, x.size).cls !== 'wind') return '';
+  return `<p class="hint">Montage gelingt mit ${pct(v.autoOdds.rotor, 0)} (Minispiele ausgewürfelt) – sonst kostet ein weiterer Versuch ${money(costsFor(v, x.size)[x.type].retry, true)}.</p>`;
+}
+
 /** Facts and actions of the selected site. The actions are exactly the engine's options for it. */
 function detail(): string {
   const v = V();
@@ -159,6 +180,8 @@ function detail(): string {
     f += `<dt>Anlage</dt><dd>${PLANT_NAME[x.type]}${sizeSuffix(x.size)}</dd><dt>Leistung</dt><dd>${P.mw} MW${P.mwh ? ' / ' + P.mwh + ' MWh' : ''}</dd>`;
     if (x.offline > 0) f += `<dt>Repowering</dt><dd>noch ${x.offline} Q außer Betrieb</dd>`;
     if (x.own.alt) f += `<dt>Neuer Antrag</dt><dd>${PLANT_NAME[x.own.alt.type]} · noch ${x.own.alt.left} Q</dd>`;
+    if (x.own.permitRisk != null)
+      f += `<dt>Ablehnungsrisiko</dt><dd>${pct(x.own.permitRisk, 0)} · Entscheidung in ${Math.max(1, x.own.permitLeft)} Q</dd>`;
     if (x.built) f += `<dt>Wirkungsgrad</dt><dd>${Math.round(x.own.eff * 100)} %</dd>`;
     if (operating(x))
       f += isStore(x.type)
@@ -177,7 +200,9 @@ function detail(): string {
   const regionTypes = REGIONS[x.r].types;
   // permit buttons carry the chosen size
   const pv = (t: PlantType) => `${x.id}|${t}|${UI.size}`;
-  const pname = (t: PlantType) => `${PLANT_NAME[t]} · ${plantDef(t, UI.size).mw} MW`;
+  const risk = (t: PlantType) => x.permitRisk?.[t]?.[UI.size];
+  const pname = (t: PlantType) =>
+    `${PLANT_NAME[t]} · ${plantDef(t, UI.size).mw} MW${risk(t) != null ? `<span class="sub">Ablehnungsrisiko ${pct(risk(t)!, 0)}</span>` : ''}`;
   const permits: { t: PlantType; opt: ActionOption }[] = [];
   const a: string[] = [];
   for (const opt of siteOptions(x.id)) {
@@ -190,7 +215,7 @@ function detail(): string {
         );
         break;
       case 'lease':
-        a.push(btn('lease', x.id, 'Pachtvertrag unterschreiben', opt, { cls: 'primary' }));
+        a.push(btn('lease', x.id, 'Pachtvertrag unterschreiben', opt, { cls: 'primary' }), fundsHint(opt));
         break;
       case 'applyPermit':
         if ((act.size ?? 'std') === UI.size) permits.push({ t: act.plantType, opt });
@@ -201,10 +226,16 @@ function detail(): string {
       case 'build':
         a.push(
           btn('build', x.id, x.fail ? 'Montage wiederholen' : 'Bauen: ' + PLANT_NAME[x.type!], opt, { cls: 'primary' }),
+          fundsHint(opt),
+          buildHint(x),
         );
         break;
       case 'connectGrid':
-        a.push(btn('connect', x.id, 'Ans Netz anschließen', opt, { cls: 'primary' }));
+        a.push(btn('connect', x.id, 'Ans Netz anschließen', opt, { cls: 'primary' }), fundsHint(opt));
+        if (v.autoOdds && opt.error !== 'noGridCapacity')
+          a.push(
+            `<p class="hint">Erfolgschance ${pct(x.own?.duelRisk ? v.autoOdds.cableDuel : v.autoOdds.cable, 0)} (Minispiele ausgewürfelt) – scheitert der Anschluss, ${x.own?.duelRisk ? 'gibt es nur die Hälfte zurück' : 'ist das Geld weg'}.</p>`,
+          );
         if (opt.error === 'noGridCapacity')
           a.push(
             `<p class="muted" style="font-size:12px;margin:0">Nicht genug freie Netzkapazität (${x.mw} MW nötig). Warte auf Netzausbau oder reserviere rechtzeitig.</p>`,
@@ -214,7 +245,7 @@ function detail(): string {
       case 'repower': {
         const L = plantDef(x.type!, 'large');
         a.push(
-          `<div class="withinfo">${btn('repower', x.id, `Repowering auf ${L.mw} MW`, opt)}${info(
+          `<div class="withinfo">${btn('repower', x.id, `Repowering auf ${L.mw} MW`, opt)}${fundsHint(opt)}${info(
             opt.error === 'noGridCapacity'
               ? `Für das Repowering fehlen ${repowerMw(x.type!)} MW freie Netzkapazität.`
               : `Größere Anlage auf derselben Fläche: +${repowerMw(x.type!)} MW, dafür ein Quartal Stillstand.`,
@@ -264,6 +295,9 @@ function detail(): string {
     permitButtons.push(
       `<p class="muted" style="font-size:12px;margin:0">Bau ab ≈ ${permits.map(({ t }) => `${PLANT_NAME[t]} (${plantDef(t, UI.size).mw} MW) ${money(costs[t].build, true)}`).join(', ')}</p>`,
     );
+  // missing money for the cheapest permit (the others cost more)
+  const cheapest = permits.slice().sort((p, q) => p.opt.cost - q.opt.cost)[0];
+  if (cheapest) permitButtons.push(fundsHint(cheapest.opt));
   a.unshift(...permitButtons);
   // the size applies to all permit buttons
   if (siteOptions(x.id).some((o) => o.action.type === 'applyPermit'))

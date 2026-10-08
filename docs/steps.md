@@ -80,6 +80,7 @@ Quick wins before any LLM, measured with bot-vs-bot simulations over many seeds:
 - [x] Use PPA contracts, storage arbitrage and grid reservations deliberately
 - [x] Target lobby tricks at the leader (esp. the human) when it pays off
 - [x] Difficulty levels (normal/hard) as parameters of the strategy; the legacy rivals (`easy`) were removed
+      (`normal` was removed in phase 9)
 - [x] Simulation script: N games, report average net worth per strategy
 - [x] Hard: market/grid forecast, end-of-game accounting, value-based surveys, selling dead projects,
       diversification, timed lobby tricks and revenge on the human; historic milestones spread over the game
@@ -160,10 +161,61 @@ scene, then the paper look. Balance measured with the simulation script like pha
 - [x] Playwright play-through on desktop and phone width
 - [x] Rules sheet (no step-by-step tutorial): explains the game once, opened from the start dialog and the top bar
 
+## Phase 9 – Play-test feedback (October 2026)
+
+Feedback of a 3-year game against `normal` rivals: one strategy won without resistance (standard solar parks
+in Iberia on the full credit line, 88 M€ vs. 51 M€ for the best rival). Decisions by Michael: `normal` is
+removed (the former `hard` is the only level – it already bids for the top sites and aims its tricks at the
+leader); grid capacity stays as it is (cable duels happen in real games).
+
+**Balance**
+- [x] Only one difficulty: `Difficulty`, `settings.difficulty` and the start dialog's choice are gone; stored
+      games keep playing (the old field is ignored, an old client's `difficulty` is dropped by the API)
+- [x] Depreciation: a new plant counts `PLANT_BOOK` (80 %) of its costs, minus 1 % per operating quarter, at
+      least 35 % – building in the last quarters costs net worth
+- [x] Interest grows with the share of the credit line used: 1 % + 2 % × utilisation² per quarter on the whole
+      loan (3 % at a full line); shown in the bank and in the report line
+- [x] Solar cannibalisation: the solar capture rate of a region drops by 4 % per 100 MW solar (stronger in summer,
+      at most 30 %); storage in the region offsets half its MW; PPAs keep their fixed price
+- [x] Permit risk by region (`REGIONS[r].reject`: ND +5, IB +6, AL +5 points) and crowding (+3 points per 100 MW
+      approved or built in the region, at most +15); shown before applying and while the application runs. A
+      lawsuit against a granted permit delays it; the review confirms it unless the lawsuit wins
+- [x] Board fee and salaries scale with the game length (3 years 40 %, 5 years 65 %)
+- [x] Climate bonus: 20 € per tonne of CO₂ avoided at the end of the game, part of the final net worth
+- [x] Rivals value all of it (real permit risk, cannibalisation incl. parks under way and the relief of storage,
+      marginal interest, climate bonus) and keep the money for the grid connections of what they build –
+      without it a human-like bot went bankrupt in 5 % of the 3-year games under the new interest
+
+**UX**
+- [x] Blocked by money: "Es fehlen … – Kredit aufnehmen" with a jump to the bank, under lease, permit, build,
+      connect and repower
+- [x] Without minigames the odds are shown at the buttons (assembly, grid connection, cable duel)
+- [x] Citizens' protest card: no longer says "before the authority decides" for a permit reopened by a lawsuit;
+      "Aussitzen" delays the authority's decision by a quarter
+- [x] Larger click area of the plots (margin into the gaps between them)
+- [x] A rival's portrait in the office opens the rivals' files at that rival
+- [x] End screen and news show the climate bonus
+
+**Simulation** (`pnpm simulate`, 60 games each, average net worth; before = all rivals `hard`)
+
+| Game | Seat 0 | Seat 0 before | Rivals before | Seat 0 after | Rivals after |
+|------|--------|---------------|---------------|--------------|--------------|
+| 3 years | `solar` (Iberia solar, full credit) | 37.8 M€ | 41.9 M€ | 21.5 M€ | 35.3 M€ |
+| 3 years | `smart` | 34.5 M€ | 41.4 M€ | 28.8 M€ | 35.5 M€ |
+| 3 years | `smart --skilled` | 41.1 M€ (23 % wins) | 41.7 M€ | 32.0 M€ (7 % wins) | 35.3 M€ |
+| 10 years | `solar` | 96.8 M€ | 318.9 M€ | 55.7 M€ | 161.2 M€ |
+| 10 years | `smart` | 188.1 M€ | 332.1 M€ | 101.5 M€ | 162.3 M€ |
+| 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 154.2 M€ (28 % wins) | 155.8 M€ |
+
+All net worths are lower (depreciation and interest); the one-sided solar strategy falls back clearly. In the
+3-year game a skilled bot in seat 0 now wins less often than before – watch this in the next play-test.
+
+- [ ] Play-test a 3-year and a 10-year game with the new rules
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)
 - [ ] Persona per rival from `AI_DEF`, short memory via recent events
-- [ ] Timeout + fallback to `SmartOpponent` (normal), cost limit per game, prompt caching
+- [ ] Timeout + fallback to `SmartOpponent`, cost limit per game, prompt caching
 - [ ] `end-quarter` via SSE
 - [ ] `ANTHROPIC_API_KEY` as k8s secret

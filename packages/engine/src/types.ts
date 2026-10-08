@@ -203,7 +203,7 @@ export interface GameState {
   over: GameOver;
   /** `players`: the human acts; `quarterEnd`: `endQuarter` runs and the rivals act, after the human. */
   phase: 'players' | 'quarterEnd';
-  settings: { autoMinigames: boolean; difficulty: Difficulty };
+  settings: { autoMinigames: boolean };
   challenge: OpenChallenge | null;
 }
 
@@ -392,6 +392,8 @@ export type GameEvent =
       success?: boolean;
     }
   | { type: 'awardWon'; playerId: PlayerId; award: AwardKey; gold: boolean; year?: number }
+  /** End of the game: climate bonus for the tonnes of CO₂ avoided (`co2`). */
+  | { type: 'climateBonus'; playerId: PlayerId; co2: number; amount: number }
   | { type: 'playerBankrupt'; playerId: PlayerId }
   | { type: 'actionRejected'; playerId: PlayerId; action: string; error: ErrorCode };
 
@@ -413,7 +415,8 @@ export type ReportLine =
   /** Salaries of the board and upkeep of the headquarters. */
   | { kind: 'board'; amount: number }
   | { kind: 'hq'; amount: number }
-  | { kind: 'interest'; amount: number };
+  /** `rate`: interest rate of the quarter (missing in reports of older games). */
+  | { kind: 'interest'; amount: number; rate?: number };
 
 export interface QuarterReport {
   /** The quarter this report covers. */
@@ -439,8 +442,6 @@ export interface QuarterResult {
 }
 
 /* ---------------- Opponents ---------------- */
-
-export type Difficulty = 'normal' | 'hard';
 
 export interface RivalProfile {
   name: string;
@@ -513,7 +514,14 @@ export interface SiteView {
     storeCapacity: number;
     /** Connecting this built plant now would be a cable duel against a rival. */
     duelRisk: boolean;
+    /** Rejection chance of the running permit application (null without one). */
+    permitRisk: number | null;
   };
+  /**
+   * Rejection chance of a new permit application per allowed plant type and size, if the viewer may apply
+   * on this site (free sites: as if the viewer leased it).
+   */
+  permitRisk?: Partial<Record<PlantType, Record<PlantSize, number>>>;
 }
 
 export interface PlayerSummary {
@@ -573,6 +581,11 @@ export interface GridView {
   myReservations: { mw: number; left: number }[];
   /** Free capacity for the viewer (own reservations count as free). */
   free: number;
+  /** Net solar load (MW, see `solarLoad`) and the average loss of the solar capture rate over a year (0..1). */
+  solarMw: number;
+  solarLoss: number;
+  /** Extra rejection chance of permits from the plants in the region. */
+  crowding: number;
 }
 
 export interface PlayerView {
@@ -584,7 +597,7 @@ export interface PlayerView {
   endYear: number;
   quartersLeft: number;
   over: GameOver;
-  settings: { autoMinigames: boolean; difficulty: Difficulty };
+  settings: { autoMinigames: boolean };
   me: {
     id: PlayerId;
     name: string;
@@ -613,6 +626,8 @@ export interface PlayerView {
     seats: number;
     /** Salaries and headquarters upkeep per quarter. */
     overhead: number;
+    /** Interest rate per quarter at the current loan and credit limit. */
+    interest: number;
     discount: { pct: number; left: number } | null;
     decision: DecisionView | null;
     awards: Award[];
@@ -631,9 +646,20 @@ export interface PlayerView {
   detectives: Record<DetectiveLevel, { cost: number; shield: number; catchFailed: number; catchSucceeded: number }>;
   /** Everything the viewer can do now or is only blocked from by money, capacity or limits. */
   options: ActionOption[];
+  /** Fee and quarterly salary of board members in this game. */
+  execCosts: Record<ExecGrade, { fee: number; salary: number }>;
+  /**
+   * Odds of the automatic minigames, if the viewer plays without minigames (null otherwise): success of
+   * assembly (`rotor`), grid connection (`cable`), cable duel (`cableDuel`, incl. the grid board member) and repair.
+   */
+  autoOdds: { rotor: number; cable: number; cableDuel: number; frequency: number } | null;
   constants: {
     maxContracts: number;
+    /** Base interest rate per quarter and the risk premium at a fully used credit line. */
     interest: number;
+    interestRisk: number;
+    /** Climate bonus at the end of the game in € per tonne of CO₂. */
+    co2Bonus: number;
     reserveMw: number;
     reserveCost: number;
     reserveQuarters: number;

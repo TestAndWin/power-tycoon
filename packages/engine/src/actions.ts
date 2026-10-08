@@ -38,6 +38,7 @@ import {
   consumeReserve,
   creditLimit,
   duelRivals,
+  execCost,
   execPower,
   freeGrid,
   hasIntel,
@@ -117,6 +118,8 @@ function duelRival(g: GameState, pid: PlayerId, x: Site): PlayerId | null {
 function applyTrick(g: GameState, type: TrickType, x: Site): void {
   const r = randomOf(g);
   if (type === 'klage') {
+    // a permit that was already granted is confirmed after the review, unless the lawsuit wins (`killed`)
+    if (x.permit === 'approved') x.rejectMod = -1;
     x.permit = 'pending';
     x.permitLeft = Math.max(x.permitLeft, 0) + 2;
     if (r() < 0.15) {
@@ -249,7 +252,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (rival === null) return startChallenge(g, pid, 'cable', x, 'connect', out);
       // the grid & engineering board member wins time in the duel
       const extra = 1 + EXEC_EFFECTS.grid.duelTime * execPower(p, 'grid');
-      const seconds = Math.round(duelSeconds(g.settings.difficulty, x.r) * extra);
+      const seconds = Math.round(duelSeconds(x.r) * extra);
       startChallenge(g, pid, 'cable', x, 'connect', out, { playerId: rival, seconds });
     },
   },
@@ -449,7 +452,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (p.board.some((e) => e.dept === a.dept)) return 'invalidState';
       return freeSeats(p) <= 0 ? 'boardFull' : null;
     },
-    price: (c) => EXEC_GRADES[c.a.grade].fee,
+    price: (c) => execCost(c.g, c.a.grade).fee,
     execute({ g, p, pid, a }, cost, out) {
       p.cash -= cost;
       p.board.push({ dept: a.dept, grade: a.grade, since: g.turn });
@@ -458,7 +461,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
   },
   fireExecutive: {
     validate: ({ p, a }) => (boardMember(p, a.dept) ? null : 'invalidTarget'),
-    price: ({ p, a }) => EXEC_GRADES[boardMember(p, a.dept)!.grade].salary * EXEC_SEVERANCE,
+    price: ({ g, p, a }) => execCost(g, boardMember(p, a.dept)!.grade).salary * EXEC_SEVERANCE,
     execute({ g, p, pid, a }, cost, out) {
       const e = boardMember(p, a.dept)!;
       p.cash -= cost;

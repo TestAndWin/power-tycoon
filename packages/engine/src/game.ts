@@ -12,14 +12,12 @@ import {
 import { rand, randomOf, type Random } from './rng.js';
 import { emit } from './events.js';
 import { genOffers, updateSpread, worth } from './rules.js';
-import type { Difficulty, GameState, Player, PlayerId, RegionKey, Site } from './types.js';
+import type { GameState, Player, PlayerId, RegionKey, Site } from './types.js';
 
 export interface CreateGameOptions {
   companyName: string;
   autoMinigames: boolean;
   seed: number;
-  /** Strength of the rivals, default `normal`. */
-  difficulty?: Difficulty;
   /** Game length in years (one of `GAME_YEAR_OPTIONS`), default `GAME_YEARS`. */
   years?: number;
 }
@@ -125,7 +123,7 @@ export function createGame(opts: CreateGameOptions): GameState {
     nextId: 1,
     over: false,
     phase: 'players',
-    settings: { autoMinigames: !!opts.autoMinigames, difficulty: opts.difficulty ?? 'normal' },
+    settings: { autoMinigames: !!opts.autoMinigames },
     challenge: null,
   };
   const r = randomOf(g);

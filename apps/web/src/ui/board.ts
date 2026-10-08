@@ -29,21 +29,23 @@ function member(d: Department): string {
   const v = V(),
     e = v.me.board.find((b) => b.dept === d)!,
     P = EXEC_PEOPLE[d][e.grade],
-    G = EXEC_GRADES[e.grade];
+    G = EXEC_GRADES[e.grade],
+    C = v.execCosts[e.grade];
   const fire = optionFor({ type: 'fireExecutive', dept: d });
   return `<div class="exec"><div class="photo">${execPortrait(d, e.grade, 72)}</div><div class="stack" style="gap:4px">
     <b>${esc(P.name)}</b><span class="muted">${GRADE_TEXT[e.grade]} · im Vorstand seit ${turnStr(v.startYear, e.since)}</span>
-    <span>${DEPT_TEXT[d].effect(G.power)}</span><span class="muted">Gehalt ${money(G.salary, true)} je Quartal</span>
+    <span>${DEPT_TEXT[d].effect(G.power)}</span><span class="muted">Gehalt ${money(C.salary, true)} je Quartal</span>
     <div class="row">${fire ? btn('fireExec', d, 'Entlassen', fire, { confirm: true }) : ''}</div></div></div>`;
 }
 
 function candidate(d: Department, g: ExecGrade): string {
   const P = EXEC_PEOPLE[d][g],
     G = EXEC_GRADES[g],
+    C = V().execCosts[g],
     o = optionFor({ type: 'hireExecutive', dept: d, grade: g });
   return `<div class="cv"><div class="photo">${execPortrait(d, g, 64)}</div><div class="stack" style="gap:3px">
     <b>${esc(P.name)}, ${P.age} <span class="chip">${GRADE_TEXT[g]}</span></b><span class="muted">${esc(P.cv)}</span>
-    <span>${DEPT_TEXT[d].effect(G.power)}</span><span class="muted">Gehalt ${money(G.salary, true)} je Quartal</span>
+    <span>${DEPT_TEXT[d].effect(G.power)}</span><span class="muted">Gehalt ${money(C.salary, true)} je Quartal</span>
     <div class="row">${o ? btn('hireExec', d + '|' + g, 'Einstellen', o, { cls: 'primary' }) : ''}</div></div></div>`;
 }
 
@@ -78,7 +80,7 @@ export function vBoard(): string {
   const v = V();
   return `<div class="stack" style="gap:16px">
     <section class="panel"><div class="phead"><h2>Vorstand</h2><span class="muted">${v.me.board.length} von ${v.me.seats} Plätzen besetzt · Gehälter und Firmensitz ${money(v.me.overhead, true)} je Quartal</span></div>
-      <p class="muted" style="margin:0">Jedes Ressort hat genau einen Platz. ${v.me.board.length >= v.me.seats ? 'Alle Plätze im ' + HQ_TEXT[v.me.hq].name + ' sind belegt – für mehr Vorstand braucht es einen größeren Firmensitz.' : 'Eine Entlassung kostet ein Quartalsgehalt Abfindung.'}</p></section>
+      <p class="muted" style="margin:0">Jedes Ressort hat genau einen Platz. ${v.me.board.length >= v.me.seats ? 'Alle Plätze im ' + HQ_TEXT[v.me.hq].name + ' sind belegt – für mehr Vorstand braucht es einen größeren Firmensitz.' : 'Eine Entlassung kostet ein Quartalsgehalt Abfindung.'}${v.execCosts.junior.fee < EXEC_GRADES.junior.fee ? ` In diesem ${v.endYear - v.startYear}-Jahres-Spiel sind Antrittsprämie und Gehälter auf ${Math.round((v.execCosts.junior.fee / EXEC_GRADES.junior.fee) * 100)} % gesenkt – die Vorstände haben weniger Zeit, sich zu rechnen.` : ''}</p></section>
     <div class="depts">${DEPARTMENT_KEYS.map(department).join('')}</div>
     <section class="panel"><div class="phead"><h2>Firmensitz</h2><span class="muted">${HQ_TEXT[v.me.hq].name}</span></div>${blueprint()}</section></div>`;
 }

@@ -855,6 +855,13 @@ h3 {
   display: flex;
   flex-direction: column;
 }
+/* the rival whose portrait was clicked in the office */
+.board.focus {
+  border-color: var(--oc);
+  box-shadow:
+    0 0 0 3px var(--oc),
+    var(--shadow);
+}
 .board.out {
   filter: grayscale(0.8);
   opacity: 0.7;
@@ -1224,6 +1231,11 @@ h3 {
 }
 .ctok .label {
   font-family: var(--sans);
+}
+/* what the region's plants mean for new projects (resistance, solar glut) */
+.ctok.warn i {
+  background: var(--warn);
+  color: #fff;
 }
 .rinfo {
   display: flex;
@@ -1748,6 +1760,23 @@ input[type='checkbox'] {
 .duelhint {
   color: var(--warn);
   font-weight: 700;
+}
+/* a second line in a button label (e.g. the rejection risk of a permit) */
+.btn .sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+/* odds and missing money under an action button */
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 /* cable duel: the rival's progress next to the own timer */

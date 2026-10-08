@@ -7,7 +7,6 @@ import type {
   Department,
   DetectiveLevel,
   ExecGrade,
-  Difficulty,
   GameEvent,
   PlantSize,
   PlantType,
@@ -23,7 +22,7 @@ import { closeModal, modalLocked, openModal, toast } from './modal.js';
 import { registerScenes, setHover } from './scene/index.js';
 import { drinkCoffee, toggleLamp, touchPlant } from './scene/office.js';
 import { SND, toggleSound } from './sound.js';
-import { $, isPhone, S, UI } from './state.js';
+import { $, isPhone, RMO, S, UI } from './state.js';
 import {
   decisionResultText,
   DEPT_TEXT,
@@ -245,10 +244,9 @@ async function endQuarter(): Promise<void> {
 async function startGame(): Promise<void> {
   const name = ($<HTMLInputElement>('#sName')?.value.trim() || 'Deichwatt AG').slice(0, 24);
   const auto = !!$<HTMLInputElement>('#sAuto')?.checked;
-  const diff = ($<HTMLSelectElement>('#sDiff')?.value || 'normal') as Difficulty;
   const years = Number($<HTMLSelectElement>('#sYears')?.value || 10);
   try {
-    const res = await api.create(name, auto, diff, years);
+    const res = await api.create(name, auto, years);
     S.game = { gameId: res.gameId, token: res.token };
     saveStored(S.game);
     S.view = res.view;
@@ -274,7 +272,16 @@ function openArea(v: string): void {
 let rulesBack = (): void => closeModal();
 
 const A: Record<string, (v: string, el: HTMLElement) => void> = {
-  tab: (v) => openArea(v),
+  tab: (v) => {
+    UI.rival = null;
+    openArea(v);
+  },
+  rival: (v) => {
+    // a portrait on the wall: the rivals' files, opened at this one
+    UI.rival = +v;
+    openArea('rivals');
+    $(`#rival-${v}`)?.scrollIntoView({ behavior: RMO ? 'auto' : 'smooth', block: 'nearest' });
+  },
   closeFolder: () => {
     UI.folder = null;
     UI.tab = 'overview';
@@ -339,7 +346,7 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
     else if (S.view?.me.decision || S.call) SND.buzz();
   },
   closeModal: () => closeModal(),
-  newGameDlg: () => showStart(false, S.view?.me.name, S.view?.settings.difficulty, yearsOf(S.view)),
+  newGameDlg: () => showStart(false, S.view?.me.name, yearsOf(S.view)),
   start: () => void startGame(),
   rules: () => {
     // from the start dialog: keep its inputs for the way back
@@ -349,11 +356,10 @@ const A: Record<string, (v: string, el: HTMLElement) => void> = {
       canContinue: !!$('[data-act="continue"]'),
       name: name.value,
       auto: !!$<HTMLInputElement>('#sAuto')?.checked,
-      diff: $<HTMLSelectElement>('#sDiff')!.value as Difficulty,
       years: Number($<HTMLSelectElement>('#sYears')!.value),
     };
     rulesBack = () => {
-      showStart(back.canContinue, back.name, back.diff, back.years);
+      showStart(back.canContinue, back.name, back.years);
       $<HTMLInputElement>('#sAuto')!.checked = back.auto;
     };
     showRules('rulesBack');
@@ -484,8 +490,7 @@ async function boot(): Promise<void> {
     render();
     if (S.view.over) showEnd();
     else if (S.view.challenge) void resolveChallenge(S.view.challenge);
-    else if (!(location.search === '?continue' && S.view.turn > 0))
-      showStart(true, S.view.me.name, S.view.settings.difficulty, yearsOf(S.view));
+    else if (!(location.search === '?continue' && S.view.turn > 0)) showStart(true, S.view.me.name, yearsOf(S.view));
   } catch (e) {
     if (e instanceof ApiError && (e.status === 401 || e.status === 404)) saveStored(null);
     showStart(false);

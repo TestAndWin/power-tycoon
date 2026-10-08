@@ -4,12 +4,14 @@
  * remaining operating quarters × (revenue − running costs) + book value at the end − investment.
  *
  * It only sees its PlayerView and only acts through actions (same rules as the player).
- * Difficulty is a set of parameters, see `SMART_PARAMS`. The `hard` level adds a market forecast
- * (price trend, announced milestones, this quarter's world event, storage spread, grid capacity),
- * end-of-game accounting, selling of dead projects, diversification and sharper lobby tricks.
+ * Its behaviour is a set of parameters, see `SMART_PARAMS`: a market forecast (price trend, announced
+ * milestones, this quarter's world event, storage spread, grid capacity), end-of-game accounting, selling of
+ * dead projects, diversification and lobby tricks against the leader.
  */
 import {
   CAPTURE,
+  CO2,
+  CO2_BONUS,
   DEPARTMENT_KEYS,
   EXEC_EFFECTS,
   EXEC_GRADE_KEYS,
@@ -24,6 +26,7 @@ import {
   PRICE_SEASON,
   REGIONS,
   SEASON,
+  SOLAR_STORE_RELIEF,
   STORE_MARKET_SHARE,
   TARGET_DRIFT,
   TRICKS,
@@ -36,10 +39,14 @@ import { clamp, type Random } from '../rng.js';
 import {
   autoMinigame,
   capFactor as siteCapFactor,
+  captureRate,
   plantTypesFor,
+  rateFor,
   repowerGridCost,
   repowerMw,
   siteValue,
+  solarCannibal,
+  solarLoad,
   spreadFor,
   trickOdds,
 } from '../rules.js';
@@ -124,61 +131,35 @@ export interface SmartParams {
   boardReview: boolean;
 }
 
-export type SmartLevel = 'normal' | 'hard';
-
-export const SMART_PARAMS: Record<SmartLevel, SmartParams> = {
-  normal: {
-    maxPending: 3,
-    leasesPerTurn: 1,
-    surveysPerTurn: 2,
-    debtRatio: 0.7,
-    bufferQuarters: 2,
-    minRoi: 0.1,
-    contracts: true,
-    reservations: false,
-    trickRate: 0.15,
-    trickEdge: 3,
-    humanBias: 1,
-    noise: 0.15,
-    foresight: false,
-    valueSurveys: false,
-    lateGame: false,
-    scaleWithCash: false,
-    sellStuck: false,
-    diversify: false,
-    trickTiming: false,
-    revenge: false,
-    detectives: 'basic',
-    bigProjects: false,
-    boardEdge: 1.6,
-    boardReview: false,
-  },
-  hard: {
-    maxPending: 5,
-    leasesPerTurn: 2,
-    surveysPerTurn: 3,
-    debtRatio: 1,
-    bufferQuarters: 1.5,
-    minRoi: 0.05,
-    contracts: true,
-    reservations: true,
-    trickRate: 0.5,
-    trickEdge: 2,
-    humanBias: 1.5,
-    noise: 0.05,
-    foresight: true,
-    valueSurveys: true,
-    lateGame: true,
-    scaleWithCash: true,
-    sellStuck: true,
-    diversify: true,
-    trickTiming: true,
-    revenge: true,
-    detectives: 'pro',
-    bigProjects: true,
-    boardEdge: 1.15,
-    boardReview: true,
-  },
+/**
+ * The rivals' parameters. The flags switch off parts of the planning; they stay parameters so that tests and
+ * simulations can compare weaker variants.
+ */
+export const SMART_PARAMS: SmartParams = {
+  maxPending: 5,
+  leasesPerTurn: 2,
+  surveysPerTurn: 3,
+  debtRatio: 1,
+  bufferQuarters: 1.5,
+  minRoi: 0.05,
+  contracts: true,
+  reservations: true,
+  trickRate: 0.5,
+  trickEdge: 2,
+  humanBias: 1.5,
+  noise: 0.05,
+  foresight: true,
+  valueSurveys: true,
+  lateGame: true,
+  scaleWithCash: true,
+  sellStuck: true,
+  diversify: true,
+  trickTiming: true,
+  revenge: true,
+  detectives: 'pro',
+  bigProjects: true,
+  boardEdge: 1.15,
+  boardReview: true,
 };
 
 type Cls = 'wind' | 'solar' | 'hydro';
@@ -207,8 +188,8 @@ const avgPermitQ = (P: PlantDef): number => (P.permitQ[0] + P.permitQ[1]) / 2;
 
 export class SmartOpponent implements OpponentStrategy {
   readonly params: SmartParams;
-  constructor(level: SmartLevel | SmartParams = 'normal') {
-    this.params = typeof level === 'string' ? SMART_PARAMS[level] : level;
+  constructor(params: SmartParams = SMART_PARAMS) {
+    this.params = params;
   }
   async explore(view: PlayerView, _legal: Action[], ctx: OpponentContext): Promise<Action[]> {
     return new Planner(view, ctx, this.params).explore();
@@ -237,6 +218,8 @@ class Planner {
   private readonly sold = new Set<string>();
   /** Memo of `storeShare` for this plan. */
   private readonly shares = new Map<string, number>();
+  /** Memo of the own solar generation per region for `solarRelief`. */
+  private readonly solarGen = new Map<RegionKey, number>();
   /** Ignore the other players' claims and reservations (selling decisions must not be too pessimistic). */
   private optimisticGrid = false;
   private readonly builtNow = new Set<string>();
@@ -247,6 +230,8 @@ class Planner {
   private readonly hist: HistoricDef[];
   /** Expected outcomes of the own (automatic) minigames. */
   private readonly mg: AutoMinigameDef;
+  /** Expected net solar load per region once the solar parks under way are running (MW). */
+  private readonly solar = {} as Record<RegionKey, number>;
 
   constructor(
     private readonly v: PlayerView,
@@ -254,7 +239,7 @@ class Planner {
     private readonly p: SmartParams,
   ) {
     this.me = v.me;
-    this.mg = autoMinigame(v.settings.difficulty, !!v.players[v.me.id]?.human);
+    this.mg = autoMinigame(!!v.players[v.me.id]?.human);
     this.cash = v.me.cash;
     this.loan = v.me.loan;
     this.R = ctx.random;
@@ -262,7 +247,71 @@ class Planner {
     this.free = Object.fromEntries(Object.entries(v.grid).map(([k, g]) => [k, g.free])) as Record<RegionKey, number>;
     this.basePrice = v.market.price / PRICE_SEASON[v.q]!;
     this.hist = historicFor(v.startYear, v.endYear);
+    for (const r of Object.keys(v.grid) as RegionKey[]) {
+      // parks that are approved or built but not yet producing will add to the load
+      const coming = v.sites
+        .filter((x) => x.r === r && x.type === 'solar' && !(x.built && x.grid) && (x.built || x.permit === 'approved'))
+        .reduce((s, x) => s + x.mw, 0);
+      this.solar[r] = solarLoad(v.sites, r) + coming;
+    }
     if (p.foresight) this.forecast();
+  }
+
+  /**
+   * Capture rate of plant type `t` (size `size`) on `x` in season `q`: solar parks lose value with the solar
+   * load of the region, including the park itself if it is not yet counted.
+   */
+  private capture(x: SiteView, t: PlantType, size: PlantSize, q: number): number {
+    const cls = PLANTS[t].cls as Cls;
+    if (cls !== 'solar') return CAPTURE[cls][q]!;
+    const counted = x.owner === this.me.id && x.type === 'solar' && (x.built || x.permit === 'approved');
+    return captureRate('solar', q, this.solar[x.r] + (counted ? 0 : plantDef(t, size).mw));
+  }
+
+  /** Extra MWh value per MWh of generation: the climate bonus at the end of the game. */
+  private readonly co2Value = CO2 * CO2_BONUS;
+
+  /**
+   * Value a storage of `mw` adds to the own solar parks in region `r` in season `q` at price `price`, by
+   * absorbing part of the region's midday peak (less cannibalisation).
+   */
+  private solarRelief(r: RegionKey, mw: number, q: number, price: number): number {
+    let base = this.solarGen.get(r);
+    if (base === undefined) {
+      // generation of the own parks (built or approved) per season factor 1, memoised until a site is sold
+      base = 0;
+      for (const y of this.mine())
+        if (y.r === r && y.type === 'solar' && (y.built || y.permit === 'approved'))
+          base += y.mw * HOURS * capFactor(y, 'solar') * (y.own?.eff ?? 1);
+      this.solarGen.set(r, base);
+    }
+    const gen = base * SEASON.solar[q]!;
+    if (gen <= 0) return 0;
+    const load = this.solar[r];
+    const gain = solarCannibal(Math.max(0, load - SOLAR_STORE_RELIEF * mw), q) - solarCannibal(load, q);
+    return gen * price * CAPTURE.solar[q]! * gain;
+  }
+
+  /** Current interest rate per quarter. */
+  private rate(): number {
+    return rateFor(this.loan, this.me.creditLimit);
+  }
+
+  /**
+   * Interest per quarter on money spent now: what borrowing `amount` more costs at the margin (the rate on
+   * the whole loan rises with the share of the credit line used).
+   */
+  private marginalRate(amount: number): number {
+    const lim = Math.max(1, this.me.creditLimit);
+    const before = this.loan;
+    const after = Math.max(before, this.loan + amount - Math.max(0, this.cash - this.buffer()));
+    if (after <= before) return this.v.constants.interest;
+    return (after * rateFor(after, lim) - before * rateFor(before, lim)) / (after - before);
+  }
+
+  /** Rejection chance of a new application for `t`/`size` on `x` (region, crowding and board included). */
+  private reject(x: SiteView, t: PlantType, size: PlantSize): number {
+    return x.permitRisk?.[t]?.[size] ?? plantDef(t, size).reject;
   }
 
   /* ---------- market forecast ---------- */
@@ -343,12 +392,15 @@ class Planner {
     if (P.cls === 'store') {
       // spread grows with the share of renewables; assume a bit more than today on average
       const spread = this.v.market.spread * 1.1;
-      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff * this.storeShare(x, t, size, eff);
+      let relief = 0;
+      for (let q = 0; q < 4; q++) relief += this.solarRelief(x.r, P.mw, q, this.basePrice * PRICE_SEASON[q]!) / 4;
+      return (P.mwh ?? 0) * (P.cycles ?? 0) * spread * (P.eta ?? 0) * eff * this.storeShare(x, t, size, eff) + relief;
     }
     const cls = P.cls as Cls;
     let s = 0;
-    for (let q = 0; q < 4; q++) s += SEASON[cls][q]! * CAPTURE[cls][q]! * PRICE_SEASON[q]!;
-    return P.mw * HOURS * capFactor(x, t) * (s / 4) * this.basePrice * eff;
+    for (let q = 0; q < 4; q++)
+      s += SEASON[cls][q]! * (this.capture(x, t, size, q) * PRICE_SEASON[q]! * this.basePrice + this.co2Value);
+    return P.mw * HOURS * capFactor(x, t) * (s / 4) * eff;
   }
 
   /** Expected revenue in quarter `k` from now (0 = this quarter, incl. its world event). */
@@ -356,12 +408,16 @@ class Planner {
     if (!this.p.foresight) return this.quarterRevenue(x, t, size, eff);
     if (k >= this.left) return 0;
     const P = plantDef(t, size);
-    if (P.cls === 'store')
-      return (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff * this.storeShare(x, t, size, eff);
-    const cls = P.cls as Cls;
     const q = this.qAt(k);
+    if (P.cls === 'store')
+      return (
+        (P.mwh ?? 0) * (P.cycles ?? 0) * this.spread[k]! * (P.eta ?? 0) * eff * this.storeShare(x, t, size, eff) +
+        this.solarRelief(x.r, P.mw, q, this.price[k]!)
+      );
+    const cls = P.cls as Cls;
     const fx = k === 0 ? this.fxNow[cls] : 1;
-    return P.mw * HOURS * capFactor(x, t) * SEASON[cls][q]! * CAPTURE[cls][q]! * this.price[k]! * eff * fx;
+    const perMwh = this.capture(x, t, size, q) * this.price[k]! + this.co2Value;
+    return P.mw * HOURS * capFactor(x, t) * SEASON[cls][q]! * perMwh * eff * fx;
   }
 
   /**
@@ -428,8 +484,9 @@ class Planner {
     let capex = 0;
     if (stage === 'new') capex += x.lease + (x.known ? 0 : x.surveyCost);
     if (stage === 'new' || stage === 'leased') {
-      capex += P.permit * (1 + P.reject);
-      wait += avgPermitQ(P) + P.reject * 2;
+      const reject = this.reject(x, t, size);
+      capex += P.permit * (1 + reject);
+      wait += avgPermitQ(P) + reject * 2;
     }
     if (stage !== 'built') {
       const wind = P.cls === 'wind';
@@ -453,7 +510,7 @@ class Planner {
       grid: ops > 0,
     });
     const already = stage === 'new' ? 0 : x.lease * 0.6 + (stage === 'leased' ? 0 : P.permit);
-    const interest = capex * this.v.constants.interest * Math.min(ops + wait, 12) * 0.5;
+    const interest = capex * this.marginalRate(capex) * Math.min(ops + wait, 12) * 0.5;
     const noise = 1 + this.noiseOf(x.id, t) * this.p.noise;
     return ops * margin * noise + book - already - capex - interest;
   }
@@ -472,8 +529,9 @@ class Planner {
     let tp = 0;
     if (stage === 'new') spent += x.lease + (x.known ? 0 : x.surveyCost);
     if (stage === 'new' || stage === 'leased') {
-      spent += P.permit * (1 + P.reject);
-      tp = avgPermitQ(P) * (1 + P.reject);
+      const reject = this.reject(x, t, size);
+      spent += P.permit * (1 + reject);
+      tp = avgPermitQ(P) * (1 + reject);
     }
     // the permit would not be decided before the end: only the lease stays on the books
     if (tp >= left) return x.lease * 0.6 - this.bookNow(x) - spent;
@@ -509,7 +567,7 @@ class Planner {
       age: ops,
       grid: connected,
     });
-    const interest = capex * this.v.constants.interest * Math.min(left, 12) * 0.5;
+    const interest = capex * this.marginalRate(capex) * Math.min(left, 12) * 0.5;
     const noise = 1 + this.noiseOf(x.id, t) * this.p.noise;
     return rev * noise + end - this.bookNow(x) - capex - idle - interest;
   }
@@ -567,7 +625,7 @@ class Planner {
   /* ---------- money ---------- */
 
   private runningCostsPerQuarter(): number {
-    let c = this.loan * this.v.constants.interest + this.me.overhead;
+    let c = this.loan * this.rate() + this.me.overhead;
     for (const x of this.mine()) {
       c += x.lease * 0.02;
       if (x.built && x.type) c += plantDef(x.type, x.size).opex;
@@ -579,9 +637,9 @@ class Planner {
     return Math.max(2e6, this.runningCostsPerQuarter() * this.p.bufferQuarters);
   }
 
-  /** Makes sure `need` can be paid while keeping the buffer; borrows if allowed. */
-  private afford(need: number): boolean {
-    const want = need + this.buffer();
+  /** Makes sure `need` can be paid while keeping `buffer`; borrows if allowed. */
+  private afford(need: number, buffer = this.buffer()): boolean {
+    const want = need + buffer;
     if (this.cash >= want) return true;
     const room = Math.floor(this.me.creditLimit * this.p.debtRatio) - this.loan;
     const amount = Math.ceil((want - this.cash) / 1e6) * 1e6;
@@ -595,6 +653,15 @@ class Planner {
   private spend(a: Action, cost: number): void {
     this.acts.push(a);
     this.cash -= cost;
+  }
+
+  /** Connection costs of the own plants that are built (or being built now) but not connected. */
+  private gridToPay(): number {
+    let c = 0;
+    for (const x of this.mine())
+      if (x.type && (x.built || this.builtNow.has(x.id)) && !x.grid && !this.connectedNow.has(x.id))
+        c += plantDef(x.type, x.size).grid;
+    return c;
   }
 
   /** Money still needed to finish the own projects that are under way. */
@@ -611,7 +678,7 @@ class Planner {
 
   /** Expected operating cash flow per quarter of the own plants (after running costs and interest). */
   private cashFlow(): number {
-    let c = -this.loan * this.v.constants.interest - this.me.overhead;
+    let c = -this.loan * this.rate() - this.me.overhead;
     for (const x of this.mine()) {
       c -= x.lease * 0.02;
       if (!x.type || !x.built) continue;
@@ -683,6 +750,7 @@ class Planner {
       this.cash += x.own.sellValue;
       this.sold.add(x.id);
       this.shares.clear();
+      this.solarGen.clear();
     }
     this.optimisticGrid = false;
   }
@@ -708,7 +776,8 @@ class Planner {
       if (!x.type || !x.built || x.grid) continue;
       const mw = x.mw;
       const c = costsFor(this.v, x.size)[x.type].grid;
-      if (this.free[x.r] >= mw && this.afford(c)) {
+      // a connected plant earns from this quarter on: worth a thinner cash buffer
+      if (this.free[x.r] >= mw && this.afford(c, Math.min(this.buffer(), this.runningCostsPerQuarter()))) {
         this.spend({ type: 'connectGrid', siteId: x.id }, c);
         this.free[x.r] -= mw;
         this.connectedNow.add(x.id);
@@ -721,7 +790,8 @@ class Planner {
       const t = x.type!;
       const c = x.fail ? costsFor(this.v, x.size)[t].retry : costsFor(this.v, x.size)[t].build;
       if ((!x.fail || this.p.lateGame) && this.projectValue(x, t, x.size, 'approved') < 0) continue;
-      if (this.afford(c)) {
+      // keep the money for the grid connections: a plant without one only costs
+      if (this.afford(c + plantDef(t, x.size).grid + this.gridToPay())) {
         this.spend({ type: 'build', siteId: x.id }, c);
         this.builtNow.add(x.id);
       }
@@ -768,7 +838,7 @@ class Planner {
       const book =
         siteValue({ ...end, age, invested: x.own.invested + opt.cost - extraGrid, gridPaid: S.grid + extraGrid }) -
         siteValue({ ...end, age, invested: x.own.invested, gridPaid: S.grid });
-      const interest = opt.cost * this.v.constants.interest * Math.min(this.left, 12) * 0.5;
+      const interest = opt.cost * this.marginalRate(opt.cost) * Math.min(this.left, 12) * 0.5;
       const value = gain + book - opt.cost - interest;
       if (value < opt.cost * this.p.minRoi * 2) continue;
       if (!this.afford(opt.cost)) continue;
@@ -892,7 +962,7 @@ class Planner {
       const cls = PLANTS[x.type].cls as Cls;
       const e = x.mw * capFactor(x, x.type) * SEASON[cls][q]!;
       gen += e;
-      val += e * CAPTURE[cls][q]!;
+      val += e * this.capture(x, x.type, x.size, q);
     }
     return gen > 0 ? val / gen : 0.9;
   }
@@ -1136,8 +1206,8 @@ class Planner {
   /** Net value of a board member over the horizon (value minus salaries and the fee). */
   private execNet(d: Department, grade: ExecGrade, withFee: boolean): number {
     const n = Math.min(BOARD_HORIZON, this.left);
-    const G = EXEC_GRADES[grade];
-    return this.execValue(d, G.power) * n - (G.salary * n + (withFee ? G.fee : 0)) * this.p.boardEdge;
+    const G = this.v.execCosts[grade];
+    return this.execValue(d, EXEC_GRADES[grade].power) * n - (G.salary * n + (withFee ? G.fee : 0)) * this.p.boardEdge;
   }
 
   /** Hires (and with `boardReview` dismisses) board members; extends the headquarters for a needed seat. */
@@ -1147,7 +1217,7 @@ class Planner {
     if (this.p.boardReview)
       for (const e of board) {
         const keep = this.execNet(e.dept, e.grade, false);
-        const sev = EXEC_GRADES[e.grade].salary;
+        const sev = this.v.execCosts[e.grade].salary;
         if (keep + sev < 0 && this.cash > sev + this.buffer()) {
           this.spend({ type: 'fireExecutive', dept: e.dept }, sev);
           board.splice(board.indexOf(e), 1);
@@ -1173,7 +1243,7 @@ class Planner {
         this.spend({ type: 'upgradeHq' }, next.cost);
         seats++;
       }
-      const fee = EXEC_GRADES[w.grade].fee;
+      const fee = this.v.execCosts[w.grade].fee;
       if (this.cash < fee + this.buffer()) break;
       this.spend({ type: 'hireExecutive', dept: w.d, grade: w.grade }, fee);
       seats--;

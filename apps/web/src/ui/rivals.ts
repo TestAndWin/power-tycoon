@@ -2,7 +2,7 @@
 import { REGION_KEYS, type PlayerSummary, type QuarterReport, type RivalActionLog } from '@power-tycoon/engine';
 import { esc, money, mwh, qStr, tons, turnStr } from '../format.js';
 import { playerColor } from '../players.js';
-import { S } from '../state.js';
+import { S, UI } from '../state.js';
 import { detectivesText, newsTexts, REGION_TEXT, rivalActionText, RIVAL_TEXT } from '../texts.js';
 import { meP, V } from './common.js';
 import { crest, portrait, standing, trend } from './companies.js';
@@ -87,7 +87,7 @@ function board(p: PlayerSummary): string {
     regions = REGION_KEYS.map((r) => ({ r, n: mine.filter((s) => s.r === r).length }));
   const maxN = Math.max(1, ...regions.map((x) => x.n));
   const m = moves(p.id);
-  return `<article class="board${p.out ? ' out' : ''}" style="--oc:${playerColor(p.id)}">
+  return `<article class="board${p.out ? ' out' : ''}${UI.rival === p.id ? ' focus' : ''}" id="rival-${p.id}" style="--oc:${playerColor(p.id)}">
     <header class="bhead">${portrait(p.id, 76)}<div class="bname">${crest(p.id, 26)}<span><b>${esc(p.name)}</b><span class="muted">${R ? esc(R.ceo) + ' · ' + esc(R.role) : ''}</span><span class="chip ${st.k} threat">${st.t}</span></span></div></header>
     ${R ? `<blockquote class="motto">„${esc(R.motto)}“</blockquote><p class="style">${esc(R.style)}</p>` : ''}
     <div class="btoks">

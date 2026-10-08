@@ -1,8 +1,14 @@
 /** Bank tab: loan, credit limit, borrowing and repaying. */
-import { money } from '../format.js';
+import { PLANT_BOOK, PLANT_BOOK_MIN, PLANT_DEPRECIATION } from '@power-tycoon/engine';
+import { money, pct as pctOf } from '../format.js';
 import { disabledUnless, meP, V } from './common.js';
 
-const pct = (x: number): string => `${(x * 100).toLocaleString('de-DE')} %`;
+const pct = (x: number): string => pctOf(x, 2);
+/** Rate per quarter for a loan of `loan` (same formula as the engine: base + risk × utilisation²). */
+const rateAt = (loan: number, limit: number): number => {
+  const C = V().constants;
+  return C.interest + C.interestRisk * Math.min(1, loan / Math.max(1, limit)) ** 2;
+};
 
 const BORROW_STEPS = [5e6, 20e6, 50e6];
 const REPAY_STEPS = [5e6, 20e6];
@@ -15,11 +21,13 @@ export function vBank(): string {
     lim = v.me.creditLimit,
     free = Math.max(0, lim - P.loan);
   return `<div class="grid g2e"><section class="panel stack"><h2>Hausbank</h2>
-    <dl class="facts"><dt>Kasse</dt><dd class="${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</dd><dt>Kredit</dt><dd>${money(P.loan)}</dd><dt>Kreditrahmen</dt><dd>${money(lim)}</dd><dt>Noch verfügbar</dt><dd>${money(free)}</dd><dt>Zinsen</dt><dd>${(v.constants.interest * 100).toLocaleString('de-DE')} % / Quartal</dd><dt>Zinslast</dt><dd>${money(P.loan * v.constants.interest)} / Quartal</dd></dl>
+    <dl class="facts"><dt>Kasse</dt><dd class="${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</dd><dt>Kredit</dt><dd>${money(P.loan)}</dd><dt>Kreditrahmen</dt><dd>${money(lim)}</dd><dt>Noch verfügbar</dt><dd>${money(free)}</dd><dt>Zinssatz</dt><dd>${pct(v.me.interest)} / Quartal</dd><dt>Zinslast</dt><dd>${money(P.loan * v.me.interest)} / Quartal</dd></dl>
+    <p class="muted" style="margin:0">Je mehr vom Rahmen du nutzt, desto teurer wird der ganze Kredit: ${pct(C.interest)} ohne Auslastung, ${pct(rateAt(lim / 2, lim))} bei halbem und ${pct(C.interest + C.interestRisk)} bei vollem Rahmen.${free > 0 ? ` Schöpfst du den Rahmen aus, zahlst du ${money(lim * rateAt(lim, lim), true)} Zinsen je Quartal.` : ''}</p>
     <div class="row">${borrowButtons(free)}</div>
     <div class="row">${repayButtons(P.loan)}</div>
   </section><section class="panel stack"><h3 style="margin-bottom:0">So setzt sich dein Rahmen zusammen</h3>
     <dl class="facts"><dt>Anlagen &amp; Flächen (${pct(C.creditAssets)} des Buchwerts)</dt><dd>${money(cr.assets)}</dd><dt>Ertrag (${C.creditSales}× Ø Stromerlös der letzten ${C.creditSalesQuarters} Quartale)</dt><dd>${money(cr.sales)}</dd><dt>Förderkredit (Aufholbonus)</dt><dd>${cr.boost ? money(cr.boost) : '–'}</dd></dl>
+    <p class="muted" style="margin:0">Buchwert: Eine neue Anlage zählt nur noch ${pct(PLANT_BOOK)} der Baukosten und verliert je Betriebsquartal ${pct(PLANT_DEPRECIATION)} davon, bis ${pct(PLANT_BOOK_MIN)}. Bauen kurz vor Schluss kostet also Vermögen.</p>
     <p class="muted" style="margin:0">Die Kasse zählt nicht: Geliehenes Geld erhöht den Rahmen nicht. Liegt dein Firmenwert mindestens ${pct(C.creditBoostFrom)} hinter dem Spitzenreiter, gibt die Förderbank ${pct(C.creditBoost)} des Rückstands dazu. Der Rahmen beträgt mindestens ${money(C.minCredit)}.</p>
     <p class="muted" style="margin:0">Rutscht die Kasse zum Quartalsende ins Minus, gibt es einen Notkredit. Reicht der Rahmen nicht, ist dein Konzern insolvent.</p></section></div>`;
 }

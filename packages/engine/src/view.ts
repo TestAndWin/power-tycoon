@@ -3,9 +3,14 @@ import {
   DETECTIVE_QUARTERS,
   DETECTIVES,
   historicFor,
+  CO2_BONUS,
+  EXEC_EFFECTS,
+  EXEC_GRADE_KEYS,
   HQ_LEVELS,
   INTEREST,
+  INTEREST_RISK,
   MAX_CONTRACTS,
+  PLANT_SIZE_KEYS,
   MAX_TRICKS,
   CREDIT_ASSETS,
   CREDIT_BOOST,
@@ -31,25 +36,35 @@ import { decisionView } from './decisions.js';
 import { eventForViewer } from './events.js';
 import { actionOptions } from './legal.js';
 import {
+  autoMinigame,
   buildPrice,
   clone,
   creditLimit,
   creditParts,
+  crowding,
   duelRivals,
+  execCost,
+  execPower,
   freeGrid,
   genEstimate,
   hasIntel,
+  interestRate,
   isStore,
   mwOf,
   myReserve,
   overhead,
+  plantTypesFor,
   producing,
   rankOf,
+  rejectChance,
   reserved,
   sellValue,
   serviceCost,
   siteMw,
+  siteDef,
   siteValue,
+  solarCannibal,
+  solarLoad,
   storeCapacity,
   storeIncome,
   surveyCost,
@@ -94,6 +109,13 @@ export const trickTargetIds = (v: PlayerView, trick: TrickType): string[] =>
 const detectivesView = (g: GameState, p: Player): PlayerView['me']['detectives'] =>
   p.detectives ? { level: p.detectives.level, left: p.detectives.until - g.turn + 1 } : null;
 
+/** Odds of the automatic minigames of a human player without minigames (see `autoOutcome`). */
+function autoOdds(p: Player): NonNullable<PlayerView['autoOdds']> {
+  const M = autoMinigame(true);
+  const duel = M.cableDuel + EXEC_EFFECTS.grid.duelChance * execPower(p, 'grid');
+  return { rotor: M.rotor, cable: M.cable, cableDuel: duel, frequency: M.frequency };
+}
+
 /** Everything player `pid` may know about the game (hidden information removed). */
 export function playerView(g: GameState, pid: PlayerId): PlayerView {
   const me = g.players[pid];
@@ -104,6 +126,20 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
   for (const x of g.sites)
     if (x.owner === pid && producing(x) && x.type && !isStore(x.type)) myGen.set(x.id, genEstimate(g, x));
   const myStore = storeIncome(g, myGen, myStores);
+  // the rejection chance of a new application, wherever the viewer could apply (or lease and apply)
+  const crowd = Object.fromEntries(REGION_KEYS.map((r) => [r, crowding(g, r)])) as Record<RegionKey, number>;
+  const applyRisk = (x: GameState['sites'][number]): SiteView['permitRisk'] => {
+    const types = plantTypesFor({ r: x.r, hydro: x.surveyed.includes(pid) || x.owner === pid ? x.hydro : null });
+    const risk: NonNullable<SiteView['permitRisk']> = {};
+    for (const t of types) {
+      const r = {} as Record<PlantSize, number>;
+      // a new application starts without the modifiers of the running one
+      for (const size of PLANT_SIZE_KEYS)
+        r[size] = rejectChance(g, { ...x, rejectMod: 0 }, plantDef(t, size).reject, pid, crowd[x.r]);
+      risk[t] = r;
+    }
+    return risk;
+  };
   const sites: SiteView[] = g.sites.map((x) => {
     const mine = x.owner === pid;
     const surveyed = x.surveyed.includes(pid);
@@ -147,7 +183,9 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
         storeOwnMwh: Math.round(myStore.get(x.id)?.ownMwh ?? 0),
         storeCapacity: x.type && isStore(x.type) ? Math.round(storeCapacity(x)) : 0,
         duelRisk: x.built && !x.grid && duelRivals(g, pid, x).length > 0,
+        permitRisk: x.permit === 'pending' && x.type ? rejectChance(g, x, siteDef(x).reject) : null,
       };
+    if (x.owner < 0 || (mine && !x.built)) v.permitRisk = applyRisk(x);
     return v;
   });
   const grid = {} as Record<RegionKey, GridView>;
@@ -157,6 +195,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       const u = usedGrid(g, r, p.id);
       if (u) usedBy[p.id] = u;
     }
+    const solar = solarLoad(g.sites, r);
     grid[r] = {
       capacity: g.grid[r],
       used: usedGrid(g, r),
@@ -165,6 +204,9 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       myReserved: myReserve(g, r, pid),
       myReservations: g.res.filter((o) => o.r === r && o.pid === pid).map((o) => ({ mw: o.mw, left: o.left })),
       free: Math.max(0, freeGrid(g, r, pid)),
+      solarMw: solar,
+      solarLoss: 1 - [0, 1, 2, 3].reduce((s, q) => s + solarCannibal(solar, q), 0) / 4,
+      crowding: crowd[r],
     };
   }
   const costs = {} as PlayerView['costs'];
@@ -203,10 +245,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     endYear: g.endYear,
     quartersLeft: Math.max(0, (g.endYear - g.year) * 4 - g.q),
     over: g.over,
-    settings: {
-      autoMinigames: g.settings.autoMinigames,
-      difficulty: g.settings.difficulty,
-    },
+    settings: { autoMinigames: g.settings.autoMinigames },
     me: {
       id: pid,
       name: me.name,
@@ -229,7 +268,8 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       board: clone(me.board),
       hq: me.hq,
       seats: HQ_LEVELS[me.hq].seats,
-      overhead: overhead(me),
+      overhead: overhead(g, me),
+      interest: interestRate(g, me),
       discount:
         me.discount && me.discount.until >= g.turn
           ? { pct: me.discount.pct, left: me.discount.until - g.turn + 1 }
@@ -281,9 +321,13 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
     tricks,
     detectives,
     options: actionOptions(g, pid),
+    execCosts: Object.fromEntries(EXEC_GRADE_KEYS.map((k) => [k, execCost(g, k)])) as PlayerView['execCosts'],
+    autoOdds: g.settings.autoMinigames ? autoOdds(me) : null,
     constants: {
       maxContracts: MAX_CONTRACTS,
       interest: INTEREST,
+      interestRisk: INTEREST_RISK,
+      co2Bonus: CO2_BONUS,
       reserveMw: RESERVE_MW,
       reserveCost: RESERVE_COST,
       reserveQuarters: RESERVE_QUARTERS,

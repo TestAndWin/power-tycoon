@@ -8,6 +8,7 @@ import {
   SmartOpponent,
   type Action,
   type OpponentStrategy,
+  INTEREST,
 } from '../src/index.js';
 import { newGame, ok, setupSite, site } from './helpers.js';
 
@@ -81,7 +82,9 @@ describe('endQuarter', () => {
         .reduce((s, e) => s + (e.type === 'loanTaken' ? e.amount : 0), 0);
       expect(report.endCash).toBe(state.players[0]!.cash);
       expect(report.endCash - report.startCash).toBe(sum + emergency);
-      expect(report.lines.find((l) => l.kind === 'interest')!.amount).toBe(-120000);
+      const interest = report.lines.find((l) => l.kind === 'interest')!;
+      expect(interest.kind === 'interest' && interest.rate).toBeGreaterThanOrEqual(INTEREST);
+      expect(interest.kind === 'interest' && interest.amount).toBe(-Math.round(10e6 * (interest.rate ?? 0)));
       expect(report.lines.some((l) => l.kind === 'ppa')).toBe(true);
       expect(state.players[0]!.contracts).toHaveLength(0);
       expect(report.events).toContainEqual({ type: 'contractExpired', playerId: 0, buyer: 'Stahlwerk Qualmstedt' });

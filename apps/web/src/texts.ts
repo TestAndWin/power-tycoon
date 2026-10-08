@@ -8,7 +8,6 @@ import type {
   DecisionView,
   Department,
   DetectiveLevel,
-  Difficulty,
   ExecGrade,
   GameEvent,
   HistoricDef,
@@ -24,7 +23,7 @@ import type {
   WorldEventKey,
 } from '@power-tycoon/engine';
 import { DECISION_DATA, EXEC_EFFECTS, isConfrontation, REGIONS } from '@power-tycoon/engine';
-import { esc, eur, money, mwh } from './format.js';
+import { esc, eur, money, mwh, pct, tons } from './format.js';
 
 export const REGION_TEXT: Record<RegionKey, { name: string; desc: string }> = {
   nd: {
@@ -78,11 +77,6 @@ export const DETECTIVE_TEXT: Record<DetectiveLevel, { name: string; desc: string
     name: 'Sicherheitsfirma Argus',
     desc: 'Rund um die Uhr, mit Kameras und IT-Forensik. Deutlich besserer Schutz – auch gegen Spione.',
   },
-};
-
-export const DIFFICULTY_TEXT: Record<Difficulty, string> = {
-  normal: 'Normal – rechnende Konkurrenz',
-  hard: 'Schwer – aggressiv und gut finanziert',
 };
 
 /** Faces of the rival companies (player ids 1–3). All persons are fictitious. */
@@ -303,7 +297,7 @@ export function reportLineText(l: ReportLine): string {
     case 'hq':
       return 'Unterhalt Firmensitz';
     case 'interest':
-      return 'Kreditzinsen';
+      return l.rate ? `Kreditzinsen (${pct(l.rate, 2)} im Quartal)` : 'Kreditzinsen';
   }
 }
 
@@ -325,7 +319,8 @@ const regionOfSite = (c: Ctx, id: string): string => REGION_TEXT[siteOf(c, id)?.
 function trickText(c: Ctx, e: Extract<GameEvent, { type: 'trickSucceeded' }>): string {
   const x = sn(c, e.siteId);
   const tgt = nameOf(c, e.targetId);
-  if (e.trick === 'klage') return `Klage gegen das Projekt ${x} von ${tgt} – Verzögerung um zwei Quartale.`;
+  if (e.trick === 'klage')
+    return `Klage gegen das Projekt ${x} von ${tgt}: Die Behörde prüft die Genehmigung erneut – mindestens zwei Quartale Verzögerung.`;
   if (e.trick === 'bi') return `Bürgerinitiative gegen ${x} (${tgt}): halbe Leistung für zwei Quartale.`;
   return `Hackerangriff auf die Leitwarte von ${x} (${tgt}). Das Kraftwerk ist vom Netz.`;
 }
@@ -494,9 +489,16 @@ export function newsTexts(view: PlayerView, e: GameEvent): { kind: NewsKind; tex
       ];
     case 'awardWon':
       return [{ kind: e.playerId === me ? 'good' : 'comp', text: awardNews(c, e) }];
+    case 'climateBonus':
+      return [{ kind: e.playerId === me ? 'good' : 'comp', text: climateText(c, e) }];
     default:
       return [];
   }
+}
+
+function climateText(c: Ctx, e: Extract<GameEvent, { type: 'climateBonus' }>): string {
+  const who = e.playerId === c.view.playerId ? 'Dein Konzern' : nameOf(c, e.playerId);
+  return `Klimabonus: ${who} erhält ${money(e.amount)} für ${tons(e.co2)} vermiedenes CO₂.`;
 }
 
 function awardNews(c: Ctx, e: Extract<GameEvent, { type: 'awardWon' }>): string {
@@ -555,6 +557,8 @@ export function reportEventText(view: PlayerView, e: GameEvent): { kind: TextKin
       return e.playerId === view.playerId
         ? { kind: 'good', text: awardNews(c, e) }
         : { kind: 'info', text: awardNews(c, e) };
+    case 'climateBonus':
+      return { kind: 'good', text: climateText(c, e) };
     case 'executiveLeft':
       return e.poached ? { kind: 'bad', text: newsTexts(view, e)[0]!.text } : null;
     case 'decisionTaken':
@@ -731,7 +735,7 @@ export const DECISION_TEXT: Record<DecisionKey, DecisionText> = {
     kicker: 'Anruf aus dem Landratsamt',
     title: (c) => `Bürgerinitiative gegen ${c.site}`,
     body: () =>
-      'Anwohner sammeln Unterschriften gegen dein Projekt. Der Landrat bittet um ein Gespräch, bevor die Behörde über die Genehmigung entscheidet.',
+      'Anwohner sammeln Unterschriften gegen dein Projekt, während die Behörde den Antrag noch prüft. Der Landrat bittet um ein Gespräch.',
     options: { talk: 'Bürgerbeteiligung anbieten', ignore: 'Aussitzen', report: 'Unabhängiges Gutachten' },
   },
   supplier: {
@@ -790,7 +794,7 @@ export function decisionEffect(view: PlayerView, d: DecisionView, o: DecisionVie
   switch (d.key) {
     case 'citizens':
       if (o.key === 'ignore')
-        return `Kostenlos, aber ${Math.round((o.chance ?? 0) * 100)} % Risiko: Die Genehmigung verzögert sich um ein Quartal.`;
+        return `Kostenlos, aber ${Math.round((o.chance ?? 0) * 100)} % Risiko: Die Behörde entscheidet ein Quartal später.`;
       return `Ablehnungsrisiko ${Math.round((o.key === 'talk' ? D.citizens.talk.reject : D.citizens.report.reject) * 100)} Prozentpunkte niedriger.`;
     case 'supplier': {
       if (o.key === 'decline') return 'Alles bleibt beim Listenpreis.';

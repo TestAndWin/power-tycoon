@@ -9,5 +9,5 @@ export { endQuarter, canEndQuarter, playTurn, rivalProfile, EngineError, MAX_ACT
 export { eventForViewer, eventsForViewer, isConfrontation } from './events.js';
 export { awardProgress } from './awards.js';
 export { isStore, operating, plantTypesFor, producing, repowerMw, worth } from './rules.js';
-export { SmartOpponent, SMART_PARAMS, type SmartLevel, type SmartParams } from './opponents/smart.js';
+export { SmartOpponent, SMART_PARAMS, type SmartParams } from './opponents/smart.js';
 export { opponentFor, opponentsFor } from './opponents/index.js';

@@ -7,7 +7,6 @@ import type {
   DecisionKey,
   Department,
   DetectiveLevel,
-  Difficulty,
   ExecGrade,
   HqLevel,
   PlantClass,
@@ -26,6 +25,8 @@ export interface RegionDef {
   grid: number;
   lease: [number, number];
   hydro?: number;
+  /** Extra rejection chance of permits in the region (local resistance). */
+  reject: number;
 }
 
 export const REGION_KEYS: readonly RegionKey[] = ['nd', 'ns', 'ib', 'al'];
@@ -38,8 +39,9 @@ export const REGIONS: Record<RegionKey, RegionDef> = {
     types: ['wind', 'solar', 'batt'],
     grid: 300,
     lease: [0.4, 1.6],
+    reject: 0.05,
   },
-  ns: { code: 'NS', wind: [8.6, 10.4], types: ['off'], grid: 600, lease: [2, 6] },
+  ns: { code: 'NS', wind: [8.6, 10.4], types: ['off'], grid: 600, lease: [2, 6], reject: 0 },
   ib: {
     code: 'IB',
     wind: [5.2, 7.4],
@@ -47,6 +49,7 @@ export const REGIONS: Record<RegionKey, RegionDef> = {
     types: ['solar', 'wind', 'batt'],
     grid: 400,
     lease: [0.3, 1.4],
+    reject: 0.06,
   },
   al: {
     code: 'AL',
@@ -55,6 +58,7 @@ export const REGIONS: Record<RegionKey, RegionDef> = {
     grid: 300,
     lease: [0.6, 2.2],
     hydro: 0.45,
+    reject: 0.05,
   },
 };
 
@@ -193,6 +197,14 @@ export const CAPTURE: Record<'wind' | 'solar' | 'hydro', [number, number, number
   solar: [0.95, 0.8, 0.78, 0.95],
   hydro: [1, 1, 1, 1],
 };
+/**
+ * Solar cannibalisation: many solar parks in one region produce at the same hours and push the price down.
+ * The solar capture rate drops by this share per 100 MW of operating solar in the region, scaled with the
+ * season's solar output; a storage MW absorbs `SOLAR_STORE_RELIEF` MW of it. The drop is capped.
+ */
+export const SOLAR_CANNIBAL = 0.04;
+export const SOLAR_STORE_RELIEF = 0.5;
+export const SOLAR_CANNIBAL_MAX = 0.3;
 export const PRICE_SEASON = [1.12, 0.92, 0.9, 1.06];
 /** Price model: the target price drifts up per quarter, the base price follows it by this share. */
 export const TARGET_DRIFT = 1.0025;
@@ -204,7 +216,12 @@ export const GAME_YEARS = 10;
 /** Game lengths the player can choose. */
 export const GAME_YEAR_OPTIONS: readonly number[] = [3, 5, 10];
 export const HOURS = 2190;
-export const INTEREST = 0.012;
+/**
+ * Interest per quarter: a base rate plus a risk premium that grows with the square of the credit used
+ * (loan / credit limit, capped at 1). A full credit line costs `INTEREST + INTEREST_RISK` on the whole loan.
+ */
+export const INTEREST = 0.01;
+export const INTEREST_RISK = 0.02;
 export const MAX_CONTRACTS = 3;
 export const CO2 = 0.4;
 export const START_CASH = 30e6;
@@ -214,6 +231,12 @@ export const START_CASH = 30e6;
  */
 export const STORE_MARKET_SHARE = 0.5;
 export const SITES_PER_REGION = 16;
+/**
+ * Crowded regions meet more resistance: the rejection chance of a permit grows by this much per 100 MW of
+ * approved or built plants (all players) in the region, up to `PERMIT_CROWD_MAX`.
+ */
+export const PERMIT_CROWD = 0.03;
+export const PERMIT_CROWD_MAX = 0.15;
 export const MAX_TRICKS = 2;
 /** Yield surveys a player may order per quarter. */
 export const MAX_SURVEYS = 4;
@@ -285,7 +308,7 @@ export interface AutoMinigameDef {
   cableDuel: number;
   frequency: number;
 }
-/** Automatic minigame outcomes (rivals on `normal`, the player with `autoMinigames`). */
+/** Automatic minigame outcomes of the player with `autoMinigames`. */
 export const AUTO_MINIGAME: AutoMinigameDef = {
   layout: [0.9, 1.08],
   rotor: 0.8,
@@ -293,7 +316,7 @@ export const AUTO_MINIGAME: AutoMinigameDef = {
   cableDuel: 0.55,
   frequency: 0.62,
 };
-/** Rivals on `hard` play the minigames like a practised player (a good human reaches 1.15 and never fails). */
+/** Rivals play the minigames like a practised player (a good human reaches 1.15 and never fails). */
 export const AUTO_MINIGAME_HARD: AutoMinigameDef = {
   layout: [1.0, 1.15],
   rotor: 0.95,
@@ -311,14 +334,13 @@ export const DUEL_SCARCITY = 2;
 export const DUEL_REFUND = 0.5;
 /** Quarters the winning rival keeps the grid capacity it raced for (as a reservation). */
 export const DUEL_RESERVE_QUARTERS = 2;
-/** Seconds the rival needs per cable piece in the duel minigame, by difficulty. */
-export const DUEL_PACE: Record<Difficulty, number> = { normal: 1.15, hard: 0.9 };
+/** Seconds the rival needs per cable piece in the duel minigame. */
+export const DUEL_PACE = 0.9;
 /** Size of the cable puzzle: columns per region (offshore cables are longer) and rows. */
 export const CABLE_COLS: Record<RegionKey, number> = { nd: 6, ns: 7, ib: 6, al: 6 };
 export const CABLE_ROWS = 5;
 /** Seconds the rival needs for the cable puzzle of region `r`. */
-export const duelSeconds = (difficulty: Difficulty, r: RegionKey): number =>
-  Math.round(DUEL_PACE[difficulty] * CABLE_COLS[r] * CABLE_ROWS);
+export const duelSeconds = (r: RegionKey): number => Math.round(DUEL_PACE * CABLE_COLS[r] * CABLE_ROWS);
 /** Allowed range for a client-reported layout efficiency. */
 export const LAYOUT_RANGE: [number, number] = [0.8, 1.15];
 
@@ -334,8 +356,6 @@ export const BUYERS: readonly string[] = [
   'Papierfabrik Knitterfeld',
   'Batteriewerk Akkuwitz',
 ];
-
-export const DIFFICULTY_KEYS: readonly Difficulty[] = ['normal', 'hard'];
 
 export interface RivalDef {
   name: string;
@@ -430,6 +450,11 @@ export const EXEC_GRADES: Record<ExecGrade, ExecGradeDef> = {
   junior: { fee: 0.5e6, salary: 0.2e6, power: 1 },
   senior: { fee: 1.5e6, salary: 0.45e6, power: 2 },
 };
+/**
+ * Fee and salaries of board members scale with the game length (in years): a short game leaves less time
+ * for them to pay off.
+ */
+export const EXEC_COST_SCALE: Record<number, number> = { 3: 0.4, 5: 0.65, 10: 1 };
 /** Severance when a board member is dismissed, in quarterly salaries. */
 export const EXEC_SEVERANCE = 1;
 
@@ -552,3 +577,16 @@ export const AWARDS: Record<Exclude<AwardKey, 'cup'>, AwardDef> = {
   co2: { goal: 1e6 },
   storage: { goal: 1000 },
 };
+
+/* ---------------- Book values ---------------- */
+
+/**
+ * Book value of a plant as a share of its build costs: it drops to `PLANT_BOOK` when built (a used plant
+ * cannot be sold at its price), then by `PLANT_DEPRECIATION` per operating quarter, down to `PLANT_BOOK_MIN`.
+ */
+export const PLANT_BOOK = 0.8;
+export const PLANT_DEPRECIATION = 0.01;
+export const PLANT_BOOK_MIN = 0.35;
+
+/** Climate bonus at the end of the game: euros per tonne of CO₂ avoided, added to the cash. */
+export const CO2_BONUS = 20;

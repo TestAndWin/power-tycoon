@@ -13,6 +13,7 @@ function isNews(g: GameState, e: GameEvent): boolean {
     case 'gridReserved':
     case 'hqUpgraded':
     case 'awardWon':
+    case 'climateBonus':
       return true;
     case 'trickFailed':
       // the human learns about attempts on own sites (whose actor stays unknown unless caught)

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createGame, playerView, type GameState, type Site } from '@power-tycoon/engine';
 import { S } from '../src/state.js';
 import { vBank } from '../src/ui/bank.js';
-import { btn, disabledUnless, optionFor, siteStatus, todo } from '../src/ui/common.js';
+import { btn, disabledUnless, fundsHint, optionFor, siteStatus, todo } from '../src/ui/common.js';
 
 function game(setup: (g: GameState, site: (id: string) => Site) => void): void {
   const g = createGame({ companyName: 'Test AG', autoMinigames: true, seed: 7 });
@@ -54,6 +54,27 @@ describe('buttons from the engine options', () => {
     expect(disabledUnless({ type: 'borrow', amount: 50e9 })).toBe('disabled');
     S.busy = true;
     expect(disabledUnless({ type: 'repay', amount: 5e6 })).toBe('disabled');
+  });
+});
+
+describe('missing money', () => {
+  it('names the gap under a blocked button and offers the bank if the credit line covers it', () => {
+    game((g, site) => {
+      Object.assign(site('ib0'), { owner: 0, type: 'solar', permit: 'approved' });
+      g.players[0]!.cash = 1e6;
+    });
+    const build = optionFor({ type: 'build', siteId: 'ib0' })!;
+    expect(build.error).toBe('insufficientFunds');
+    const hint = fundsHint(build);
+    expect(hint).toContain('Es fehlen');
+    expect(hint).toContain('data-v="bank"');
+    expect(fundsHint(optionFor({ type: 'lease', siteId: 'nd5' }))).toBe('');
+    game((g, site) => {
+      Object.assign(site('ib0'), { owner: 0, type: 'solar', permit: 'approved' });
+      g.players[0]!.cash = 1e6;
+      g.players[0]!.loan = 20e6;
+    });
+    expect(fundsHint(optionFor({ type: 'build', siteId: 'ib0' }))).toContain('reicht nicht');
   });
 });
 

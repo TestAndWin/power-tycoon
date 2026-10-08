@@ -95,5 +95,21 @@ export function btn(
   return `<button class="btn ${o.cls || ''}" data-act="${act}" data-v="${v}" ${dis ? 'disabled' : ''}><span>${label}</span>${price ? `<small>${price > 0 ? money(price, true) : '+' + money(-price, true)}</small>` : ''}</button>`;
 }
 
+/**
+ * Note under a button that is blocked by money: how much is missing and, if the credit line covers it, a
+ * jump to the bank. Empty for other options.
+ */
+export function fundsHint(opt: ActionOption | undefined): string {
+  if (!opt || opt.error !== 'insufficientFunds') return '';
+  const v = V(),
+    miss = opt.cost - v.me.cash,
+    room = v.me.creditLimit - v.me.loan;
+  return `<p class="hint">Es fehlen ${money(miss, true)}. ${
+    room >= miss
+      ? `<button class="btn small" data-act="tab" data-v="bank">Kredit aufnehmen <small>noch ${money(room, true)} frei</small></button>`
+      : 'Auch der freie Kreditrahmen reicht nicht.'
+  }</p>`;
+}
+
 /** `disabled` attribute for a fixed button whose action may currently be impossible. */
 export const disabledUnless = (a: Action): string => (allowed(a) ? '' : 'disabled');

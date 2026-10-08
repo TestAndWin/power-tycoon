@@ -13,6 +13,7 @@ import {
   PLANT_HOTSPOT,
   OFFICE_H,
   OFFICE_W,
+  rivalPortrait,
   showOffice,
   type OfficeData,
 } from '../scene/office.js';
@@ -111,6 +112,15 @@ export function officeScene(): string {
       .map(({ k, label, r, desk }) =>
         hot('tab', k, label, r, desk, k === 'sites' && n ? n : k === 'decision' && v.me.decision ? '!' : ''),
       )
+      .join('') +
+    // each portrait on the wall opens the file of that rival (same order as drawn: by rank)
+    v.players
+      .filter((p) => p.id !== v.playerId)
+      .sort(byRank)
+      .map((p, i) => {
+        const { cx, cy, r } = rivalPortrait(i);
+        return hot('rival', String(p.id), 'Porträt · ' + p.name, [cx - r, cy - r, 2 * r, 2 * r]);
+      })
       .join('') +
     hot('lamp', '', 'Schreibtischlampe · an/aus', LAMP_HOTSPOT, true) +
     hot('plant', '', 'Zimmerpflanze', PLANT_HOTSPOT) +

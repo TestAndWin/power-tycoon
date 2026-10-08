@@ -103,7 +103,7 @@ Junior: 0.5 M€ fee, 0.2 M€ salary per quarter; senior: 1.5 M€ fee, 0.45 M�
 Headquarters: 0 / 4 / 12 / 30 M€, upkeep 0.05 / 0.12 / 0.25 / 0.5 M€ per quarter (`HQ_LEVELS`).
 
 Two quality levels per position (junior/senior) like the detectives. Executives are visible to rivals with
-a spy report. Rivals hire by expected value (hard) or by a simple rule (normal). The board members in the
+a spy report. Rivals hire by expected value. The board members in the
 office are exactly these people – an empty chair shows a vacancy.
 
 ### 3b. Board decisions (`decide`)

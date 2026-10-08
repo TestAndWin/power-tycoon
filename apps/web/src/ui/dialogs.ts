@@ -1,13 +1,12 @@
 /** Dialogs: quarterly report, end of game, start screen and "plant built". */
 import {
-  DIFFICULTY_KEYS,
   GAME_YEAR_OPTIONS,
   GAME_YEARS,
   isConfrontation,
   operating,
   REGION_KEYS,
   rivalProfile,
-  type Difficulty,
+  type PlayerView,
   type QuarterReport,
   type RivalActionLog,
   type SiteView,
@@ -18,7 +17,6 @@ import { playerColor } from '../players.js';
 import { SND } from '../sound.js';
 import { RMO, UI } from '../state.js';
 import {
-  DIFFICULTY_TEXT,
   GAME_LENGTH_TEXT,
   PLANT_NAME,
   REGION_TEXT,
@@ -83,6 +81,10 @@ function animateRivals(): void {
     setTimeout(() => li.classList.remove('hidden-rv'), 250 + i * 280);
   });
 }
+/** The climate bonus a player got at the end of the game (from the news). */
+const climateBonus = (v: PlayerView, pid: number): number =>
+  v.news.reduce((s, n) => s + (n.event.type === 'climateBonus' && n.event.playerId === pid ? n.event.amount : 0), 0);
+
 export function showEnd(): void {
   const v = V();
   const reason =
@@ -93,26 +95,20 @@ export function showEnd(): void {
     }[v.over as string] ?? '';
   const rank = v.players.slice().sort(byRank);
   const won = v.over !== 'bankrupt' && rank[0]!.human;
-  openModal(`<h2>${won ? 'Du führst die Energiewende an!' : 'Spielende'}</h2><p class="muted" style="margin:0">${reason} Du hast ${tons(v.me.co2)} CO₂ vermieden.</p>
-    <div class="tw"><table class="t"><thead><tr><th>#</th><th>Konzern</th><th class="r">Vermögen</th><th class="r">CO₂ vermieden</th></tr></thead><tbody>
-    ${rank.map((p, i) => `<tr><td class="num">${i + 1}</td><td><span class="row" style="flex-wrap:nowrap">${crest(p.id, 22)}${esc(p.name)}</span></td><td class="r num">${p.out ? 'insolvent' : money(p.worth, true)}</td><td class="r num">${tons(p.co2)}</td></tr>`).join('')}</tbody></table></div>
+  openModal(`<h2>${won ? 'Du führst die Energiewende an!' : 'Spielende'}</h2><p class="muted" style="margin:0">${reason} Du hast ${tons(v.me.co2)} CO₂ vermieden. Der Klimabonus von ${v.constants.co2Bonus} € je Tonne ist im Vermögen enthalten.</p>
+    <div class="tw"><table class="t"><thead><tr><th>#</th><th>Konzern</th><th class="r">Vermögen</th><th class="r">CO₂ vermieden</th><th class="r">Klimabonus</th></tr></thead><tbody>
+    ${rank.map((p, i) => `<tr><td class="num">${i + 1}</td><td><span class="row" style="flex-wrap:nowrap">${crest(p.id, 22)}${esc(p.name)}</span></td><td class="r num">${p.out ? 'insolvent' : money(p.worth, true)}</td><td class="r num">${tons(p.co2)}</td><td class="r num">${climateBonus(v, p.id) ? money(climateBonus(v, p.id), true) : '–'}</td></tr>`).join('')}</tbody></table></div>
     <div class="foot"><button class="btn" data-act="closeModal">Endstand ansehen</button><button class="btn primary" data-act="newGameDlg">Neues Spiel</button></div>`);
 }
 // The links live once in index.html (page footer); the start dialog covers that footer.
 const legalLinks = (): string => [...document.querySelectorAll('.foot-legal a')].map((a) => a.outerHTML).join('');
-export function showStart(
-  canContinue: boolean,
-  name = 'Deichwatt AG',
-  difficulty: Difficulty = 'normal',
-  years = GAME_YEARS,
-): void {
+export function showStart(canContinue: boolean, name = 'Deichwatt AG', years = GAME_YEARS): void {
   openModal(
     `<div class="banner start"><canvas data-scene="nd" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Ab 2026 · 3, 5 oder 10 Jahre Energiewende</span><h2 class="title">${LOGO}Wattmogul</h2></div></div>
     <p class="intro">2026. Vier Energiekonzerne ringen um die besten Flächen Europas: Wind an der Küste, Offshore-Parks in der Nordsee, Solar in Iberien, Wasserkraft in den Alpen. Pachten, genehmigen lassen, bauen, ans Netz bringen – und der Konkurrenz ab und zu eine Klage an den Hals hängen.</p>
     <div class="foes"><span class="label">Deine Gegner</span><div class="foe-row">${[1, 2, 3].map((id) => `<div class="foe" style="--oc:var(--c${id})">${portrait(id, 44)}<span><b>${esc(RIVAL_TEXT[id]!.ceo)}</b><span class="muted">${esc(rivalProfile(id).name)}</span><i>„${esc(RIVAL_TEXT[id]!.motto)}“</i></span></div>`).join('')}</div></div>
     <div class="field-grid">
       <label for="sName">Konzernname<input type="text" id="sName" value="${esc(name)}" maxlength="24"></label>
-      <label for="sDiff">Konkurrenz<select id="sDiff">${DIFFICULTY_KEYS.map((d) => `<option value="${d}" ${d === difficulty ? 'selected' : ''}>${DIFFICULTY_TEXT[d]}</option>`).join('')}</select></label>
       <label for="sYears">Spieldauer<select id="sYears">${GAME_YEAR_OPTIONS.map((y) => `<option value="${y}" ${y === years ? 'selected' : ''}>${GAME_LENGTH_TEXT[y]}</option>`).join('')}</select></label>
     </div>
     <label class="check"><input type="checkbox" id="sAuto"> Minispiele überspringen (Ergebnis wird ausgewürfelt)</label>

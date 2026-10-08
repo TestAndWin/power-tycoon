@@ -29,7 +29,7 @@ export interface AppOptions {
   /** Directory with the built web app; served under "/" if it exists. */
   webRoot?: string;
   logger?: boolean;
-  /** Rivals for a game (default: by the game's difficulty). */
+  /** Rivals for a game (default: three smart rivals). */
   opponents?: (state: GameState) => OpponentStrategy[];
   /** Max new games per IP per hour. */
   createLimit?: number;
@@ -72,7 +72,7 @@ class HttpError extends Error {
   }
 }
 
-const defaultOpponents = (state: GameState): OpponentStrategy[] => opponentsFor(state.settings.difficulty);
+const defaultOpponents = (): OpponentStrategy[] => opponentsFor();
 
 export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db: Db }> {
   const app = Fastify({
@@ -160,7 +160,6 @@ export async function buildApp(opts: AppOptions): Promise<FastifyInstance & { db
       const state = createGame({
         companyName: req.body.companyName,
         autoMinigames: req.body.autoMinigames,
-        difficulty: req.body.difficulty ?? 'normal',
         years: req.body.years,
         seed: randomInt(0, 2 ** 31),
       });

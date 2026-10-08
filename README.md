@@ -32,7 +32,7 @@ pnpm test         # vitest in all packages
 pnpm typecheck
 pnpm build        # engine + web + api
 node apps/api/dist/server.js   # serves web + API on :3000 (DATA_DIR defaults to ./data)
-pnpm simulate     # bot-vs-bot simulation, e.g. `pnpm simulate -- --games 200 --seat0 normal --rivals hard`
+pnpm simulate     # bot-vs-bot simulation, e.g. `pnpm simulate -- --games 200 --seat0 smart --years 3`
 ```
 
 API environment variables: `PORT` (3000), `HOST` (0.0.0.0 in the container), `DATA_DIR`

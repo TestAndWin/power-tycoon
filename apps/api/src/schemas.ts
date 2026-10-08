@@ -3,7 +3,6 @@ import {
   DEPARTMENT_KEYS,
   DETECTIVE_KEYS,
   EXEC_GRADE_KEYS,
-  DIFFICULTY_KEYS,
   GAME_YEAR_OPTIONS,
   PLANT_SIZE_KEYS,
   PLANT_TYPE_KEYS,
@@ -55,7 +54,6 @@ export const ActionSchema = Type.Union([
 export const CreateGameBody = Type.Object({
   companyName: Type.String({ maxLength: 40 }),
   autoMinigames: Type.Boolean(),
-  difficulty: Type.Optional(oneOf(DIFFICULTY_KEYS)),
   years: Type.Optional(Type.Union(GAME_YEAR_OPTIONS.map((y) => Type.Literal(y)))),
 });
 

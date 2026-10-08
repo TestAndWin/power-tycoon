@@ -63,18 +63,9 @@ describe('POST /api/games', () => {
     expect(JSON.stringify(row)).not.toContain(g.token);
     expect(row).toMatchObject({ version: 1, status: 'running' });
   });
-  it('stores the difficulty (default normal) and rejects unknown ones', async () => {
-    const d = (g: { view: unknown }) => (g.view as { settings: { difficulty: string } }).settings.difficulty;
-    expect(d(await newGame())).toBe('normal');
-    expect(d(await newGame({ companyName: 'X', autoMinigames: true, difficulty: 'hard' }))).toBe('hard');
-    for (const difficulty of ['insane', 'easy']) {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/api/games',
-        payload: { companyName: 'X', autoMinigames: true, difficulty },
-      });
-      expect(res.statusCode).toBe(400);
-    }
+  it('ignores the difficulty an older client may still send (there is only one level)', async () => {
+    const g = await newGame({ companyName: 'X', autoMinigames: true, difficulty: 'normal' });
+    expect((g.view as unknown as { settings: unknown }).settings).toEqual({ autoMinigames: true });
   });
   it('stores the game length (default ten years) and rejects other lengths', async () => {
     const end = (g: { view: unknown }) => (g.view as { endYear: number }).endYear;

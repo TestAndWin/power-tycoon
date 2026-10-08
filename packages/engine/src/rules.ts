@@ -10,7 +10,19 @@ import {
   HOURS,
   HQ_BOOK,
   HQ_LEVELS,
+  CAPTURE,
+  EXEC_COST_SCALE,
+  INTEREST,
+  INTEREST_RISK,
   MAX_SURVEYS,
+  PERMIT_CROWD,
+  PERMIT_CROWD_MAX,
+  PLANT_BOOK,
+  PLANT_BOOK_MIN,
+  PLANT_DEPRECIATION,
+  SOLAR_CANNIBAL,
+  SOLAR_CANNIBAL_MAX,
+  SOLAR_STORE_RELIEF,
   CREDIT_ASSETS,
   CREDIT_BOOST,
   CREDIT_BOOST_FROM,
@@ -31,7 +43,7 @@ import { clamp, pick, rand, randint, randomOf } from './rng.js';
 import type {
   Department,
   DetectiveLevel,
-  Difficulty,
+  ExecGrade,
   GameState,
   Player,
   PlantSize,
@@ -43,8 +55,7 @@ import type {
 } from './types.js';
 
 /** Automatic minigame outcomes for a rival (`human` false) or a player with `autoMinigames`. */
-export const autoMinigame = (difficulty: Difficulty, human: boolean): AutoMinigameDef =>
-  !human && difficulty === 'hard' ? AUTO_MINIGAME_HARD : AUTO_MINIGAME;
+export const autoMinigame = (human: boolean): AutoMinigameDef => (human ? AUTO_MINIGAME : AUTO_MINIGAME_HARD);
 
 export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -76,15 +87,43 @@ export const execPower = (p: Pick<Player, 'board'> | undefined, d: Department): 
   const e = p?.board.find((b) => b.dept === d);
   return e ? EXEC_GRADES[e.grade].power : 0;
 };
+/** Fee and quarterly salary of a board member of `grade` in this game (scaled with the game length). */
+export function execCost(g: GameState, grade: ExecGrade): { fee: number; salary: number } {
+  const f = EXEC_COST_SCALE[g.endYear - g.startYear] ?? 1;
+  const G = EXEC_GRADES[grade];
+  return { fee: Math.round((G.fee * f) / 1e4) * 1e4, salary: Math.round((G.salary * f) / 1e4) * 1e4 };
+}
+/** Salaries of the board per quarter. */
+export const salaries = (g: GameState, p: Pick<Player, 'board'>): number =>
+  p.board.reduce((s, e) => s + execCost(g, e.grade).salary, 0);
 /** Salaries of the board and upkeep of the headquarters per quarter. */
-export const salaries = (p: Pick<Player, 'board'>): number =>
-  p.board.reduce((s, e) => s + EXEC_GRADES[e.grade].salary, 0);
-export const overhead = (p: Pick<Player, 'board' | 'hq'>): number => salaries(p) + HQ_LEVELS[p.hq].upkeep;
+export const overhead = (g: GameState, p: Pick<Player, 'board' | 'hq'>): number =>
+  salaries(g, p) + HQ_LEVELS[p.hq].upkeep;
 /** Yield surveys player `p` may order per quarter. */
 export const surveyLimit = (p: Player): number => MAX_SURVEYS + EXEC_EFFECTS.dev.surveys * execPower(p, 'dev');
-/** Rejection chance of a permit application for plant data `reject` on site `x`. */
-export const rejectChance = (g: GameState, x: Site, reject: number): number =>
-  clamp(reject + x.rejectMod - EXEC_EFFECTS.dev.reject * execPower(g.players[x.owner], 'dev'), 0.01, 1);
+/** Extra rejection chance in region `r` from the approved and built plants there (all players). */
+export function crowding(g: GameState, r: RegionKey): number {
+  const mw = g.sites
+    .filter((x) => x.r === r && x.type && (x.built || x.permit === 'approved'))
+    .reduce((s, x) => s + siteMw(x), 0);
+  return Math.min(PERMIT_CROWD_MAX, (PERMIT_CROWD * mw) / 100);
+}
+/**
+ * Rejection chance of a permit application for plant data `reject` on site `x` of player `pid` (default: its
+ * owner): the plant's base risk, the region's resistance and crowding, the site's modifiers and the board.
+ */
+export const rejectChance = (
+  g: GameState,
+  x: Site,
+  reject: number,
+  pid: PlayerId = x.owner as PlayerId,
+  crowd = crowding(g, x.r),
+): number =>
+  clamp(
+    reject + REGIONS[x.r].reject + crowd + x.rejectMod - EXEC_EFFECTS.dev.reject * execPower(g.players[pid], 'dev'),
+    0.01,
+    1,
+  );
 /** Build-cost factor of player `p` (supplier discount from a decision card). */
 const discountF = (g: GameState, p: Player): number =>
   p.discount && p.discount.until >= g.turn ? 1 - p.discount.pct : 1;
@@ -118,6 +157,30 @@ export function capFactor(x: Pick<Site, 'type' | 'wind' | 'sun'>): number {
   if (t === 'hydro') return 0.5;
   return 0;
 }
+
+/**
+ * Net solar load of region `r` (MW): operating solar parks minus the share of operating storage that absorbs
+ * their midday peak. Works on sites and site views.
+ */
+export function solarLoad(
+  sites: readonly Pick<Site, 'r' | 'type' | 'size' | 'owner' | 'built' | 'grid'>[],
+  r: RegionKey,
+): number {
+  let solar = 0;
+  let store = 0;
+  for (const x of sites) {
+    if (x.r !== r || !x.type || !operating(x)) continue;
+    if (x.type === 'solar') solar += siteMw(x);
+    else if (isStore(x.type)) store += siteMw(x);
+  }
+  return Math.max(0, solar - SOLAR_STORE_RELIEF * store);
+}
+/** Factor (≤ 1) on the solar capture rate in quarter `q` for a net solar load of `mw` in a region. */
+export const solarCannibal = (mw: number, q: number): number =>
+  1 - Math.min(SOLAR_CANNIBAL_MAX, (SOLAR_CANNIBAL * mw * SEASON.solar[q]!) / 100);
+/** Share of the average price a plant class earns in quarter `q`, with the solar load of its region. */
+export const captureRate = (cls: 'wind' | 'solar' | 'hydro', q: number, solarMw: number): number =>
+  CAPTURE[cls][q]! * (cls === 'solar' ? solarCannibal(solarMw, q) : 1);
 
 /** Expected generation in MWh. With `q` given, weather effects (fx) are ignored. */
 export function genEstimate(g: GameState, x: Site, q?: number): number {
@@ -213,11 +276,14 @@ export type ValuedSite = Pick<
   'lease' | 'type' | 'permit' | 'built' | 'invested' | 'permitPaid' | 'gridPaid' | 'age' | 'grid'
 >;
 
+/** Book value of a plant as a share of its build costs after `age` operating quarters. */
+export const plantBook = (age: number): number => Math.max(PLANT_BOOK_MIN, PLANT_BOOK - PLANT_DEPRECIATION * age);
+
 /** Book value of a site from what was paid for it: lease, permit, plant (depreciated) and grid connection. */
 export function siteValue(x: ValuedSite): number {
   let v = x.lease * 0.6;
   if (x.type && (x.permit === 'approved' || x.built)) v += x.permitPaid;
-  if (x.built) v += x.invested * Math.max(0.35, 1 - x.age / 100);
+  if (x.built) v += x.invested * plantBook(x.age);
   if (x.grid && x.type) v += x.gridPaid * 0.8;
   return v;
 }
@@ -250,6 +316,11 @@ export function creditParts(g: GameState, p: Player): { assets: number; sales: n
   return { assets: Math.round(assets), sales: Math.round(sales), boost: Math.round(boost), limit };
 }
 export const creditLimit = (g: GameState, p: Player): number => creditParts(g, p).limit;
+/** Interest rate per quarter for a loan of `loan` with a credit limit of `limit` (see `INTEREST_RISK`). */
+export const rateFor = (loan: number, limit: number): number =>
+  INTEREST + INTEREST_RISK * Math.min(1, loan / Math.max(1, limit)) ** 2;
+/** Player `p`'s interest rate per quarter right now. */
+export const interestRate = (g: GameState, p: Player): number => rateFor(p.loan, creditLimit(g, p));
 export function rankOf(g: GameState, p: Player): number {
   return (
     g.players

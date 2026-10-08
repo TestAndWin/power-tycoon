@@ -31,7 +31,7 @@ const autoResolves = (g: GameState, pid: PlayerId): boolean => !g.players[pid]!.
 
 function autoOutcome(g: GameState, ch: OpenChallenge): number | boolean {
   const r = randomOf(g);
-  const M = autoMinigame(g.settings.difficulty, g.players[ch.playerId]!.human);
+  const M = autoMinigame(g.players[ch.playerId]!.human);
   if (ch.kind === 'layout') return Math.round(rand(r, M.layout[0], M.layout[1]) * 100) / 100;
   // a cable duel against a rival is harder than the solo puzzle; the grid board member helps
   const duel = M.cableDuel + EXEC_EFFECTS.grid.duelChance * execPower(g.players[ch.playerId], 'grid');

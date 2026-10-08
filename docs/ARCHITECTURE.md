@@ -61,7 +61,7 @@ Modules of `packages/engine/src`:
 | `quarter.ts` | `endQuarter` as named steps (permits, rival turns, production, settlement, price, solvency, next quarter) |
 | `events.ts` | event recording, news feed, what a viewer may see |
 | `view.ts` | `playerView` (hidden information removed) and helpers on the view |
-| `opponents/` | `SmartOpponent` (normal/hard) |
+| `opponents/` | `SmartOpponent` (parameters `SMART_PARAMS`) |
 
 - `GameState` is a plain JSON-serializable object (like the legacy `G`), including the RNG state.
 - Functions work on a copy (or mutate a clone made by the caller); a rejected action leaves the state unchanged.
@@ -106,12 +106,26 @@ Modules of `packages/engine/src`:
   `plantDef(t, size)` scales capacity, storage volume and costs (`LARGE`); large permits take a quarter longer
   and are rejected more often. `repower` upgrades a running standard plant (`repowerCost`, needs the extra grid
   capacity) and takes it offline for `REPOWER_QUARTERS` (`Site.offline`).
-- Book value (`siteValue`) is built from what was paid: `Site.permitPaid`, `invested` (building, depreciated
-  with age, plus the repowering) and `gridPaid` (the repowering adds the bigger connection there).
+- Book value (`siteValue`) is built from what was paid: `Site.permitPaid`, `invested` (building plus the
+  repowering, at `plantBook(age)`: `PLANT_BOOK` of the costs when built, minus `PLANT_DEPRECIATION` per operating
+  quarter, at least `PLANT_BOOK_MIN`) and `gridPaid` (the repowering adds the bigger connection there).
+  Building costs net worth at once, so a plant built shortly before the end does not pay off.
 - Credit limit (`creditParts`): `CREDIT_ASSETS` of the book value without cash (borrowed money does not raise
   it), plus `CREDIT_SALES` × the average power sales of the last `CREDIT_SALES_QUARTERS` quarters
   (`Player.sales`), plus a development loan of `CREDIT_BOOST` × the gap to the leader's net worth once the gap
-  is at least `CREDIT_BOOST_FROM` of it; at least `MIN_CREDIT`. Same rule for all players, flat interest.
+  is at least `CREDIT_BOOST_FROM` of it; at least `MIN_CREDIT`. Same rule for all players.
+- Interest (`interestRate`, `rateFor`): `INTEREST` plus `INTEREST_RISK` × (loan / credit limit)², capped at a
+  full line; the rate applies to the whole loan, so the last million borrowed is the most expensive.
+- Solar cannibalisation (`solarLoad`, `captureRate`): the solar capture rate of a region drops with its operating
+  solar MW (`SOLAR_CANNIBAL` per 100 MW, scaled with the season, at most `SOLAR_CANNIBAL_MAX`); each storage MW
+  in the region offsets `SOLAR_STORE_RELIEF` MW. PPAs are paid at their fixed price and are not affected.
+- Permit risk (`rejectChance`): the plant's `reject` plus the region's `REGIONS[r].reject`, the crowding of the
+  region (`PERMIT_CROWD` per 100 MW approved or built, at most `PERMIT_CROWD_MAX`), the site's modifiers and the
+  development board member. The view shows it per plant type and size before applying (`SiteView.permitRisk`)
+  and for a running application (`own.permitRisk`).
+- Board costs (`execCost`) scale with the game length (`EXEC_COST_SCALE`), shown in `PlayerView.execCosts`.
+- Climate bonus: at the end of the game every company gets `CO2_BONUS` € per tonne of CO₂ avoided
+  (`climateBonus` event); it is part of the final net worth.
 - Cable duel: when the free grid capacity is below `DUEL_SCARCITY` × the plant's MW, the player's own
   reservations do not cover the plant and another player has a project waiting for the grid in the region (`duelRivals`; the view
   flags it as `own.duelRisk`), `connectGrid` opens the `cable` challenge with `rival: { playerId, seconds }` (`duelSeconds`: `DUEL_PACE` × puzzle size `CABLE_COLS` × `CABLE_ROWS`). Lost:
@@ -142,7 +156,8 @@ Concept: [headquarters.md](headquarters.md). Modules `decisions.ts` (cards) and 
   quarter all gold), silver later; the annual cup at the start of a year for the largest growth of `hist` over
   the year before. Public (`PlayerSummary.awards`, news), progress in `PlayerView.me.awardProgress`.
 - Rivals (`SmartOpponent`): value board members by their effect over `BOARD_HORIZON` against fee and salaries
-  (`boardEdge`), extend the headquarters for a needed seat, dismiss on `hard`, and decide cards by expected value.
+  (`boardEdge`), extend the headquarters for a needed seat, dismiss members that no longer pay off, and decide
+  cards by expected value.
 
 - PPA contracts: legacy stores `G.contracts` globally for the human only. Store contracts **per player**
   so rivals can use them; `SmartOpponent` accepts contracts.
@@ -196,8 +211,9 @@ Rules:
 - While a challenge is open, only `minigameResult` is accepted; `end-quarter` is rejected.
 - After a reload the client gets the open challenge in the view and restarts the minigame.
 - With `autoMinigames: true` (and always for rivals) the engine resolves challenges itself with the
-  legacy probabilities (layout `rand(.9, 1.08)`, wind assembly 80 %, grid 85 %, frequency 62 %).
-  Rivals on `hard` play like a practised human (`AUTO_MINIGAME_HARD`: layout `rand(1, 1.15)`, assembly and
+  legacy probabilities (layout `rand(.9, 1.08)`, wind assembly 80 %, grid 85 %, frequency 62 %); the view shows
+  these odds to such a player (`PlayerView.autoOdds`), so the web app can put them next to the buttons.
+  Rivals play like a practised human (`AUTO_MINIGAME_HARD`: layout `rand(1, 1.15)`, assembly and
   grid 95 %, frequency 85 %). A human who wins every minigame earns about 16 % more per plant, which
   compounds to roughly +50 % net worth over the game.
 - Minigame results are **trusted** from the client (clamped only). Acceptable, because a player can only
@@ -267,37 +283,37 @@ interface OpponentStrategy {
 - The engine applies the returned actions one by one via `applyAction`; invalid actions are skipped and logged.
 - `explore` (optional) runs first and gathers information (surveys, spy reports); `decide` then gets a fresh
   view with the results – a rival can survey and lease in the same quarter, like the human.
-- `SmartOpponent` (phase 6, difficulties `normal` / `hard`; the legacy rival AI was removed): values every project by its expected
-  contribution to net worth at game end (remaining quarters × margin + book value − investment), surveys
-  before leasing, finances with debt up to a share of the credit limit, accepts PPA contracts covered by
-  its own generation, values storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity (`hard`) and aims lobby tricks
-  at the leader, preferably the human (`humanBias`). Difficulty = a parameter set (`SMART_PARAMS`).
-  `hard` additionally uses the full credit limit and
-  - forecasts price and storage spread per quarter like the engine's price model (trend, the announced
-    `HIST` milestones, this quarter's world event from `WORLD_EVENTS`) and grid capacity (projects of
-    others, announced expansions); a project is valued along its timeline, only finished parts count at the end,
+- `SmartOpponent` (phase 6; the legacy rival AI was removed, and since the October 2026 play-test there is only
+  one level – the former `hard`): values every project by its expected contribution to net worth at game end
+  along its timeline (permit → build → connect, only finished parts count at the end), with a forecast of
+  price and storage spread like the engine's price model (trend, the announced `HIST` milestones, this
+  quarter's world event) and of grid capacity (projects of others, announced expansions). The valuation
+  includes the real permit risk from the view, the solar cannibalisation of the region (parks under way
+  included; storage is credited with the relief for its own parks), the climate bonus and the marginal
+  interest of the money it borrows. It
   - surveys the unknown sites with the best expected return first (offshore too), sells dead projects,
     spreads over regions and raises its project limits with uncommitted financing room,
+  - finances with debt up to the credit limit, accepts PPA contracts covered by its own generation, values
+    storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity,
   - goes for big projects (offshore) as soon as they can be financed (`bigProjects`): counts the operating
     cash flow until the plant is built and does not prefer small projects while its financing room covers
     the big one,
-  - values tricks by the target's real loss (season, timing, end of game), may use both tricks of a quarter
-    and strikes back at a human who was caught or suspected tricking it.
-  Both levels spy on a target before tricking it (in `explore`, so the report – including the target's
-  detectives – is known when they decide), back off from a target with detectives with probability
-  `1 − shield`, hire detectives after an attack (`normal` basic, `hard` pro),
-  choose the plant size by return per invested euro (large only if it is financeable now and clearly better)
-  and repower running plants when the extra margin pays for the upgrade and the quarter offline.
-  Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly.
-- `opponentsFor(difficulty)` builds the three rivals; the API calls it with the stored difficulty.
-- `pnpm simulate -- --games 200 --seat0 normal --rivals hard` measures strategies over many seeds;
-  `--skilled` lets seat 0 win every minigame like a good human player, `--years` sets the game length.
-  Reference (200 games, mixed rivals, seat 0 = normal bot): normal ≈ 194 M€, hard ≈ 322 M€.
-  Hard rivals vs. a skilled hard bot in seat 0 (`--seat0 hard --rivals hard --skilled`): seat 0 ≈ 325 M€ and
-  wins 25 %, rivals ≈ 339 M€ and 25 % each (before the hard minigame odds and `bigProjects`: seat 0 won 70 %;
-  before phase 7: 13 %; before `explore` the rivals only leased from the second quarter on: 309 / 318 M€). A good human plays better than the bot, so this is the target range for "about even" on `hard`.
+  - aims lobby tricks at the leader, preferably the human (`humanBias`), values them by the target's real loss
+    (season, timing, end of game), may use both tricks of a quarter and strikes back at a human who was caught
+    or suspected tricking it. It spies on a target before tricking it (in `explore`, so the report – including
+    the target's detectives – is known when it decides), backs off from a target with detectives with
+    probability `1 − shield` and hires the pro detectives after an attack,
+  - chooses the plant size by return per invested euro (large only if it is financeable now and clearly better)
+    and repowers running plants when the extra margin pays for the upgrade and the quarter offline.
+  Planning noise is a fixed misjudgement per site, so rivals disagree consistently instead of randomly. The
+  flags in `SMART_PARAMS` stay parameters so that tests can compare weaker variants.
+- `opponentsFor()` builds the three rivals.
+- `pnpm simulate -- --games 200 --seat0 smart --years 3` measures over many seeds; seat 0 is the rivals'
+  strategy (`smart`), the dominant strategy of the play-test (`solar`: standard solar in Iberia on full
+  credit) or `idle`; `--skilled` lets seat 0 win every minigame like a good human player.
+  Reference numbers are in [steps.md](steps.md) (phase 9).
 - Step 2 `LlmOpponent`: gets the view + recent events as JSON, the legal actions as tools, and a persona from
-  `AI_DEF`. Falls back to `SmartOpponent` (`normal`) on timeout/error. Details are decided when step 2 starts.
+  `AI_DEF`. Falls back to `SmartOpponent` on timeout/error. Details are decided when step 2 starts.
 
 ## Deployment
 

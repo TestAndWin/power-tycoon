@@ -1,17 +1,12 @@
 /**
- * Bot-vs-bot simulation: plays N full games and reports the average net worth per strategy.
+ * Bot-vs-bot simulation: plays N full games and reports the average net worth of seat 0 and the rivals.
  *
- *   pnpm simulate -- --games 200 --seat0 normal
+ *   pnpm simulate -- --games 200 --seat0 smart --years 3
  *
- * `--rivals mixed` (default): seats 1–3 get normal / hard, rotated over the games so that
- * the regional preferences of the rivals do not favour one strategy. `--rivals hard` etc. gives all
- * three rivals the same strategy. Seat 0 (the "human") is played by `--seat0`
- * (normal | hard | idle) with automatic minigames, or with `--skilled` like a practised human who wins
- * every minigame (layout 1.15, no failed assembly or connection).
- *
- * The game difficulty (it sets the rivals' automatic minigame outcomes) is `hard` with `--rivals hard`, else
- * `normal`, so that mixed strategies are compared on equal terms.
- * `--years 3|5|10` sets the game length (default 10).
+ * Seat 0 (the "human") is played by `--seat0`: `smart` (the rivals' strategy), `solar` (standard solar parks
+ * in Iberia on full credit, the dominant strategy of the October 2026 play-test) or `idle`, with automatic
+ * minigames, or with `--skilled` like a practised human who wins every minigame (layout 1.15, no failed
+ * assembly or connection). `--years 3|5|10` sets the game length (default 10).
  */
 import {
   applyAction,
@@ -22,12 +17,11 @@ import {
   playTurn,
   playerView,
   rivalProfile,
+  SmartOpponent,
   type GameState,
   type OpponentStrategy,
 } from '../src/index.js';
-
-type Name = 'normal' | 'hard';
-const STRATS: Name[] = ['normal', 'hard'];
+import { SolarBot } from './solar-bot.js';
 
 function arg(name: string, def: string): string {
   const i = process.argv.indexOf('--' + name);
@@ -36,8 +30,7 @@ function arg(name: string, def: string): string {
 
 const games = Number(arg('games', '100'));
 const seed0 = Number(arg('seed', '1000'));
-const seat0 = arg('seat0', 'normal') as Name | 'idle';
-const rivalsArg = arg('rivals', 'mixed') as Name | 'mixed';
+const seat0 = arg('seat0', 'smart') as 'smart' | 'solar' | 'idle';
 const years = Number(arg('years', '10'));
 const skilled = process.argv.includes('--skilled');
 
@@ -82,16 +75,9 @@ const add = (k: string, worth: number, win: boolean, out: boolean) => {
 
 const t0 = performance.now();
 for (let i = 0; i < games; i++) {
-  let g = createGame({
-    companyName: 'Sim',
-    autoMinigames: !skilled,
-    seed: seed0 + i,
-    difficulty: rivalsArg === 'hard' ? 'hard' : 'normal',
-    years,
-  });
-  const names: Name[] = [0, 1, 2].map((k) => (rivalsArg === 'mixed' ? STRATS[(i + k) % 2]! : rivalsArg));
-  const rivals: OpponentStrategy[] = names.map((n) => opponentFor(n));
-  const human = seat0 === 'idle' ? null : opponentFor(seat0);
+  let g = createGame({ companyName: 'Sim', autoMinigames: !skilled, seed: seed0 + i, years });
+  const rivals: OpponentStrategy[] = [1, 2, 3].map(() => opponentFor());
+  const human = seat0 === 'idle' ? null : seat0 === 'solar' ? new SolarBot() : new SmartOpponent();
   while (!g.over) {
     if (human && skilled) g = await skilledTurn(g, human, g.seed + g.turn);
     else if (human) g = (await playTurn(g, 0, human)).state;
@@ -101,12 +87,13 @@ for (let i = 0; i < games; i++) {
   const worths = v.players.map((p) => (p.out ? 0 : p.worth));
   const best = Math.max(...worths);
   add('seat0:' + seat0 + (skilled ? '+skill' : ''), worths[0]!, worths[0] === best, g.over === 'bankrupt');
-  names.forEach((n, k) => add(n, worths[k + 1]!, worths[k + 1] === best, v.players[k + 1]!.out));
+  for (let k = 1; k <= 3; k++) add('rival' + k, worths[k]!, worths[k] === best, v.players[k]!.out);
+  add('rivals', worths.slice(1).reduce((a, b) => a + b, 0) / 3, false, false);
 }
 
 const fmt = (x: number) => (x / 1e6).toFixed(1).padStart(8) + ' M€';
 console.log(
-  `${games} games of ${years} years, rivals ${rivalsArg}, seeds ${seed0}…${seed0 + games - 1}, ${((performance.now() - t0) / 1000).toFixed(1)} s\n`,
+  `${games} games of ${years} years, seeds ${seed0}…${seed0 + games - 1}, ${((performance.now() - t0) / 1000).toFixed(1)} s\n`,
 );
 console.log('strategy        avg worth   wins   bankrupt');
 for (const [k, s] of stats)

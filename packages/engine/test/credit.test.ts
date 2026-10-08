@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CREDIT_SALES_QUARTERS, endQuarter, MIN_CREDIT, type OpponentStrategy } from '../src/index.js';
-import { creditParts, worth } from '../src/rules.js';
+import {
+  CREDIT_SALES_QUARTERS,
+  endQuarter,
+  INTEREST,
+  INTEREST_RISK,
+  MIN_CREDIT,
+  playerView,
+  type OpponentStrategy,
+} from '../src/index.js';
+import { creditParts, interestRate, rateFor, worth } from '../src/rules.js';
 import { newGame, setupSite } from './helpers.js';
 
 const idle: OpponentStrategy = { decide: async () => [] };
@@ -40,5 +48,26 @@ describe('credit limit', () => {
     rival.cash += 67e6; // 70 behind a leader worth 100
     expect(creditParts(g, me)).toMatchObject({ boost: 21e6, limit: 21e6 });
     expect(creditParts(g, rival).boost).toBe(0);
+  });
+});
+
+describe('interest', () => {
+  it('rises with the share of the credit line used', () => {
+    expect(rateFor(0, 20e6)).toBe(INTEREST);
+    expect(rateFor(10e6, 20e6)).toBeCloseTo(INTEREST + INTEREST_RISK / 4);
+    expect(rateFor(20e6, 20e6)).toBeCloseTo(INTEREST + INTEREST_RISK);
+    // above the limit (after the limit fell) it stays at the maximum
+    expect(rateFor(30e6, 20e6)).toBeCloseTo(INTEREST + INTEREST_RISK);
+  });
+
+  it('is charged at the quarter end and shown in the view', async () => {
+    const g = newGame();
+    const p = g.players[0]!;
+    p.loan = 15e6;
+    p.cash += 15e6;
+    const rate = interestRate(g, p);
+    expect(playerView(g, 0).me.interest).toBe(rate);
+    const { report } = await endQuarter(g, [idle, idle, idle]);
+    expect(report.lines).toContainEqual({ kind: 'interest', amount: -Math.round(15e6 * rate), rate });
   });
 });

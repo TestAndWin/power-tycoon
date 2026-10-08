@@ -18,13 +18,13 @@ player may know about the rivals. Add `GET /api/games/:id/rivals` only if the vi
 
 ```json
 // request
-{ "companyName": "Deichwatt AG", "autoMinigames": false, "difficulty": "normal", "years": 10 }
+{ "companyName": "Deichwatt AG", "autoMinigames": false, "years": 10 }
 // 201 response
 { "gameId": "q3Jb0…", "token": "x9F…(43 chars)", "view": { … } }
 ```
 
 `years` (`3` | `5` | `10`) is the game length, optional, default `10`; the historic milestones are squeezed into
-it. `difficulty` (`normal` | `hard`) is optional, default `normal`.
+it. There is one difficulty; a `difficulty` sent by older clients is ignored.
 The token is returned **only here**. The client stores `{ gameId, token }` in `localStorage`.
 Rate limit: 10 new games per IP per hour.
 
@@ -105,7 +105,7 @@ option and disables it while `error` is set; the server still validates every re
 ```
 
 Report lines are structured (`kind`: `ppa` | `spot` | `storage` | `opex` | `lease` | `board` | `hq` | `interest`;
-`board` are the salaries, `hq` the upkeep of the headquarters; storage lines carry
+`board` are the salaries, `hq` the upkeep of the headquarters, `interest` carries the quarter's `rate`; storage lines carry
 `source`: `own` (own generation of the region shifted, with `mwh`) or `market`) because the
 engine never produces German text; the web app labels them.
 

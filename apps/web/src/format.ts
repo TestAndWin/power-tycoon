@@ -36,6 +36,10 @@ export const tons = (n: number): string =>
     ? (n / 1e6).toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' Mio. t'
     : Math.round(n).toLocaleString('de-DE') + ' t';
 
+/** A share as German percent ("2,5 %"). */
+export const pct = (x: number, digits = 1): string =>
+  (x * 100).toLocaleString('de-DE', { maximumFractionDigits: digits }) + ' %';
+
 export const QN = ['Q1', 'Q2', 'Q3', 'Q4'];
 export const qStr = (y: number, q: number): string => QN[q] + ' ' + y;
 /** "Q3 2027" for a turn of a game that started in `startYear`. */

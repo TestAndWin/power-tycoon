@@ -13,6 +13,8 @@ export const UI = {
   confirm: null as string | null,
   /** Desktop: the area opened from the office (a key as in `tab`), null = the office. */
   folder: null as string | null,
+  /** Rival whose file is highlighted in the rivals view (clicked portrait), null = none. */
+  rival: null as number | null,
 };
 
 /** Current game: the last view from the server replaces the legacy global `G`. */

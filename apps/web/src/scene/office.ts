@@ -110,6 +110,13 @@ export function officeHotspots(
   ];
 }
 
+/** The rival portrait at rank position `i` on the wall: centre and radius of its frame. */
+export const rivalPortrait = (i: number): { cx: number; cy: number; r: number } => ({
+  cx: 700 + i * 90,
+  cy: 498,
+  r: 38,
+});
+
 /** Clock on the phone, per quarter (also on the opened phone). */
 export const PHONE_TIME = ['08:15', '09:41', '10:30', '17:05'];
 
@@ -1157,9 +1164,8 @@ function shelf(d: OfficeData): void {
     turbine(908, 410, 56, 9, 1.4);
   }
   d.rivals.forEach((r, i) => {
-    const cx = 700 + i * 90,
-      cy = 498;
-    shape(circ(cx, cy, 38), '#c98a17', 3, 4);
+    const { cx, cy, r: frame } = rivalPortrait(i);
+    shape(circ(cx, cy, frame), '#c98a17', 3, 4);
     const im = portraitImage(r.svg);
     if (im.complete && im.naturalWidth) {
       c.save();

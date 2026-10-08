@@ -13,6 +13,7 @@ import {
   type GameState,
   type OpponentStrategy,
 } from '../src/index.js';
+import { plantBook } from '../src/rules.js';
 import { fails, giveIntel, newGame, ok, setupSite, site } from './helpers.js';
 
 const idle: OpponentStrategy = { decide: async () => [] };
@@ -220,11 +221,10 @@ describe('build with minigame challenges', () => {
     expect(eff).toBeLessThanOrEqual(1.08);
     expect(r.events.some((e) => e.type === 'layoutRated')).toBe(true);
   });
-  it('rivals on hard play the minigames like a practised player; the human keeps the normal odds', () => {
+  it('rivals play the minigames like a practised player; the human keeps the normal odds', () => {
     const effs = (pid: 0 | 1) =>
       Array.from({ length: 20 }, (_, i) => {
         const g = newGame(100 + i, true);
-        g.settings.difficulty = 'hard';
         g.players[pid]!.cash = 100e6;
         setupSite(g, 'nd0', pid, 'approved', 'solar');
         return site(ok(g, { type: 'build', siteId: 'nd0' }, pid).state, 'nd0').eff;
@@ -309,7 +309,7 @@ describe('repairs and selling', () => {
   it('sells a site for 85 % of its value', () => {
     const g = newGame();
     const x = setupSite(g, 'nd0', 0, 'operating', 'wind');
-    const value = x.lease * 0.6 + 0.3e6 + 10e6 + 1.2e6 * 0.8;
+    const value = x.lease * 0.6 + 0.3e6 + 10e6 * plantBook(x.age) + 1.2e6 * 0.8;
     const r = ok(g, { type: 'sellSite', siteId: 'nd0' });
     expect(r.state.players[0]!.cash).toBe(30e6 + Math.round(value * 0.85));
     expect(site(r.state, 'nd0')).toMatchObject({ owner: -1, type: null, built: false, grid: false });
