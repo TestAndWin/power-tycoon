@@ -204,7 +204,7 @@ export const CAPTURE: Record<'wind' | 'solar' | 'hydro', [number, number, number
  */
 export const SOLAR_CANNIBAL = 0.04;
 export const SOLAR_STORE_RELIEF = 0.5;
-export const SOLAR_CANNIBAL_MAX = 0.3;
+export const SOLAR_CANNIBAL_MAX = 0.2;
 export const PRICE_SEASON = [1.12, 0.92, 0.9, 1.06];
 /** Price model: the target price drifts up per quarter, the base price follows it by this share. */
 export const TARGET_DRIFT = 1.0025;
@@ -584,7 +584,7 @@ export const AWARDS: Record<Exclude<AwardKey, 'cup'>, AwardDef> = {
  * Book value of a plant as a share of its build costs: it drops to `PLANT_BOOK` when built (a used plant
  * cannot be sold at its price), then by `PLANT_DEPRECIATION` per operating quarter, down to `PLANT_BOOK_MIN`.
  */
-export const PLANT_BOOK = 0.8;
+export const PLANT_BOOK = 0.9;
 export const PLANT_DEPRECIATION = 0.01;
 export const PLANT_BOOK_MIN = 0.35;
 
