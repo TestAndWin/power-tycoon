@@ -60,6 +60,9 @@ pnpm build        # engine + web + api
 ./deploy.sh       # on the server: build image, import into MicroK8s, apply manifests
 ```
 
+## Git Workflow
+- No pull requests: when a change is done, merge it straight into `main` (fast-forward) and push. Do not suggest a PR.
+
 ## Coding Conventions
 - TypeScript `strict`, ES modules, Node 24
 - Money in whole euros as `number` (the legacy game uses e.g. `20e6`), energy in MWh
