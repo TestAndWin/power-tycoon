@@ -177,7 +177,7 @@ leader); grid capacity stays as it is (cable duels happen in real games).
       2.5 % at a full line (square of the share above half) on the whole loan; shown in the bank and in the
       report line (first version: 1 % + 2 % × utilisation², too hard on the start with the minimum credit line)
 - [x] Smaller gap between the regions: Iberian sun 1500–1850 kWh/kWp (was 1550–1950), North German wind
-      6.2–8.2 m/s (was 5.8–7.8); onshore wind permits take 1–3 quarters (was 2–4)
+      6.2–8.2 m/s (was 5.8–7.8); onshore wind permits take 1–3 quarters (was 2–4) and are rejected less often (base 15 %, was 20 %)
 - [x] Solar cannibalisation: the solar capture rate of a region drops by 4 % per 100 MW solar (stronger in summer,
       at most 20 %); storage in the region offsets half its MW; PPAs keep their fixed price
 - [x] Permit risk by region (`REGIONS[r].reject`: ND +5, IB +6, AL +5 points) and crowding (+3 points per 100 MW
@@ -206,12 +206,12 @@ leader); grid capacity stays as it is (cable duels happen in real games).
 | 3 years | `solar` (Iberia solar, full credit) | 37.8 M€ | 41.9 M€ | 27.1 M€ | 36.7 M€ |
 | 3 years | `smart` | 34.5 M€ | 41.4 M€ | 28.8 M€ | 35.4 M€ |
 | 3 years | `smart --skilled` | 41.1 M€ (23 % wins) | 41.7 M€ | 32.6 M€ (8 % wins) | 35.3 M€ |
-| 5 years | `solar` | – | – | 35.3 M€ | 47.9 M€ |
-| 5 years | `smart` | – | – | 34.4 M€ | 47.8 M€ |
-| 5 years | `smart --skilled` | – | – | 44.6 M€ (15 % wins) | 47.4 M€ |
-| 10 years | `solar` | 96.8 M€ | 318.9 M€ | 89.6 M€ | 211.8 M€ |
-| 10 years | `smart` | 188.1 M€ | 332.1 M€ | 126.4 M€ | 206.7 M€ |
-| 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 205.4 M€ (22 % wins) | 206.0 M€ |
+| 5 years | `solar` | – | – | 35.9 M€ | 48.7 M€ |
+| 5 years | `smart` | – | – | 35.5 M€ | 48.4 M€ |
+| 5 years | `smart --skilled` | – | – | 46.0 M€ (17 % wins) | 49.6 M€ |
+| 10 years | `solar` | 96.8 M€ | 318.9 M€ | 98.4 M€ | 230.0 M€ |
+| 10 years | `smart` | 188.1 M€ | 332.1 M€ | 140.1 M€ | 231.5 M€ |
+| 10 years | `smart --skilled` | 296.9 M€ (30 % wins) | 290.8 M€ | 246.5 M€ (25 % wins) | 226.3 M€ |
 
 All net worths are lower, mostly because of the depreciation (it also lowers the credit limit, 50 % of the
 book value) and the solar cannibalisation; a first calibration (80 % book value when built, cannibalisation up
@@ -228,6 +228,9 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
       (about even over 30–40 games, before +12–18 %); the test now compares against a timid variant. Check
       `forecastValue` / `gridDelay` against the simple valuation
 
+- [x] Rivals' plants at the end (average over 20 games of three rivals): 5 years – Iberian solar 9.9, North
+      German wind 1.5, Iberian wind 0.9, others below 0.5; 10 years – North German wind 9.7, Iberian solar 8.6,
+      Alpine solar 4.7, storage 9.8, Iberian wind 3.7, offshore 2.4, hydro 2.1
 - [x] The 3-year game is removed: too short for projects to pay off under the new rules (start dialog offers
       5 and 10 years; stored 3-year games keep playing). The 3-year rows above are kept for reference
 - [ ] Play-test a 5-year and a 10-year game with the new rules

@@ -88,7 +88,7 @@ export const PLANTS: Record<PlantType, PlantDef> = {
     opex: 0.12e6,
     // onshore wind was permitted in 2–4 quarters: too slow for a short game against solar (1 quarter)
     permitQ: [1, 3],
-    reject: 0.2,
+    reject: 0.15,
     learn: 0.015,
     cls: 'wind',
   },
