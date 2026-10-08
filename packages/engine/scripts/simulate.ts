@@ -7,6 +7,8 @@
  * in Iberia on full credit, the dominant strategy of the October 2026 play-test) or `idle`, with automatic
  * minigames, or with `--skilled` like a practised human who wins every minigame (layout 1.15, no failed
  * assembly or connection). `--years 5|10` sets the game length (default 10).
+ * It also counts the lobby tricks per game: against seat 0, by seat 0, between rivals, and lawsuits on a site
+ * that was already sued in the three quarters before.
  */
 import {
   applyAction,
@@ -73,15 +75,39 @@ const add = (k: string, worth: number, win: boolean, out: boolean) => {
   stats.set(k, s);
 };
 
+const tricks = { atSeat0: 0, klageAtSeat0: 0, failedAtSeat0: 0, bySeat0: 0, rivalVsRival: 0, repeatKlage: 0 };
+
+/** Counts the tricks of the quarter that just ended (from the news, which carries every successful trick). */
+function countTricks(g: GameState, year: number, q: number, sued: Map<string, number>): void {
+  for (const n of g.news) {
+    if (n.year !== year || n.q !== q) continue;
+    const e = n.event;
+    if (e.type === 'trickFailed' && e.targetId === 0) tricks.failedAtSeat0++;
+    if (e.type !== 'trickSucceeded') continue;
+    if (e.targetId === 0) tricks.atSeat0++;
+    if (e.targetId === 0 && e.trick === 'klage') tricks.klageAtSeat0++;
+    if (e.actorId === 0) tricks.bySeat0++;
+    else if (e.targetId !== 0) tricks.rivalVsRival++;
+    if (e.trick === 'klage') {
+      const last = sued.get(e.siteId);
+      if (last !== undefined && g.turn - last <= 3) tricks.repeatKlage++;
+      sued.set(e.siteId, g.turn);
+    }
+  }
+}
+
 const t0 = performance.now();
 for (let i = 0; i < games; i++) {
   let g = createGame({ companyName: 'Sim', autoMinigames: !skilled, seed: seed0 + i, years });
   const rivals: OpponentStrategy[] = [1, 2, 3].map(() => opponentFor());
   const human = seat0 === 'idle' ? null : seat0 === 'solar' ? new SolarBot() : new SmartOpponent();
+  const sued = new Map<string, number>();
   while (!g.over) {
     if (human && skilled) g = await skilledTurn(g, human, g.seed + g.turn);
     else if (human) g = (await playTurn(g, 0, human)).state;
+    const { year, q } = g;
     g = (await endQuarter(g, rivals)).state;
+    countTricks(g, year, q, sued);
   }
   const v = playerView(g, 0);
   const worths = v.players.map((p) => (p.out ? 0 : p.worth));
@@ -100,3 +126,10 @@ for (const [k, s] of stats)
   console.log(
     `${k.padEnd(14)} ${fmt(s.worth / s.n)}  ${((s.wins / s.n) * 100).toFixed(0).padStart(4)} %  ${String(s.out).padStart(6)}`,
   );
+const per = (x: number) => (x / games).toFixed(1).padStart(6);
+console.log(`
+lobby tricks per game (successful)
+  against seat 0     ${per(tricks.atSeat0)}  (lawsuits ${per(tricks.klageAtSeat0).trim()}, fended off ${per(tricks.failedAtSeat0).trim()})
+  by seat 0          ${per(tricks.bySeat0)}
+  rival vs. rival    ${per(tricks.rivalVsRival)}
+  repeat lawsuits    ${per(tricks.repeatKlage)}  (same site within 3 quarters)`);

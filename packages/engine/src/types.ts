@@ -58,6 +58,8 @@ export interface Site {
   offline: number;
   /** Change of the rejection chance of the running permit application (decision cards). */
   rejectMod: number;
+  /** Turn of the last lawsuit against the site (see `LAWSUIT_PEACE`). */
+  suedTurn?: number;
 }
 
 export interface Offer {
@@ -495,6 +497,8 @@ export interface SiteView {
   mw: number;
   /** Quarters the plant is offline for repowering. */
   offline: number;
+  /** Quarters the site is still protected from lawsuits (0 = none). */
+  peace: number;
   /** Details of a rival's site from a valid spy report. */
   intel?: { eff: number; permitLeft: number };
   /** Only for the viewer's own sites. */

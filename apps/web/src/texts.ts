@@ -112,7 +112,7 @@ export const STANDING_TEXT = {
 export const TRICK_TEXT: Record<TrickType, { name: string; desc: string }> = {
   klage: {
     name: 'Klage gegen Genehmigung',
-    desc: 'Anwälte fechten eine Genehmigung an. Das Projekt verzögert sich um zwei Quartale, manchmal kippt es ganz.',
+    desc: 'Anwälte fechten eine Genehmigung an. Das Projekt verzögert sich um zwei Quartale, manchmal kippt es ganz. Danach ist die Fläche drei Quartale vor Klagen geschützt.',
   },
   bi: {
     name: 'Bürgerinitiative anstiften',

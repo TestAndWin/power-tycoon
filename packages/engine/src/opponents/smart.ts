@@ -146,7 +146,7 @@ export const SMART_PARAMS: SmartParams = {
   reservations: true,
   trickRate: 0.5,
   trickEdge: 2,
-  humanBias: 1.5,
+  humanBias: 1,
   noise: 0.05,
   foresight: true,
   valueSurveys: true,
@@ -1077,10 +1077,7 @@ class Planner {
     const score = (p: PlayerSummary) =>
       p.worth * (p.human ? this.p.humanBias : 1) * (1 + 0.5 * (grudge.get(p.id) ?? 0));
     const leader = others.reduce((a, b) => (score(b) > score(a) ? b : a));
-    const threat =
-      leader.worth >= this.me.worth * 0.9 ||
-      (leader.human && leader.worth > this.me.worth * 0.75) ||
-      grudge.has(leader.id);
+    const threat = leader.worth >= this.me.worth * 0.9 || grudge.has(leader.id);
     return threat ? { leader, grudge } : null;
   }
 

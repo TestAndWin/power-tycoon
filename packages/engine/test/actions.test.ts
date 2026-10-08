@@ -363,12 +363,25 @@ describe('lobby tricks', () => {
     let s = ok(g, { type: 'lobby', trick: 'klage', siteId: 'nd1' }).state;
     s = ok(s, { type: 'lobby', trick: 'hack', siteId: 'nd0' }).state;
     expect(playerView(s, 0).me.tricksLeft).toBe(0);
-    fails(s, { type: 'lobby', trick: 'klage', siteId: 'nd1' }, 'trickLimit');
+    setupSite(s, 'nd3', 2, 'approved', 'wind');
+    fails(s, { type: 'lobby', trick: 'klage', siteId: 'nd3' }, 'trickLimit');
     // rivals have the same limit
     setupSite(s, 'nd2', 0, 'approved', 'wind');
+    setupSite(s, 'nd4', 2, 'approved', 'wind');
     let r = ok(s, { type: 'lobby', trick: 'klage', siteId: 'nd2' }, 3).state;
-    r = ok(r, { type: 'lobby', trick: 'klage', siteId: 'nd1' }, 3).state;
-    fails(r, { type: 'lobby', trick: 'klage', siteId: 'nd2' }, 'trickLimit', 3);
+    r = ok(r, { type: 'lobby', trick: 'klage', siteId: 'nd3' }, 3).state;
+    fails(r, { type: 'lobby', trick: 'klage', siteId: 'nd4' }, 'trickLimit', 3);
+  });
+  it('protects a sued site from further lawsuits for three quarters', async () => {
+    let g = target();
+    g = ok(g, { type: 'lobby', trick: 'klage', siteId: 'nd1' }).state;
+    // another player cannot sue the same site in the same quarter, whatever the outcome
+    fails(g, { type: 'lobby', trick: 'klage', siteId: 'nd1' }, 'invalidTarget', 3);
+    expect(playerView(g, 3).sites.find((x) => x.id === 'nd1')!.peace).toBe(3);
+    for (let k = 0; k < 2; k++) g = (await endQuarter(g, [])).state;
+    expect(playerView(g, 3).sites.find((x) => x.id === 'nd1')!.peace).toBe(1);
+    g = (await endQuarter(g, [])).state;
+    expect(playerView(g, 3).sites.find((x) => x.id === 'nd1')!.peace).toBe(0);
   });
   it('has the legacy effects and hides the actor unless suspected', () => {
     let succeeded = 0;

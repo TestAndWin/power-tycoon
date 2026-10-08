@@ -234,6 +234,22 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
 - [x] The 3-year game is removed: too short for projects to pay off under the new rules (start dialog offers
       5 and 10 years; stored 3-year games keep playing). The 3-year rows above are kept for reference
 - [ ] Play-test a 5-year and a 10-year game with the new rules
+- [x] Rivals less aggressive with lobby tricks (play-test: six lawsuits in three quarters, the same three
+      sites sued again and again): a site cannot be sued again for three quarters after a lawsuit, won or
+      lost (`LAWSUIT_PEACE`, shown at the site); rivals aim at the real leader, the human no longer counts
+      1.5× (`humanBias` 1) and is no longer a target from 75 % of the rival's net worth. The quarterly report
+      says when a lawsuit contests a permit that was just granted
+
+  `pnpm simulate`, 200 games each, seeds 1000–1199, successful tricks per game:
+
+  | Game | Seat 0 | Lawsuits vs. seat 0 before → after | Rival vs. rival | Seat 0 worth (wins) before → after | Rivals before → after |
+  |------|--------|------------------------------------|-----------------|------------------------------------|-----------------------|
+  | 5 years | `smart` | 13.2 → 3.5 | 1.2 → 5.4 | 34.9 M€ (2 %) → 40.2 M€ (8 %) | 48.6 → 47.6 M€ |
+  | 5 years | `solar` | 21.2 → 3.5 | 1.1 → 7.3 | 36.4 M€ (2 %) → 40.7 M€ (12 %) | 50.2 → 48.7 M€ |
+  | 10 years | `smart` | 18.0 → 6.5 | 7.2 → 12.3 | 136.7 M€ (0 %) → 154.0 M€ (3 %) | 226.9 → 211.5 M€ |
+
+  Lawsuits on a site sued in the three quarters before dropped from 8.6 to 0.6 per 5-year game (the rest
+  come exactly three quarters later). The same bot still wins far less often in seat 0 than as a rival
 
 ## Step 2 – LLM rivals (separate planning later)
 

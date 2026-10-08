@@ -20,7 +20,7 @@ const RULES: [string, string][] = [
   ],
   [
     'Konkurrenz',
-    'Die Rivalen spielen nach denselben Regeln wie du. Im Hinterzimmer spionierst du sie aus und schadest ihnen dann mit Klagen, Bürgerinitiativen oder Hackern. Wer auffliegt, zahlt Strafe und Schadensersatz. Detektive schützen dich vor solchen Tricks.',
+    'Die Rivalen spielen nach denselben Regeln wie du. Im Hinterzimmer spionierst du sie aus und schadest ihnen dann mit Klagen, Bürgerinitiativen oder Hackern. Wer auffliegt, zahlt Strafe und Schadensersatz. Nach einer Klage ist die Fläche drei Quartale lang vor weiteren Klagen geschützt. Detektive schützen dich vor solchen Tricks.',
   ],
   [
     'Dein Büro',

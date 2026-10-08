@@ -28,6 +28,7 @@ import {
   CREDIT_BOOST,
   CREDIT_BOOST_FROM,
   CREDIT_SALES,
+  LAWSUIT_PEACE,
   MIN_CREDIT,
   PLANTS,
   REGIONS,
@@ -356,6 +357,7 @@ export function resetSite(x: Site): void {
     size: 'std',
     offline: 0,
     rejectMod: 0,
+    suedTurn: undefined,
   });
 }
 
@@ -384,6 +386,10 @@ export function genOffers(g: GameState): void {
   }
 }
 
+/** Quarters the site is still protected from a new lawsuit (0 = none). */
+export const lawsuitPeace = (g: GameState, x: Site): number =>
+  x.suedTurn === undefined ? 0 : Math.max(0, x.suedTurn + LAWSUIT_PEACE - g.turn);
+
 export function trickTargets(g: GameState, type: TrickType, pid: PlayerId): Site[] {
   return g.sites.filter(
     (x) =>
@@ -391,7 +397,7 @@ export function trickTargets(g: GameState, type: TrickType, pid: PlayerId): Site
       x.owner !== pid &&
       !g.players[x.owner]!.out &&
       (type === 'klage'
-        ? x.permit === 'pending' || (x.permit === 'approved' && !x.built)
+        ? (x.permit === 'pending' || (x.permit === 'approved' && !x.built)) && lawsuitPeace(g, x) === 0
         : type === 'bi'
           ? operating(x) && (x.type === 'wind' || x.type === 'solar') && x.curtail <= 0 && !x.fault
           : operating(x) && !x.fault),

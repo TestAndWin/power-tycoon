@@ -299,7 +299,7 @@ interface OpponentStrategy {
   - goes for big projects (offshore) as soon as they can be financed (`bigProjects`): counts the operating
     cash flow until the plant is built and does not prefer small projects while its financing room covers
     the big one,
-  - aims lobby tricks at the leader, preferably the human (`humanBias`), values them by the target's real loss
+  - aims lobby tricks at the leader, human or rival alike (`humanBias` 1), values them by the target's real loss
     (season, timing, end of game), may use both tricks of a quarter and strikes back at a human who was caught
     or suspected tricking it. It spies on a target before tricking it (in `explore`, so the report – including
     the target's detectives – is known when it decides), backs off from a target with detectives with

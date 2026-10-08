@@ -197,6 +197,7 @@ function detail(): string {
     else if (x.permit === 'pending')
       f += `<dt>Genehmigung</dt><dd>noch ${Math.max(1, x.intel.permitLeft)} Q <span class="chip sab">Spionage</span></dd>`;
   }
+  if (x.peace > 0 && !x.built && x.permit) f += `<dt>Vor Klagen geschützt</dt><dd>noch ${x.peace} Q</dd>`;
   const regionTypes = REGIONS[x.r].types;
   // permit buttons carry the chosen size
   const pv = (t: PlantType) => `${x.id}|${t}|${UI.size}`;
