@@ -47,7 +47,7 @@ export function showReport(rep: QuarterReport, rivals: RivalActionLog[]): void {
   const ev = evs
     .map(
       (e) =>
-        `<li><span class="chip ${e.kind}">${{ bad: 'Achtung', warn: 'Ereignis', good: 'Gut', info: 'Info' }[e.kind] || 'Info'}</span><span>${e.text}</span></li>`,
+        `<li><span class="chip${e.kind === 'info' ? '' : ' ' + e.kind}">${{ bad: 'Achtung', warn: 'Ereignis', good: 'Gut', info: 'Info' }[e.kind] || 'Info'}</span><span>${e.text}</span></li>`,
     )
     .join('');
   const delta = rep.endCash - rep.startCash;
