@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createGame, createRng, playerView, REGIONS } from '../src/index.js';
+import { createGame, createRng, playerView, REGIONS, SITE_YIELD } from '../src/index.js';
 import { newGame } from './helpers.js';
 
 describe('createGame', () => {
@@ -17,16 +17,42 @@ describe('createGame', () => {
     expect(g.news[0]!.event.type).toBe('gameStarted');
   });
 
-  it('generates site values in the ranges of their region', () => {
+  it('generates site values around the ranges of their region, with duds and lucky finds', () => {
     const g = newGame(7);
-    const within = (v: number | null, range?: [number, number]) =>
-      range ? v !== null && v >= range[0] && v <= range[1] : v === null;
+    const values: { v: number; range: [number, number] }[] = [];
     for (const x of g.sites) {
-      expect(within(x.wind, REGIONS[x.r].wind)).toBe(true);
-      expect(within(x.sun, REGIONS[x.r].sun)).toBe(true);
+      const R = REGIONS[x.r];
+      expect(x.wind === null).toBe(!R.wind);
+      expect(x.sun === null).toBe(!R.sun);
+      if (R.wind) values.push({ v: x.wind!, range: R.wind });
+      if (R.sun) values.push({ v: x.sun!, range: R.sun });
       expect(x.lease % 5e4).toBe(0);
+      expect(x.lease).toBeGreaterThanOrEqual(R.lease[0] * 1e6 - 5e4);
+      expect(x.lease).toBeLessThanOrEqual(R.lease[1] * 1e6 + 5e4);
     }
+    for (const { v, range } of values) {
+      expect(v).toBeGreaterThanOrEqual(range[0] * SITE_YIELD.dudFactor[0] - 10);
+      expect(v).toBeLessThanOrEqual(range[1] * SITE_YIELD.luckyFactor[1] + 10);
+    }
+    expect(values.some(({ v, range }) => v < range[0])).toBe(true);
+    expect(values.some(({ v, range }) => v > range[1])).toBe(true);
     expect(g.sites.filter((x) => x.hydro).every((x) => x.r === 'al')).toBe(true);
+  });
+
+  it('does not reveal the yield through the lease', () => {
+    // across many games, the lease of a dud is no lower than that of a normal or lucky site on average
+    const avg = (a: number[]) => a.reduce((s, x) => s + x, 0) / a.length;
+    const byKind: Record<'dud' | 'normal' | 'lucky', number[]> = { dud: [], normal: [], lucky: [] };
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const x of newGame(seed).sites.filter((y) => y.r === 'ib')) {
+        const [lo, hi] = REGIONS.ib.sun!;
+        const span = REGIONS.ib.lease[1] - REGIONS.ib.lease[0];
+        const rel = (x.lease / 1e6 - REGIONS.ib.lease[0]) / span;
+        byKind[x.sun! < lo ? 'dud' : x.sun! > hi ? 'lucky' : 'normal'].push(rel);
+      }
+    }
+    expect(Math.abs(avg(byKind.dud) - avg(byKind.lucky))).toBeLessThan(0.15);
+    expect(Math.abs(avg(byKind.dud) - 0.5)).toBeLessThan(0.1);
   });
 
   it('is deterministic per seed', () => {

@@ -273,6 +273,12 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
   | 10 years, seeds 5000–5199 | 154.2 (4 %) → 161.3 M€ (6 %) | 216.1 → 217.2 M€ |
   | 10 years `--skilled` | 270.7 (53 %) → 291.4 M€ (58 %) | 224.2 → 230.9 M€ |
 
+- [x] Play-test: the lease gave away the yield (half of it followed the main resource), so yield surveys
+      were hardly needed, and every site was usable. Now wind and sun can be a dud (1 in 7 per resource,
+      75–85 % of the region's lower end) or a lucky find (1 in 12, 105–112 % of the upper end), and the lease
+      follows only an estimate (±0.3 of the quality, a pure guess for duds and lucky finds). 200 games,
+      5 years, `smart` in seat 0: seat 0 50.8 (12 %) → 52.3 M€ (10 %), rivals 57.0 → 60.6 M€.
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)

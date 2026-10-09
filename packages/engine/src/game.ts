@@ -6,6 +6,7 @@ import {
   REGION_KEYS,
   REGIONS,
   SITES_PER_REGION,
+  SITE_YIELD,
   START_CASH,
   START_YEAR,
 } from './data.js';
@@ -53,14 +54,26 @@ function makeSite(r: Random, k: RegionKey, i: number): Site {
     offline: 0,
     rejectMod: 0,
   };
-  s.wind = R.wind ? Math.round(rand(r, R.wind[0], R.wind[1]) * 10) / 10 : null;
-  s.sun = R.sun ? Math.round(rand(r, R.sun[0], R.sun[1]) / 10) * 10 : null;
+  // a resource of the site and its quality: 0..1 within the region's range, null for a dud or lucky find
+  const resource = (range: [number, number]): [number, number | null] => {
+    const t = r();
+    if (t < SITE_YIELD.dud) return [range[0] * rand(r, ...SITE_YIELD.dudFactor), null];
+    if (t < SITE_YIELD.dud + SITE_YIELD.lucky) return [range[1] * rand(r, ...SITE_YIELD.luckyFactor), null];
+    const v = rand(r, range[0], range[1]);
+    return [v, (v - range[0]) / (range[1] - range[0])];
+  };
+  const [wind, windQ] = R.wind ? resource(R.wind) : [null, null];
+  const [sun, sunQ] = R.sun ? resource(R.sun) : [null, null];
+  s.wind = wind === null ? null : Math.round(wind * 10) / 10;
+  s.sun = sun === null ? null : Math.round(sun / 10) * 10;
   s.hydro = R.hydro ? r() < R.hydro : false;
-  let q = 0.5;
-  if (k === 'ns' || k === 'nd') q = (s.wind! - R.wind![0]) / (R.wind![1] - R.wind![0]);
-  else if (k === 'ib') q = (s.sun! - R.sun![0]) / (R.sun![1] - R.sun![0]);
-  else q = (s.hydro ? 0.7 : 0.2) + r() * 0.3;
-  s.lease = Math.round(((R.lease[0] + (R.lease[1] - R.lease[0]) * (0.5 * q + 0.5 * r())) * 1e6) / 5e4) * 5e4;
+  // the lease follows an estimate of the main resource; nobody sees a dud or lucky find coming
+  let q: number | null;
+  if (k === 'ns' || k === 'nd') q = windQ;
+  else if (k === 'ib') q = sunQ;
+  else q = s.hydro ? 0.75 : 0.25;
+  const est = q === null ? r() : Math.min(1, Math.max(0, q + rand(r, -SITE_YIELD.leaseNoise, SITE_YIELD.leaseNoise)));
+  s.lease = Math.round(((R.lease[0] + (R.lease[1] - R.lease[0]) * est) * 1e6) / 5e4) * 5e4;
   return s;
 }
 

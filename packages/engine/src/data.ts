@@ -235,6 +235,21 @@ export const START_CASH = 30e6;
 export const STORE_MARKET_SHARE = 0.5;
 export const SITES_PER_REGION = 16;
 /**
+ * Wind and sun of a site usually lie within the region's range, but each resource can be a dud (well below
+ * it) or a lucky find (above it). The lease follows only an estimate of the site's quality, so a yield
+ * survey is the only way to know what a site is worth.
+ */
+export const SITE_YIELD = {
+  /** Chance per resource of a dud, and its value as a factor of the range's lower end. */
+  dud: 1 / 7,
+  dudFactor: [0.75, 0.85] as [number, number],
+  /** Chance per resource of a lucky find, and its value as a factor of the range's upper end. */
+  lucky: 1 / 12,
+  luckyFactor: [1.05, 1.12] as [number, number],
+  /** Max. error of the quality estimate (0–1) the lease is based on. */
+  leaseNoise: 0.3,
+};
+/**
  * Crowded regions meet more resistance: the rejection chance of a permit grows by this much per 100 MW of
  * approved or built plants (all players) in the region, up to `PERMIT_CROWD_MAX`.
  */

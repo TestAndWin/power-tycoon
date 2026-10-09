@@ -61,6 +61,7 @@ describe('missing money', () => {
   it('names the gap under a blocked button and offers the bank if the credit line covers it', () => {
     game((g, site) => {
       Object.assign(site('ib0'), { owner: 0, type: 'solar', permit: 'approved' });
+      site('nd5').lease = 0.5e6;
       g.players[0]!.cash = 1e6;
     });
     const build = optionFor({ type: 'build', siteId: 'ib0' })!;

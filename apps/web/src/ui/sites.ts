@@ -70,10 +70,10 @@ export function vSites(): string {
   }).join('');
   const climate = [
     R.wind
-      ? `<span class="ctok" title="Wind"><i aria-hidden="true">≋</i><span class="label">Wind</span>${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</span>`
+      ? `<span class="ctok" title="Wind (üblich – einzelne Flächen liegen deutlich darunter oder darüber)"><i aria-hidden="true">≋</i><span class="label">Wind</span>${R.wind[0].toLocaleString('de-DE')}–${R.wind[1].toLocaleString('de-DE')} m/s</span>`
       : '',
     R.sun
-      ? `<span class="ctok" title="Sonne"><i aria-hidden="true">☀</i><span class="label">Sonne</span>${R.sun[0]}–${R.sun[1]} kWh/kWp</span>`
+      ? `<span class="ctok" title="Sonne (üblich – einzelne Flächen liegen deutlich darunter oder darüber)"><i aria-hidden="true">☀</i><span class="label">Sonne</span>${R.sun[0]}–${R.sun[1]} kWh/kWp</span>`
       : '',
   ].join('');
   const G = v.grid[r];
