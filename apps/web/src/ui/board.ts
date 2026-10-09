@@ -39,8 +39,11 @@ function member(d: Department): string {
 }
 
 function candidate(d: Department, g: ExecGrade): string {
-  const P = EXEC_PEOPLE[d][g],
-    G = EXEC_GRADES[g],
+  const P = EXEC_PEOPLE[d][g];
+  if (V().me.gone.some((e) => e.dept === d && e.grade === g))
+    return `<div class="cv gone"><div class="photo">${execPortrait(d, g, 64)}</div><div class="stack" style="gap:3px">
+    <b>${esc(P.name)}, ${P.age} <span class="chip">${GRADE_TEXT[g]}</span></b><span class="muted">Arbeitet jetzt für die Konkurrenz und steht nicht mehr zur Verfügung.</span></div></div>`;
+  const G = EXEC_GRADES[g],
     C = V().execCosts[g],
     o = optionFor({ type: 'hireExecutive', dept: d, grade: g });
   return `<div class="cv"><div class="photo">${execPortrait(d, g, 64)}</div><div class="stack" style="gap:3px">

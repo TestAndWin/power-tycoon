@@ -203,6 +203,17 @@ describe('decision cards', () => {
     const r = ok(g, { type: 'decide', option: 'release' });
     expect(r.state.players[0]!.board).toHaveLength(0);
     expect(r.events[0]).toMatchObject({ type: 'executiveLeft', poached: true });
+    // the poached member works for a rival now; the other candidate of the department is still there
+    expect(r.state.players[0]!.gone).toEqual([{ dept: 'dev', grade: 'junior' }]);
+    expect(playerView(r.state, 0).me.gone).toEqual([{ dept: 'dev', grade: 'junior' }]);
+    fails(r.state, { type: 'hireExecutive', dept: 'dev', grade: 'junior' }, 'executiveGone');
+    ok(r.state, { type: 'hireExecutive', dept: 'dev', grade: 'senior' });
+  });
+
+  it('a fired board member can be hired again', () => {
+    const g = ok(newGame(), { type: 'hireExecutive', dept: 'dev', grade: 'junior' }).state;
+    const s = ok(g, { type: 'fireExecutive', dept: 'dev' }).state;
+    ok(s, { type: 'hireExecutive', dept: 'dev', grade: 'junior' });
   });
 
   it('mayor: leases the offered site at a discount', () => {

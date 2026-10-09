@@ -1236,12 +1236,12 @@ class Planner {
       }
     const wanted = DEPARTMENT_KEYS.filter((d) => !board.some((e) => e.dept === d))
       .map((d) => {
-        const best = EXEC_GRADE_KEYS.map((grade) => ({ d, grade, net: this.execNet(d, grade, true) })).sort(
-          (a, b) => b.net - a.net,
-        )[0]!;
+        const best = EXEC_GRADE_KEYS.filter((grade) => !this.me.gone.some((e) => e.dept === d && e.grade === grade))
+          .map((grade) => ({ d, grade, net: this.execNet(d, grade, true) }))
+          .sort((a, b) => b.net - a.net)[0];
         return best;
       })
-      .filter((w) => w.net > 0)
+      .filter((w) => w !== undefined && w.net > 0)
       .sort((a, b) => b.net - a.net);
     let seats = this.me.seats - board.length;
     for (const w of wanted) {

@@ -29,7 +29,7 @@ import {
   TRICKS,
 } from './data.js';
 import { finishBuild, publicChallenge, resolveChallenge, startChallenge } from './challenges.js';
-import { applyDecision, checkDecision, decisionPrice, freeSeats } from './decisions.js';
+import { applyDecision, checkDecision, decisionPrice, freeSeats, isGone } from './decisions.js';
 import { emit } from './events.js';
 import { pick, randint, randomOf } from './rng.js';
 import {
@@ -454,6 +454,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     validate({ p, a }) {
       if (!DEPARTMENT_KEYS.includes(a.dept) || !Object.hasOwn(EXEC_GRADES, a.grade)) return 'invalidTarget';
       if (p.board.some((e) => e.dept === a.dept)) return 'invalidState';
+      if (isGone(p, a.dept, a.grade)) return 'executiveGone';
       return freeSeats(p) <= 0 ? 'boardFull' : null;
     },
     price: (c) => execCost(c.g, c.a.grade).fee,

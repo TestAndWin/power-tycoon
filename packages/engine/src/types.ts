@@ -102,6 +102,8 @@ export interface Player {
   detectives: { level: DetectiveLevel; until: number } | null;
   /** Board members, at most one per department and `HQ_LEVELS[hq].seats` in total. */
   board: Executive[];
+  /** Board members who left for a rival: they are not available any more (missing in older games). */
+  gone?: Pick<Executive, 'dept' | 'grade'>[];
   /** Headquarters level and what was paid for the buildings (book value). */
   hq: HqLevel;
   hqPaid: number;
@@ -274,6 +276,7 @@ export type ErrorCode =
   | 'noSpyReport'
   | 'detectivesActive'
   | 'boardFull'
+  | 'executiveGone'
   | 'noDecision'
   | 'invalidOption'
   | 'hqLocked';
@@ -627,6 +630,8 @@ export interface PlayerView {
     contractVolume: number;
     detectives: { level: DetectiveLevel; left: number } | null;
     board: Executive[];
+    /** Candidates who left for a rival and cannot be hired again. */
+    gone: Pick<Executive, 'dept' | 'grade'>[];
     hq: HqLevel;
     /** Board seats of the current headquarters. */
     seats: number;

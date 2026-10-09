@@ -3310,6 +3310,10 @@ body.zoom #view {
   border-top: 0;
   padding-top: 0;
 }
+.cv.gone .photo {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
 .photo {
   border: 2px solid var(--edge);
   background: #efe6d2;

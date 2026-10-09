@@ -57,6 +57,17 @@ describe('board folder', () => {
     // the container has one seat: the other candidates cannot be hired
     expect(html).toMatch(/data-act="hireExec" data-v="grid\|junior" disabled/);
   });
+
+  it('a board member poached by a rival cannot be hired again', () => {
+    game((g) => {
+      g.players[0]!.gone = [{ dept: 'dev', grade: 'junior' }];
+    });
+    const html = vBoard();
+    expect(html).toContain('Lukas Brandt');
+    expect(html).toContain('steht nicht mehr zur Verfügung');
+    expect(html).not.toContain('data-v="dev|junior"');
+    expect(html).toContain('data-v="dev|senior"');
+  });
 });
 
 describe('decision card', () => {

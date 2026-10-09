@@ -268,6 +268,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
       contractVolume: me.contracts.reduce((s, c) => s + c.vol, 0),
       detectives: detectivesView(g, me),
       board: clone(me.board),
+      gone: clone(me.gone ?? []),
       hq: me.hq,
       seats: HQ_LEVELS[me.hq].seats,
       overhead: overhead(g, me),

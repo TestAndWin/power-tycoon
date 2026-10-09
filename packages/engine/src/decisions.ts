@@ -12,6 +12,8 @@ import type {
   DecisionKey,
   DecisionOptionView,
   DecisionView,
+  Department,
+  ExecGrade,
   GameEvent,
   GameState,
   Player,
@@ -230,6 +232,7 @@ export function applyDecision(
         const e = p.board.find((b) => b.dept === card.dept);
         if (e) {
           p.board = p.board.filter((b) => b !== e);
+          (p.gone ??= []).push({ dept: e.dept, grade: e.grade });
           out.push({ type: 'executiveLeft', playerId: p.id, dept: e.dept, grade: e.grade, cost: 0, poached: true });
         }
       }
@@ -255,3 +258,7 @@ export function closeDecisions(g: GameState, out: GameEvent[]): void {
 
 /** Seats of the headquarters of `p` that are still free. */
 export const freeSeats = (p: Player): number => HQ_LEVELS[p.hq].seats - p.board.length;
+
+/** Whether the candidate left player `p` for a rival and is not available any more. */
+export const isGone = (p: Player, dept: Department, grade: ExecGrade): boolean =>
+  (p.gone ?? []).some((e) => e.dept === dept && e.grade === grade);

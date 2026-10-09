@@ -95,6 +95,7 @@ function mkPlayer(id: PlayerId, name: string, human: boolean): Player {
     intel: {},
     detectives: null,
     board: [],
+    gone: [],
     hq: 0,
     hqPaid: 0,
     decision: null,

@@ -191,6 +191,7 @@ export const ERROR_TEXT: Record<string, string> = {
   noSpyReport: 'Erst einen Spion schicken: Ohne Spionagebericht über den Konzern kein Auftrag.',
   detectivesActive: 'Du hast schon eine Detektei unter Vertrag.',
   boardFull: 'Kein freier Platz im Vorstand. Ein größerer Firmensitz bietet mehr Plätze.',
+  executiveGone: 'Diese Person arbeitet jetzt für die Konkurrenz und steht nicht mehr zur Verfügung.',
   noDecision: 'Gerade liegt keine Entscheidung auf dem Tisch.',
   invalidOption: 'Diese Option gibt es nicht.',
   hqLocked: 'Diese Option gibt es erst mit einem größeren Firmensitz.',
