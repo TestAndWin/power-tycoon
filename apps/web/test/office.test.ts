@@ -68,6 +68,18 @@ describe('board folder', () => {
     expect(html).not.toContain('data-v="dev|junior"');
     expect(html).toContain('data-v="dev|senior"');
   });
+
+  it('a department whose candidates all went to rivals stays empty', () => {
+    game((g) => {
+      g.players[0]!.gone = [
+        { dept: 'dev', grade: 'junior' },
+        { dept: 'dev', grade: 'senior' },
+      ];
+    });
+    const html = vBoard();
+    expect(html).toContain('keine Kandidaten mehr');
+    expect(html).not.toMatch(/data-v="dev\|/);
+  });
 });
 
 describe('decision card', () => {

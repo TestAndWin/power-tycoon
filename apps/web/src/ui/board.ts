@@ -54,8 +54,10 @@ function candidate(d: Department, g: ExecGrade): string {
 
 function department(d: Department): string {
   const v = V(),
-    taken = v.me.board.some((b) => b.dept === d);
-  return `<section class="dept"><div class="phead"><h3>${esc(DEPT_TEXT[d].name)}</h3>${taken ? '<span class="chip good">besetzt</span>' : '<span class="chip warn">Stelle frei</span>'}</div>
+    taken = v.me.board.some((b) => b.dept === d),
+    // everyone who could fill the seat went to a rival: the seat stays empty
+    lost = EXEC_GRADE_KEYS.every((g) => v.me.gone.some((e) => e.dept === d && e.grade === g));
+  return `<section class="dept"><div class="phead"><h3>${esc(DEPT_TEXT[d].name)}</h3>${taken ? '<span class="chip good">besetzt</span>' : lost ? '<span class="chip">keine Kandidaten mehr</span>' : '<span class="chip warn">Stelle frei</span>'}</div>
     ${taken ? member(d) : `<div class="cvs">${EXEC_GRADE_KEYS.map((g) => candidate(d, g)).join('')}</div>`}</section>`;
 }
 
