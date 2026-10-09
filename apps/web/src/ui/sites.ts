@@ -246,11 +246,12 @@ function detail(): string {
       case 'repower': {
         const L = plantDef(x.type!, 'large');
         a.push(
-          `<div class="withinfo">${btn('repower', x.id, `Repowering auf ${L.mw} MW`, opt)}${fundsHint(opt)}${info(
+          `<div class="withinfo">${btn('repower', x.id, `Repowering auf ${L.mw} MW`, opt)}${info(
             opt.error === 'noGridCapacity'
               ? `Für das Repowering fehlen ${repowerMw(x.type!)} MW freie Netzkapazität.`
               : `Größere Anlage auf derselben Fläche: +${repowerMw(x.type!)} MW, dafür ein Quartal Stillstand.`,
           )}</div>`,
+          fundsHint(opt),
         );
         break;
       }
