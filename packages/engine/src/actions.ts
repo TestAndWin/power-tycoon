@@ -214,6 +214,9 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       x.type = null;
       x.permit = null;
       x.alt = null;
+      // a half-assembled plant of the old type is lost
+      x.fail = false;
+      x.invested = 0;
       emit(g, out, { type: 'plantTypeCleared', playerId: pid, siteId: x.id });
     },
   },

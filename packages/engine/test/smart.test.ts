@@ -131,6 +131,51 @@ describe('SmartOpponent', () => {
     expect(types.indexOf('spied')).toBeLessThan(types.findIndex((t) => t.startsWith('trick')));
   });
 
+  it('takes a caught spy as a sign of detectives: no new report for a small target', async () => {
+    const g = newGame(8, true);
+    g.players[1]!.cash = 120e6;
+    setupSite(g, 'nd5', 0, 'approved', 'wind');
+    g.news.unshift({
+      year: g.year,
+      q: g.q,
+      event: { type: 'trickSucceeded', actorId: 0, targetId: 1, trick: 'hack', siteId: 'nd1', suspected: true },
+    });
+    const spies = async () =>
+      (await playTurn(g, 1, new SmartOpponent())).events.filter((e) => e.type === 'spied').length;
+    expect(await spies()).toBe(1);
+    g.news.unshift({
+      year: g.year,
+      q: g.q,
+      event: { type: 'spied', playerId: 1, targetId: 0, cost: 3e5, caught: true },
+    });
+    expect(await spies()).toBe(0);
+  });
+
+  it('reserves no grid in the last quarter or for a plant it will not build', async () => {
+    const g = newGame(11, true);
+    g.players[1]!.cash = 150e6;
+    g.grid.ns = 900;
+    // the others' plants waiting for the grid would take nearly all that is left
+    for (const id of ['ns0', 'ns1', 'ns3', 'ns4', 'ns5', 'ns6', 'ns7', 'ns8', 'ns9']) setupSite(g, id, 2, 'operating');
+    setupSite(g, 'ns10', 3, 'built');
+    setupSite(g, 'ns11', 3, 'built');
+    const x = setupSite(g, 'ns2', 1, 'approved');
+    x.wind = 9.5;
+    const reserves = async () => (await decide(g)).filter((a) => a.type === 'reserveGrid').length;
+    expect(await reserves()).toBeGreaterThan(0);
+    // a park that does not pay off any more is not built: nothing to reserve for
+    g.year = 2035;
+    g.turn = 36;
+    expect(await reserves()).toBeGreaterThan(0);
+    x.wind = 7;
+    expect(await reserves()).toBe(0);
+    // in the last quarter a reservation could not be used any more
+    x.wind = 9.5;
+    g.q = 3;
+    g.turn = 39;
+    expect(await reserves()).toBe(0);
+  });
+
   it('hires detectives after an attack, if it has plants to protect', async () => {
     const g = newGame(9, true);
     setupSite(g, 'nd4', 1, 'operating', 'wind').wind = 7.5;

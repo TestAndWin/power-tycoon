@@ -13,6 +13,7 @@ import {
   CO2,
   CO2_BONUS,
   DEPARTMENT_KEYS,
+  DETECTIVES,
   EXEC_EFFECTS,
   EXEC_GRADE_KEYS,
   EXEC_GRADES,
@@ -54,6 +55,7 @@ import { costsFor, trickTargetIds } from '../view.js';
 import type {
   Action,
   DecisionOptionView,
+  DetectiveLevel,
   Department,
   ExecGrade,
   OpponentContext,
@@ -549,7 +551,8 @@ class Planner {
       if (!x.fail) invested = c.build;
       tb += x.fail || wind ? (1 - this.mg.rotor) / this.mg.rotor : 0;
     }
-    const tc = tb + (1 - this.mg.cable) / this.mg.cable + this.gridDelay(x, P.mw, tb);
+    const queued = stage === 'new' || stage === 'leased';
+    const tc = tb + (1 - this.mg.cable) / this.mg.cable + this.gridDelay(x, P.mw, tb, queued);
     const built = tb < left;
     const connected = tc < left;
     const ops = connected ? left - tc : 0;
@@ -581,14 +584,20 @@ class Planner {
   /**
    * Quarters a project that is built at `t` has to wait for grid capacity (Infinity = not before
    * the end). Built but unconnected plants (own and others') and half of the others' approved
-   * projects are assumed to connect first;
+   * projects are assumed to connect first; for a project that is still to be `queued` (new lease or
+   * permit) also the own approved and pending projects, which are further along;
    * announced grid expansions help, random ones are not counted on.
    */
-  private gridDelay(x: SiteView, mw: number, t: number): number {
+  private gridDelay(x: SiteView, mw: number, t: number, queued = false): number {
     const g = this.v.grid[x.r];
     let own = 0;
-    for (const y of this.mine())
-      if (y.id !== x.id && y.r === x.r && y.type && y.built && !y.grid && !this.connectedNow.has(y.id)) own += y.mw;
+    for (const y of this.mine()) {
+      if (y.id === x.id || y.r !== x.r || !y.type || y.grid || this.connectedNow.has(y.id)) continue;
+      const ahead =
+        y.built || this.builtNow.has(y.id) || (queued && (y.permit === 'approved' || y.permit === 'pending'));
+      if (ahead) own += y.mw;
+    }
+    if (queued) for (const n of this.leasedNow) if (n.x.r === x.r && n.x.id !== x.id) own += plantDef(n.t, n.size).mw;
     // reservations of others expire after a few quarters
     const others = this.optimisticGrid ? 0 : this.othersClaim[x.r] + g.reserved - g.myReserved;
     let cap = g.capacity - g.used - others - own;
@@ -900,8 +909,8 @@ class Planner {
     for (const { x, b } of scored) {
       const lim = this.limits();
       if (leases >= lim.leases || pending >= lim.pending) break;
-      // the whole project should be financeable within the next quarters
-      const room = this.me.creditLimit * this.p.debtRatio - this.loan + this.cash - this.buffer();
+      // the whole project should be financeable within the next quarters, after the projects under way
+      const room = this.freeRoom();
       const inflow = this.p.bigProjects ? this.cashFlow() * avgPermitQ(plantDef(b.t, b.size)) : 0;
       if (b.capex > room * 1.2 + inflow) continue;
       const permit = plantDef(b.t, b.size).permit;
@@ -929,7 +938,7 @@ class Planner {
     }
     // expected return with regional averages: cheap leases in good regions first; only projects that could be
     // financed soon (as in `newSites`), or the rival pays for surveys of offshore sites it cannot afford
-    const room = this.me.creditLimit * this.p.debtRatio - this.loan + this.cash - this.buffer();
+    const room = this.freeRoom();
     const unknown = free
       .filter((x) => !x.known)
       .map((x) => ({ x, b: this.bestType(x, 'new') }))
@@ -1000,12 +1009,20 @@ class Planner {
   }
 
   private reservations(): void {
+    // a reservation only helps a connection in a later quarter
+    if (this.v.quartersLeft <= 1) return;
     const need: Partial<Record<RegionKey, number>> = {};
+    // a plant that will not be built is no reason to block capacity (valued as if the reservation secured the
+    // grid: the others' claims are what it is against)
+    this.optimisticGrid = true;
     for (const x of this.mine()) {
       if (!x.type || x.grid || this.connectedNow.has(x.id)) continue;
-      const soon = x.built || x.permit === 'approved' || (x.permit === 'pending' && (x.own?.permitLeft ?? 9) <= 1);
-      if (soon) need[x.r] = (need[x.r] ?? 0) + x.mw;
+      const built = x.built || this.builtNow.has(x.id);
+      const soon = built || x.permit === 'approved' || (x.permit === 'pending' && (x.own?.permitLeft ?? 9) <= 1);
+      if (!soon || (!built && this.projectValue(x, x.type, x.size, 'approved') < 0)) continue;
+      need[x.r] = (need[x.r] ?? 0) + x.mw;
     }
+    this.optimisticGrid = false;
     for (const [r, mw] of Object.entries(need) as [RegionKey, number][]) {
       const g = this.v.grid[r];
       let have = g.myReserved;
@@ -1102,10 +1119,13 @@ class Planner {
 
   /** Tricks against the leader by their edge (expected harm per own cost), best first. */
   private trickOptions(leader: PlayerSummary): { trick: TrickType; siteId: string; edge: number }[] {
-    // a known detective agency of the target (from the spy report) lowers the chances and raises the risk
-    const det = leader.intel?.detectives?.level;
-    // a report serves the tricks of several quarters: count about a third of it per trick
-    const spyShare = leader.intel ? 0 : this.v.constants.spyCost / 3;
+    // a known detective agency of the target (from the spy report, or a caught spy) lowers the chances and
+    // raises the risk
+    const det = leader.intel ? leader.intel.detectives?.level : this.suspectedDetectives(leader.id);
+    // a report serves the tricks of several quarters: count about a third of it per trick (more attempts
+    // when spies get caught)
+    const catchSpy = det ? DETECTIVES[det].catchSpy : 0;
+    const spyShare = leader.intel ? 0 : this.v.constants.spyCost / (1 - catchSpy) / 3;
     const options: { trick: TrickType; siteId: string; edge: number }[] = [];
     for (const trick of ['klage', 'bi', 'hack'] as TrickType[]) {
       const T = this.v.tricks[trick];
@@ -1120,6 +1140,22 @@ class Planner {
       }
     }
     return options.sort((a, b) => b.edge - a.edge);
+  }
+
+  /**
+   * Detective agency the rival has to assume for player `target` without a spy report: a spy of its own that
+   * was caught recently proves there is one (at least the basic agency).
+   */
+  private suspectedDetectives(target: PlayerId): DetectiveLevel | null {
+    const caught = this.v.news.some(
+      (n) =>
+        n.event.type === 'spied' &&
+        n.event.playerId === this.me.id &&
+        n.event.targetId === target &&
+        n.event.caught &&
+        -this.inQuarters(n.year, n.q) < this.v.constants.detectiveQuarters,
+    );
+    return caught ? 'basic' : null;
   }
 
   /** Buys a spy report on the leader if the rival wants to fight it this quarter (tricks need one). */

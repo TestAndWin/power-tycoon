@@ -279,6 +279,17 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
       follows only an estimate (±0.3 of the quality, a pure guess for duds and lucky finds). 200 games,
       5 years, `smart` in seat 0: seat 0 50.8 (12 %) → 52.3 M€ (10 %), rivals 57.0 → 60.6 M€.
 
+- [x] Play-test (10 years, human far ahead): (1) two rivals' net worth dropped by ~75 M€ for a quarter – a
+      failed rotor assembly left the paid offshore park out of the books until the retry. A failed plant now
+      keeps its book value (changing the plant type after a lost permit writes it off). (2) Rivals ended with
+      seven leased, approved offshore sites they never built: a new lease was checked against the whole
+      credit line instead of what the projects under way leave, and the grid outlook ignored the rival's own
+      approved and pending projects in the region. Reservations were bought for plants that would not be
+      built and in the last quarter. (3) A rival kept spying on a human whose detectives caught every spy; a
+      caught spy now counts as detectives (at least `basic`) when it weighs a report and the tricks.
+      `pnpm simulate`, 150 games, 10 years, seeds 1000–1149, rivals before → after: `idle` 367.2 → 392.4 M€,
+      `solar` 303.9 → 315.4 M€, `smart --skilled` 288.4 → 318.2 M€ (seat 0 373.8 M€, 56 % → 383.7 M€, 53 %)
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)

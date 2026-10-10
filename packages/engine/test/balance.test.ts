@@ -37,6 +37,22 @@ describe('depreciation', () => {
     expect(before - after).toBe(Math.round(site(r.state, 'ib0').invested * (1 - PLANT_BOOK)));
   });
 
+  it('a failed assembly keeps the plant on the books until the retry', () => {
+    const g = newGame();
+    const x = setupSite(g, 'nd0', 0, 'approved', 'wind');
+    const before = playerView(g, 0).me.worth;
+    let s = ok(g, { type: 'build', siteId: x.id });
+    s = ok(s.state, { type: 'minigameResult', challengeId: s.challenge!.id, outcome: 1 });
+    s = ok(s.state, { type: 'minigameResult', challengeId: s.challenge!.id, outcome: false });
+    expect(site(s.state, 'nd0')).toMatchObject({ built: false, fail: true });
+    expect(before - playerView(s.state, 0).me.worth).toBe(Math.round(site(s.state, 'nd0').invested * (1 - PLANT_BOOK)));
+    // the permit is lost after all and the type changed: the half-built plant is gone
+    const y = site(s.state, 'nd0');
+    y.permit = 'rejected';
+    s = ok(s.state, { type: 'changePlantType', siteId: 'nd0' });
+    expect(site(s.state, 'nd0')).toMatchObject({ fail: false, invested: 0 });
+  });
+
   it('operating quarters lower the book value', async () => {
     const g = newGame();
     const x = setupSite(g, 'ib0', 0, 'operating', 'solar');

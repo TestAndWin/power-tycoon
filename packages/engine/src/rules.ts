@@ -276,16 +276,20 @@ export function consumeReserve(g: GameState, r: RegionKey, pid: PlayerId, mw: nu
 export type ValuedSite = Pick<
   Site,
   'lease' | 'type' | 'permit' | 'built' | 'invested' | 'permitPaid' | 'gridPaid' | 'age' | 'grid'
->;
+> &
+  Partial<Pick<Site, 'fail'>>;
 
 /** Book value of a plant as a share of its build costs after `age` operating quarters. */
 export const plantBook = (age: number): number => Math.max(PLANT_BOOK_MIN, PLANT_BOOK - PLANT_DEPRECIATION * age);
 
-/** Book value of a site from what was paid for it: lease, permit, plant (depreciated) and grid connection. */
+/**
+ * Book value of a site from what was paid for it: lease, permit, plant (depreciated) and grid connection.
+ * A plant whose assembly failed still counts: it was paid for and only waits for the retry.
+ */
 export function siteValue(x: ValuedSite): number {
   let v = x.lease * 0.6;
   if (x.type && (x.permit === 'approved' || x.built)) v += x.permitPaid;
-  if (x.built) v += x.invested * plantBook(x.age);
+  if (x.built || x.fail) v += x.invested * plantBook(x.age);
   if (x.grid && x.type) v += x.gridPaid * 0.8;
   return v;
 }

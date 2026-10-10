@@ -111,6 +111,7 @@ Modules of `packages/engine/src`:
 - Book value (`siteValue`) is built from what was paid: `Site.permitPaid`, `invested` (building plus the
   repowering, at `plantBook(age)`: `PLANT_BOOK` of the costs when built, minus `PLANT_DEPRECIATION` per operating
   quarter, at least `PLANT_BOOK_MIN`) and `gridPaid` (the repowering adds the bigger connection there).
+  A plant whose assembly failed (`Site.fail`) stays on the books until the retry.
   Building costs net worth at once, so a plant built shortly before the end does not pay off.
 - Credit limit (`creditParts`): `CREDIT_ASSETS` of the book value without cash (borrowed money does not raise
   it), plus `CREDIT_SALES` × the average power sales of the last `CREDIT_SALES_QUARTERS` quarters
@@ -294,17 +295,21 @@ interface OpponentStrategy {
   includes the real permit risk from the view, the solar cannibalisation of the region (parks under way
   included; storage is credited with the relief for its own parks), the climate bonus and the marginal
   interest of the money it borrows. It
-  - surveys the unknown sites with the best expected return first (offshore too), sells dead projects,
+  - surveys the unknown sites with the best expected return first (offshore too), leases only what the
+    financing room left by its projects under way covers, puts its own approved and pending projects ahead
+    of a new one in the region's grid queue, sells dead projects,
     spreads over regions and raises its project limits with uncommitted financing room,
   - finances with debt up to the credit limit, accepts PPA contracts covered by its own generation, values
-    storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity,
+    storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity
+    (only for plants it will build, never in the last quarter),
   - goes for big projects (offshore) as soon as they can be financed (`bigProjects`): counts the operating
     cash flow until the plant is built and does not prefer small projects while its financing room covers
     the big one,
   - aims lobby tricks at the leader, human or rival alike (`humanBias` 1), values them by the target's real loss
     (season, timing, end of game), may use both tricks of a quarter and strikes back at a human who was caught
     or suspected tricking it. It spies on a target before tricking it (in `explore`, so the report – including
-    the target's detectives – is known when it decides), backs off from a target with detectives with
+    the target's detectives – is known when it decides; a spy of its own caught recently counts as
+    detectives), backs off from a target with detectives with
     probability `1 − shield` and hires the pro detectives after an attack,
   - chooses the plant size by return per invested euro (large only if it is financeable now and clearly better)
     and repowers running plants when the extra margin pays for the upgrade and the quarter offline.
