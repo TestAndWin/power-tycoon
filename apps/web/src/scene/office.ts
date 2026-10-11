@@ -125,7 +125,7 @@ export const LAMP_HOTSPOT: [number, number, number, number] = [356, 600, 190, 19
 /** Little things to click that are not areas: the plant rustles, the coffee gets drunk. */
 export const PLANT_HOTSPOT: [number, number, number, number] = [1376, 420, 228, 236];
 /** Hat and magnifier on the desk while detectives are hired: opens the back room. */
-export const DETECTIVE_HOTSPOT: [number, number, number, number] = [1094, 750, 102, 96];
+export const DETECTIVE_HOTSPOT: [number, number, number, number] = [1120, 736, 102, 96];
 export const MUG_HOTSPOT: [number, number, number, number] = [1196, 796, 100, 124];
 
 /* ---------- drawing state ---------- */
@@ -1407,7 +1407,7 @@ function detectiveHat(): void {
   const c = ctx!,
     felt = '#6e5b44';
   c.save();
-  c.translate(1150, 802);
+  c.translate(1176, 788);
   c.scale(1.15, 1.15);
   shape(ell(0, 0, 44, 11), mix(felt, '#000000', 0.15), 2.5, 3);
   shape(
