@@ -154,7 +154,8 @@ Concept: [headquarters.md](headquarters.md). Modules `decisions.ts` (cards) and 
   after the rival turns applies the default option of every open card. Options can need a headquarters level
   (`minHq`). Effects: `Site.rejectMod` (citizens), `Player.discount` on build prices (`buildPrice`), storage
   offline for a quarter (heat wave), gambles with the seeded RNG (grant, citizens' delay), losing a board member
-  (poach), a discounted lease (mayor). `PlayerView.me.decision` shows the card with price, gain and chance per
+  at the end of the quarter or keeping them with a lasting raise (`Executive.pay`, see `execSalary`) or a one-off
+  payment (poach), a discounted lease (mayor). `PlayerView.me.decision` shows the card with price, gain and chance per
   option.
 - Awards: `checkAwards` after the history step of `nextQuarter`; gold for the first company (several in the same
   quarter all gold), silver later; the annual cup at the start of a year for the largest growth of `hist` over

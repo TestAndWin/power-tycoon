@@ -578,8 +578,9 @@ export const DECISION_DATA = {
   /** The grid operator pays this share of the full-spread value of the storage capacity. */
   heatwave: { pay: 0.9 },
   grant: { amount: 3e6, apply: { cost: 0.2e6, chance: 0.5 }, lobbyist: { cost: 0.5e6, chance: 0.8 } },
-  /** Keeping a poached board member: one-off payment in quarterly salaries. */
-  poach: { raise: 2, options: 1 },
+  /** Keeping a poached board member: `raise` lifts the salary for good by this share, `options` is a one-off
+   * payment in quarterly salaries. */
+  poach: { raise: 0.25, options: 1 },
   /** The community leases a free site at this share of the lease. */
   mayor: { lease: 0.6 },
 } as const;

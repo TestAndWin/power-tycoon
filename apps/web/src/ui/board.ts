@@ -30,11 +30,12 @@ function member(d: Department): string {
     e = v.me.board.find((b) => b.dept === d)!,
     P = EXEC_PEOPLE[d][e.grade],
     G = EXEC_GRADES[e.grade],
-    C = v.execCosts[e.grade];
+    C = v.execCosts[e.grade],
+    raised = e.salary > C.salary;
   const fire = optionFor({ type: 'fireExecutive', dept: d });
   return `<div class="exec"><div class="photo">${execPortrait(d, e.grade, 72)}</div><div class="stack" style="gap:4px">
     <b>${esc(P.name)}</b><span class="muted">${GRADE_TEXT[e.grade]} · im Vorstand seit ${turnStr(v.startYear, e.since)}</span>
-    <span>${DEPT_TEXT[d].effect(G.power)}</span><span class="muted">Gehalt ${money(C.salary, true)} je Quartal</span>
+    <span>${DEPT_TEXT[d].effect(G.power)}</span><span class="muted">Gehalt ${money(e.salary, true)} je Quartal${raised ? ' (aufgebessert)' : ''}</span>
     ${e.leaving ? '<span class="chip warn">Wechselt zum Quartalsende zur Konkurrenz</span>' : ''}
     <div class="row">${fire ? btn('fireExec', d, 'Entlassen', fire, { confirm: true }) : ''}</div></div></div>`;
 }

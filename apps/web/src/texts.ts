@@ -816,7 +816,9 @@ export function decisionEffect(view: PlayerView, d: DecisionView, o: DecisionVie
         return e
           ? `${execName(e.dept, e.grade)} verlässt den Vorstand zum Quartalsende.`
           : 'Der Platz wird zum Quartalsende frei.';
-      return 'Das Vorstandsmitglied bleibt an Bord.';
+      if (o.key === 'raise')
+        return `Bleibt an Bord, das Gehalt steigt dauerhaft um ${Math.round(D.poach.raise * 100)} %${e ? ` (bisher ${money(e.salary, true)} je Quartal)` : ''}.`;
+      return 'Das Vorstandsmitglied bleibt an Bord, das Gehalt bleibt gleich.';
     }
     case 'mayor': {
       const x = view.sites.find((s) => s.id === d.siteId);

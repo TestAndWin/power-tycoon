@@ -46,6 +46,7 @@ import type {
   Department,
   DetectiveLevel,
   ExecGrade,
+  Executive,
   GameState,
   Player,
   PlantSize,
@@ -95,9 +96,12 @@ export function execCost(g: GameState, grade: ExecGrade): { fee: number; salary:
   const G = EXEC_GRADES[grade];
   return { fee: Math.round((G.fee * f) / 1e4) * 1e4, salary: Math.round((G.salary * f) / 1e4) * 1e4 };
 }
+/** Quarterly salary of board member `e`, raises included. */
+export const execSalary = (g: GameState, e: Executive): number =>
+  Math.round((execCost(g, e.grade).salary * (e.pay ?? 1)) / 1e4) * 1e4;
 /** Salaries of the board per quarter. */
 export const salaries = (g: GameState, p: Pick<Player, 'board'>): number =>
-  p.board.reduce((s, e) => s + execCost(g, e.grade).salary, 0);
+  p.board.reduce((s, e) => s + execSalary(g, e), 0);
 /** Salaries of the board and upkeep of the headquarters per quarter. */
 export const overhead = (g: GameState, p: Pick<Player, 'board' | 'hq'>): number =>
   salaries(g, p) + HQ_LEVELS[p.hq].upkeep;

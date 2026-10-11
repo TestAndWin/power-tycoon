@@ -6,7 +6,7 @@
 import { DECISION_CHANCE, DECISION_DATA, DECISIONS, HQ_LEVELS, type DecisionOptionDef } from './data.js';
 import { emit } from './events.js';
 import { pick, randomOf } from './rng.js';
-import { execCost, isStore, producing, siteById, storeCapacity } from './rules.js';
+import { execSalary, isStore, producing, siteById, storeCapacity } from './rules.js';
 import type {
   DecisionCard,
   DecisionKey,
@@ -91,7 +91,7 @@ export function dealDecisions(g: GameState, out: GameEvent[]): void {
 
 const salaryOf = (g: GameState, p: Player, card: DecisionCard): number => {
   const e = p.board.find((b) => b.dept === card.dept);
-  return e ? execCost(g, e.grade).salary : 0;
+  return e ? execSalary(g, e) : 0;
 };
 
 /** Price, gain and chance of option `o` of `p`'s card. */
@@ -120,7 +120,6 @@ function optionNumbers(
         return { cost: D.grant.lobbyist.cost, gain: D.grant.amount, chance: D.grant.lobbyist.chance };
       return none;
     case 'poach':
-      if (o.key === 'raise') return { ...none, cost: D.poach.raise * salaryOf(g, p, card) };
       if (o.key === 'options') return { ...none, cost: D.poach.options * salaryOf(g, p, card) };
       return none;
     case 'mayor': {
@@ -227,13 +226,15 @@ export function applyDecision(
         }
       }
       break;
-    case 'poach':
-      if (key === 'release') {
-        const e = p.board.find((b) => b.dept === card.dept);
-        // as the card says: the seat is empty at the end of the quarter (closeDecisions)
-        if (e) e.leaving = true;
-      }
+    case 'poach': {
+      const e = p.board.find((b) => b.dept === card.dept);
+      if (!e) break;
+      // as the card says: the seat is empty at the end of the quarter (closeDecisions)
+      if (key === 'release') e.leaving = true;
+      // the counter-offer: a higher salary from now on
+      else if (key === 'raise') e.pay = (e.pay ?? 1) * (1 + D.poach.raise);
       break;
+    }
     case 'mayor':
       if (key === 'lease' && x && x.owner < 0) {
         x.owner = p.id;

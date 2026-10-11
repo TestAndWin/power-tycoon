@@ -12,6 +12,7 @@ import {
   CAPTURE,
   CO2,
   CO2_BONUS,
+  DECISION_DATA,
   DEPARTMENT_KEYS,
   DETECTIVES,
   EXEC_EFFECTS,
@@ -1251,10 +1252,10 @@ class Planner {
   }
 
   /** Net value of a board member over the horizon (value minus salaries and the fee). */
-  private execNet(d: Department, grade: ExecGrade, withFee: boolean): number {
+  private execNet(d: Department, grade: ExecGrade, withFee: boolean, salary = this.v.execCosts[grade].salary): number {
     const n = Math.min(BOARD_HORIZON, this.left);
-    const G = this.v.execCosts[grade];
-    return this.execValue(d, EXEC_GRADES[grade].power) * n - (G.salary * n + (withFee ? G.fee : 0)) * this.p.boardEdge;
+    const fee = withFee ? this.v.execCosts[grade].fee : 0;
+    return this.execValue(d, EXEC_GRADES[grade].power) * n - (salary * n + fee) * this.p.boardEdge;
   }
 
   /** Hires (and with `boardReview` dismisses) board members; extends the headquarters for a needed seat. */
@@ -1264,8 +1265,8 @@ class Planner {
     if (this.p.boardReview)
       for (const e of board) {
         if (e.leaving) continue;
-        const keep = this.execNet(e.dept, e.grade, false);
-        const sev = this.v.execCosts[e.grade].salary;
+        const keep = this.execNet(e.dept, e.grade, false, e.salary);
+        const sev = e.salary;
         if (keep + sev < 0 && this.cash > sev + this.buffer()) {
           this.spend({ type: 'fireExecutive', dept: e.dept }, sev);
           board.splice(board.indexOf(e), 1);
@@ -1328,7 +1329,10 @@ class Planner {
       case 'poach': {
         if (o.key === 'release') return 0;
         const e = this.me.board.find((b) => b.dept === d.dept);
-        return e ? this.execNet(e.dept, e.grade, false) / this.p.boardEdge - o.cost : -o.cost;
+        if (!e) return -o.cost;
+        // the raise costs nothing now, but a higher salary from now on
+        const salary = o.key === 'raise' ? e.salary * (1 + DECISION_DATA.poach.raise) : e.salary;
+        return this.execNet(e.dept, e.grade, false, salary) / this.p.boardEdge - o.cost;
       }
       case 'mayor': {
         if (o.key !== 'lease' || !x || this.v.quartersLeft < 8) return 0;

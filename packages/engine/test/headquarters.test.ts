@@ -196,10 +196,15 @@ describe('decision cards', () => {
   it('poach: the board member leaves at the end of the quarter unless the player pays', async () => {
     let g = ok(newGame(), { type: 'hireExecutive', dept: 'dev', grade: 'junior' }).state;
     card(g, { key: 'poach', dept: 'dev' });
-    const cost = playerView(g, 0).me.decision!.options.find((o) => o.key === 'raise')!.cost;
-    expect(cost).toBe(DECISION_DATA.poach.raise * EXEC_GRADES.junior.salary);
+    // the raise costs nothing now, but lifts the salary for good
+    expect(playerView(g, 0).me.decision!.options.find((o) => o.key === 'raise')!.cost).toBe(0);
     const kept = ok(g, { type: 'decide', option: 'raise' }).state;
+    const salary = Math.round((EXEC_GRADES.junior.salary * (1 + DECISION_DATA.poach.raise)) / 1e4) * 1e4;
     expect(kept.players[0]!.board).toHaveLength(1);
+    expect(playerView(kept, 0).me.board[0]!.salary).toBe(salary);
+    expect(playerView(kept, 0).me.overhead).toBe(salary + HQ_LEVELS[0].upkeep);
+    const fired = ok(kept, { type: 'fireExecutive', dept: 'dev' }).events[0];
+    expect(fired).toMatchObject({ type: 'executiveLeft', cost: salary });
     const r = ok(g, { type: 'decide', option: 'release' });
     // as the card says: the member stays until the end of the quarter and cannot be fired any more
     expect(r.state.players[0]!.board).toEqual([{ dept: 'dev', grade: 'junior', since: 0, leaving: true }]);

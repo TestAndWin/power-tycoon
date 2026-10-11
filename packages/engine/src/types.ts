@@ -119,6 +119,8 @@ export interface Executive {
   grade: ExecGrade;
   /** Turn of hiring. */
   since: number;
+  /** Salary factor from raises (poach card); 1 when missing. */
+  pay?: number;
   /** Accepted a rival's offer (poach card): leaves at the end of the quarter. */
   leaving?: true;
 }
@@ -631,7 +633,8 @@ export interface PlayerView {
     nextGen: number;
     contractVolume: number;
     detectives: { level: DetectiveLevel; left: number } | null;
-    board: Executive[];
+    /** Own board with the current quarterly salary of each member (raises included). */
+    board: (Executive & { salary: number })[];
     /** Candidates who left for a rival and cannot be hired again. */
     gone: Pick<Executive, 'dept' | 'grade'>[];
     hq: HqLevel;
