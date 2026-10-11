@@ -14,7 +14,6 @@ import {
   PLANT_HOTSPOT,
   OFFICE_H,
   OFFICE_W,
-  rivalPortrait,
   showOffice,
   type OfficeData,
 } from '../scene/office.js';
@@ -119,15 +118,6 @@ export function officeScene(): string {
     // each region on the wall map opens the map at that region (on top of the map hotspot)
     mapRegionHotspots()
       .map(({ r, rect }) => hot('goRegion', r, 'Landkarte · ' + REGION_TEXT[r].name, rect, false, '', ' zone'))
-      .join('') +
-    // each portrait on the wall opens the file of that rival (same order as drawn: by rank)
-    v.players
-      .filter((p) => p.id !== v.playerId)
-      .sort(byRank)
-      .map((p, i) => {
-        const { cx, cy, r } = rivalPortrait(i);
-        return hot('rival', String(p.id), 'Porträt · ' + p.name, [cx - r, cy - r, 2 * r, 2 * r]);
-      })
       .join('') +
     hot('lamp', '', 'Schreibtischlampe · an/aus', LAMP_HOTSPOT, true) +
     hot('plant', '', 'Zimmerpflanze', PLANT_HOTSPOT) +

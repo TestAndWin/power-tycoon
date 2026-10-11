@@ -111,7 +111,7 @@ export function officeHotspots(
 }
 
 /** The rival portrait at rank position `i` on the wall: centre and radius of its frame. */
-export const rivalPortrait = (i: number): { cx: number; cy: number; r: number } => ({
+const rivalPortrait = (i: number): { cx: number; cy: number; r: number } => ({
   cx: 700 + i * 90,
   cy: 498,
   r: 38,

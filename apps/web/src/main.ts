@@ -22,7 +22,7 @@ import { closeModal, modalLocked, openModal, toast } from './modal.js';
 import { registerScenes, setHover } from './scene/index.js';
 import { drinkCoffee, toggleLamp, touchPlant } from './scene/office.js';
 import { SND, toggleSound } from './sound.js';
-import { $, isPhone, RMO, S, UI } from './state.js';
+import { $, isPhone, S, UI } from './state.js';
 import {
   decisionResultText,
   DEPT_TEXT,
@@ -272,16 +272,7 @@ function openArea(v: string): void {
 let rulesBack = (): void => closeModal();
 
 const A: Record<string, (v: string, el: HTMLElement) => void> = {
-  tab: (v) => {
-    UI.rival = null;
-    openArea(v);
-  },
-  rival: (v) => {
-    // a portrait on the wall: the rivals' files, opened at this one
-    UI.rival = +v;
-    openArea('rivals');
-    $(`#rival-${v}`)?.scrollIntoView({ behavior: RMO ? 'auto' : 'smooth', block: 'nearest' });
-  },
+  tab: (v) => openArea(v),
   closeFolder: () => {
     UI.folder = null;
     UI.tab = 'overview';
