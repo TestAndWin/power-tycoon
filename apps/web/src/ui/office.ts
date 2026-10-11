@@ -25,6 +25,7 @@ import {
   DECISION_TEXT,
   decisionContext,
   DEPT_TEXT,
+  DETECTIVE_TEXT,
   execName,
   REGION_TEXT,
   RIVAL_TEXT,
@@ -85,7 +86,7 @@ function officeData(): OfficeData {
       .sort(byRank)
       .map((p) => ({ id: p.id, svg: portraitSvg(p.id, colors) })),
     spy: v.players.some((p) => !!p.intel),
-    detectives: !!v.me.detectives,
+    detectives: v.me.detectives ? DETECTIVE_TEXT[v.me.detectives.level].name : null,
     ringing: !!card,
     caller: card ? DECISION_TEXT[card.key].kicker.replace(/^(Anruf|Post) (vom|von|aus dem|aus der) /, '') : '',
     headline:

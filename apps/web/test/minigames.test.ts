@@ -33,6 +33,17 @@ describe('layout', () => {
     const far = f.cells.indexOf(f.at(0, f.sub.r));
     expect(f.yieldOf(far)).toBeCloseTo(f.cells[far]!.v * (1 - CABLE_LOSS * (f.cols - 1)));
   });
+  it('a partial layout is rated against the best cells of the same number', () => {
+    const f = new LayoutField('solar', createRng(4));
+    const free = f.cells.map((_, k) => k).filter((k) => f.cells[k]!.kind === 'ok');
+    const best = free.reduce((a, k) => (f.yieldOf(k) > f.yieldOf(a) ? k : a));
+    const worst = free.reduce((a, k) => (f.yieldOf(k) < f.yieldOf(a) ? k : a));
+    f.toggle(best);
+    expect(f.score()).toBeCloseTo(1.15);
+    f.toggle(best);
+    f.toggle(worst);
+    expect(f.score()).toBeLessThan(1.15);
+  });
   it('wake and shading cost yield; the score stays within 0.80 … 1.15', () => {
     const wind = new LayoutField('offshore', createRng(5));
     wind.toggle(wind.cells.indexOf(wind.at(1, 2)));

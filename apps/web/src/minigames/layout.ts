@@ -36,8 +36,8 @@ export class LayoutField {
   readonly cells: LayoutCell[] = [];
   /** The substation (east edge): it collects the power, nothing can be placed there. */
   readonly sub: { c: number; r: number };
-  /** Sum of the best values after cable losses, without wake or shade (upper bound for the score). */
-  private readonly ideal: number;
+  /** Best cell values after cable losses, without wake or shade, best first (upper bound for the score). */
+  private readonly best: number[];
 
   constructor(
     readonly kind: LayoutKind,
@@ -64,12 +64,10 @@ export class LayoutField {
       }
     this.sub = { c: this.cols - 1, r: Math.floor(R() * this.rows) };
     this.at(this.sub.c, this.sub.r).kind = 'sub';
-    this.ideal = this.cells
+    this.best = this.cells
       .filter((t) => t.kind !== 'block' && t.kind !== 'sub')
       .map((t) => t.v * this.cable(t))
-      .sort((a, b) => b - a)
-      .slice(0, this.need)
-      .reduce((a, b) => a + b, 0);
+      .sort((a, b) => b - a);
   }
 
   at(c: number, r: number): LayoutCell {
@@ -111,10 +109,15 @@ export class LayoutField {
     return y;
   }
 
-  /** Efficiency of the plant (0.80 … 1.15). */
+  /**
+   * Efficiency of the plant (0.80 … 1.15). While not all units are placed, the placed ones are measured
+   * against the best cells of the same number, so the display reacts to every placement.
+   */
   score(): number {
     const on = this.cells.map((t, k) => (t.on ? this.yieldOf(k) : 0)).reduce((a, b) => a + b, 0);
-    return 0.8 + 0.35 * clamp((on / this.ideal - SCORE_FLOOR) / (1 - SCORE_FLOOR), 0, 1);
+    const ideal = this.best.slice(0, this.placed()).reduce((a, b) => a + b, 0);
+    if (!ideal) return 0.8;
+    return 0.8 + 0.35 * clamp((on / ideal - SCORE_FLOOR) / (1 - SCORE_FLOOR), 0, 1);
   }
 
   /** Cells in the wake of a placed turbine ("c,r"). */

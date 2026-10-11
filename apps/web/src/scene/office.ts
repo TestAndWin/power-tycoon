@@ -39,9 +39,10 @@ export interface OfficeData {
   trophies: { cup: boolean; gold: boolean }[];
   /** Rival portraits (SVG markup), ordered by rank. */
   rivals: { id: number; svg: string }[];
-  /** A spy report is valid (the back room door stands ajar); detectives are hired (light under the door, hat on the desk). */
+  /** A spy report is valid (the back room door stands ajar). */
   spy: boolean;
-  detectives: boolean;
+  /** Name of the hired detective agency (light under the door, its business card on the desk), or null. */
+  detectives: string | null;
   /** A decision card waits: the smartphone vibrates and lights up. */
   ringing: boolean;
   caller: string;
@@ -124,7 +125,7 @@ export const PHONE_TIME = ['08:15', '09:41', '10:30', '17:05'];
 export const LAMP_HOTSPOT: [number, number, number, number] = [356, 600, 190, 190];
 /** Little things to click that are not areas: the plant rustles, the coffee gets drunk. */
 export const PLANT_HOTSPOT: [number, number, number, number] = [1376, 420, 228, 236];
-/** Hat and magnifier on the desk while detectives are hired: opens the back room. */
+/** The detective agency's business card on the desk while it is hired: opens the back room. */
 export const DETECTIVE_HOTSPOT: [number, number, number, number] = [1120, 736, 102, 96];
 export const MUG_HOTSPOT: [number, number, number, number] = [1196, 796, 100, 124];
 
@@ -1402,43 +1403,34 @@ function nameplate(): void {
   );
   text('VORSTANDSVORSITZ', 700, 773, `700 13px ${DISPLAY}`, '#3d2a08', 'center');
 }
-/** Detectives on duty: a detective's hat with a magnifier in front of it, between laptop and mug. */
-function detectiveHat(): void {
+/** Detectives on duty: the agency's business card lies on the desk between laptop and mug. */
+function businessCard(name: string): void {
   const c = ctx!,
-    felt = '#6e5b44';
+    [kind = '', brand = name] = name.split(' ');
   c.save();
-  c.translate(1176, 788);
-  c.scale(1.15, 1.15);
-  shape(ell(0, 0, 44, 11), mix(felt, '#000000', 0.15), 2.5, 3);
+  c.translate(1171, 790);
+  c.rotate(-0.09);
+  shape(rr(-46, -28, 92, 56, 3), '#fbf6e9', 2.5, 3);
+  // the agency's emblem: an eye
+  c.save();
+  c.translate(-30, -10);
   shape(
     () => {
       c.beginPath();
-      c.moveTo(-28, 0);
-      c.lineTo(-24, -32);
-      c.quadraticCurveTo(-12, -42, 0, -34);
-      c.quadraticCurveTo(12, -42, 24, -32);
-      c.lineTo(28, 0);
+      c.moveTo(-10, 0);
+      c.quadraticCurveTo(0, -9, 10, 0);
+      c.quadraticCurveTo(0, 9, -10, 0);
       c.closePath();
     },
-    felt,
-    2.5,
+    '#fff',
+    2,
   );
-  shape(rr(-27, -11, 54, 8, 2), '#2a2018', 2);
-  // the front of the brim over the crown
-  shape(
-    () => {
-      c.beginPath();
-      c.ellipse(0, 0, 44, 11, 0, 0, Math.PI);
-      c.quadraticCurveTo(0, 4, 44, 0);
-    },
-    felt,
-    2.5,
-  );
-  // the magnifier lies on the desk in front of the hat
-  line(12, 24, 36, 32, INK, 8);
-  line(12, 24, 36, 32, '#8a4a22', 4);
-  shape(ell(-4, 20, 16, 10, -0.15), 'rgba(190,222,235,.75)', 4);
-  line(-12, 15, -3, 13, 'rgba(255,255,255,.9)', 2);
+  shape(circ(0, 0, 3.5), '#8a2a1e', 0);
+  c.restore();
+  text(kind.toUpperCase(), -16, -14, `700 ${kind.length > 9 ? 5.5 : 7}px ${SANS}`, '#7a6a52');
+  text(brand, -16, -3, `700 ${brand.length > 8 ? 10 : 12}px ${DISPLAY}`, '#8a2a1e');
+  line(-38, 9, 38, 9, '#c9b896', 1);
+  text('Diskret · Tag und Nacht', 0, 18, `600 7px ${SANS}`, '#5a4a36', 'center');
   c.restore();
 }
 function mug(col: string, full: boolean): void {
@@ -1511,7 +1503,7 @@ function draw(): void {
   nameplate();
   terminal(d);
   phone(d);
-  if (d.detectives) detectiveHat();
+  if (d.detectives) businessCard(d.detectives);
   mug(d.colors[0] ?? '#2f5bd3', mugDrunk !== d.turn);
   c.setTransform(scale, 0, 0, scale, 0, 0);
   c.fillStyle = SEASON_LIGHT[d.q]!;
