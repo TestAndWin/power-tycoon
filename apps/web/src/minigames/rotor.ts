@@ -83,6 +83,109 @@ export class RotorAssembly {
   }
 }
 
+/** A lattice boom from foot to tip: two chords with zigzag bracing. */
+function drawLattice(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, w: number): void {
+  const len = Math.hypot(x1 - x0, y1 - y0),
+    nx = (-(y1 - y0) / len) * (w / 2),
+    ny = ((x1 - x0) / len) * (w / 2),
+    // the boom tapers towards the tip
+    at = (f: number, side: number): [number, number] => {
+      const s = side * (1 - f * 0.5);
+      return [x0 + (x1 - x0) * f + nx * s, y0 + (y1 - y0) * f + ny * s];
+    };
+  ctx.strokeStyle = '#c98f00';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const n = Math.max(2, Math.round(len / 12));
+  for (let i = 0; i <= n; i++) {
+    const [px, py] = at(i / n, i % 2 ? 1 : -1);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = '#e0a100';
+  ctx.lineWidth = 2.2;
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(...at(0, side));
+    ctx.lineTo(...at(1, side));
+    ctx.stroke();
+  }
+  ctx.lineWidth = 1;
+}
+
+/** Crawler crane with lattice boom; offshore it stands on the installation vessel. */
+function drawCrane(ctx: CanvasRenderingContext2D, off: boolean, bob: number): void {
+  let gy = H - 40;
+  if (off) {
+    // installation vessel
+    gy = H - 70 + bob;
+    ctx.fillStyle = '#5d6c78';
+    ctx.strokeStyle = '#2f3a42';
+    ctx.beginPath();
+    ctx.moveTo(-10, gy);
+    ctx.lineTo(132, gy);
+    ctx.lineTo(120, gy + 22);
+    ctx.lineTo(-10, gy + 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#b8402f';
+    ctx.fillRect(-10, gy + 16, 128, 6);
+    ctx.fillStyle = '#eef1f0';
+    ctx.fillRect(4, gy - 16, 22, 16);
+    ctx.strokeRect(4, gy - 16, 22, 16);
+  }
+  const bx = off ? 40 : 20;
+  // tracks
+  ctx.fillStyle = '#4a4f4d';
+  ctx.strokeStyle = '#2b2f2e';
+  ctx.beginPath();
+  ctx.roundRect(bx, gy - 12, 84, 12, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#8b918f';
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.arc(bx + 9 + i * 16.5, gy - 6, 3, 0, 7);
+    ctx.fill();
+  }
+  // counterweight, superstructure and cab
+  ctx.fillStyle = '#5b5f5d';
+  ctx.fillRect(bx - 4, gy - 34, 24, 20);
+  ctx.strokeRect(bx - 4, gy - 34, 24, 20);
+  ctx.fillStyle = '#e0a100';
+  ctx.strokeStyle = '#5c4500';
+  ctx.fillRect(bx + 18, gy - 30, 50, 18);
+  ctx.strokeRect(bx + 18, gy - 30, 50, 18);
+  ctx.fillRect(bx + 66, gy - 40, 16, 28);
+  ctx.strokeRect(bx + 66, gy - 40, 16, 28);
+  ctx.fillStyle = '#9cc3dd';
+  ctx.fillRect(bx + 70, gy - 36, 9, 10);
+  // A-frame mast with luffing ropes to the boom tip
+  const footX = bx + 52,
+    footY = gy - 30,
+    mastX = bx + 14,
+    mastY = gy - 82,
+    tipX = pivotX,
+    tipY = 10 + bob;
+  drawLattice(ctx, bx + 26, gy - 30, mastX, mastY, 6);
+  ctx.strokeStyle = '#333';
+  ctx.beginPath();
+  ctx.moveTo(bx, gy - 34);
+  ctx.lineTo(mastX, mastY);
+  ctx.lineTo(tipX - 2, tipY + 2);
+  ctx.moveTo(mastX + 2, mastY + 3);
+  ctx.lineTo(tipX - 3, tipY + 5);
+  ctx.stroke();
+  drawLattice(ctx, footX, footY, tipX, tipY, 12);
+  // boom head sheave
+  ctx.fillStyle = '#5b5f5d';
+  ctx.beginPath();
+  ctx.arc(tipX, tipY + 3, 3.5, 0, 7);
+  ctx.fill();
+}
+
 /** Sky, ground or sea, the tower with the mounted blades, the crane and the blade on the hook. */
 function drawRotorScene(ctx: CanvasRenderingContext2D, m: RotorAssembly, t: number): void {
   const off = m.offshore;
@@ -198,24 +301,26 @@ function drawRotorScene(ctx: CanvasRenderingContext2D, m: RotorAssembly, t: numb
   ctx.arc(hubX, hubY, 9, 0, 7);
   ctx.fill();
   ctx.stroke();
-  // crane
-  ctx.strokeStyle = '#e0a100';
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.moveTo(30, H);
-  ctx.lineTo(30, 20);
-  ctx.lineTo(W - 10, 20);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-  // blade on the hook
+  drawCrane(ctx, off, bob);
+  // rope, hook block and sling with the blade
   const hx = m.state === 'drop' ? m.dropX : m.hookX();
-  const hy = m.state === 'drop' ? 40 + m.drop * (hubY - 40 - 14) : 40 + bob;
+  const hy = m.state === 'drop' ? 76 + m.drop * (hubY - 76 - 14) : 76 + bob;
   ctx.strokeStyle = '#333';
   ctx.beginPath();
-  ctx.moveTo(pivotX, 20);
-  ctx.lineTo(hx, hy - 40);
+  ctx.moveTo(pivotX, 13 + bob);
+  ctx.lineTo(hx, hy - 58);
   ctx.stroke();
+  ctx.fillStyle = '#e0a100';
+  ctx.strokeStyle = '#5c4500';
+  ctx.fillRect(hx - 5, hy - 58, 10, 8);
+  ctx.strokeRect(hx - 5, hy - 58, 10, 8);
   if (!m.done || m.state === 'drop') {
+    ctx.strokeStyle = '#333';
+    ctx.beginPath();
+    ctx.moveTo(hx - 4, hy - 43);
+    ctx.lineTo(hx, hy - 50);
+    ctx.lineTo(hx + 4, hy - 43);
+    ctx.stroke();
     ctx.save();
     ctx.translate(hx, hy);
     ctx.fillStyle = '#f7f9f8';
