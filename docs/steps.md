@@ -297,6 +297,11 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
       `pnpm simulate`, 150 games, 10 years, rivals before → after: `idle` 390.5 → 467.1 M€, `solar`
       315.9 → 380.1 M€, `smart --skilled` 317.5 → 403.1 M€ (seat 0 383.0 M€, 53 % → 498.3 M€, 55 %)
 
+- [x] Play-test: offshore projects felt slow. Offshore permits take 1–3 quarters (was 2–4; large 2–4).
+      `pnpm simulate`, 150 games, 10 years, rivals before → after: `idle` 467.1 → 475.8 M€, `solar`
+      380.1 → 392.9 M€, `smart --skilled` 403.1 → 409.3 M€ (seat 0 498.3 M€, 55 % → 522.9 M€, 62 %);
+      5-year games unchanged. The quarter report lists the damages a caught rival pays as a line of its own
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)
