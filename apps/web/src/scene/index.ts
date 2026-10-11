@@ -11,6 +11,7 @@ import {
   drawAviationLights,
   drawCloudShadows,
   drawHaze,
+  drawNightFrames,
   drawNightLights,
   drawTexture,
   drawVignette,
@@ -168,12 +169,13 @@ function drawScene(sc: Scene, t: number): void {
   if (!sc.pat) sc.pat = sc.ctx.createPattern(noiseCanvas(), 'repeat');
   drawTexture(fr, sc.pat);
   drawPlotFrames(fr, plots);
+  drawNightFrames(fr, plots);
   // objects back to front
   for (const plot of plots) drawObject(fr, plot);
   for (const plot of plots) drawOwnerFlag(fr, plot);
   drawCloudShadows(fr, clouds);
   drawAtmosphere(fr);
-  drawNightLights(fr, plots);
+  drawNightLights(fr);
   drawVignette(fr);
   drawAviationLights(fr);
 }

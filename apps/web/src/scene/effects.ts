@@ -120,9 +120,9 @@ export function drawAtmosphere(fr: Frame): void {
   }
 }
 
-/** At night: lit crossings of the farm tracks and glowing ownership frames. */
-export function drawNightLights(fr: Frame, plots: Plot[]): void {
-  const { ctx, W, r, mini, g, d, colors } = fr;
+/** At night: lit crossings of the farm tracks. */
+export function drawNightLights(fr: Frame): void {
+  const { ctx, W, r, g, d } = fr;
   if (d < 0.9) {
     const n = 1 - d;
     if (r !== 'ns')
@@ -141,6 +141,14 @@ export function drawNightLights(fr: Frame, plots: Plot[]): void {
           ctx.arc(x, y, Math.max(1, rr * 0.16), 0, 7);
           ctx.fill();
         }
+  }
+}
+
+/** At night: glowing ownership frames, drawn before the objects so plants stand in front of them. */
+export function drawNightFrames(fr: Frame, plots: Plot[]): void {
+  const { ctx, mini, d, colors } = fr;
+  if (d < 0.9) {
+    const n = 1 - d;
     ctx.save();
     ctx.lineJoin = 'round';
     for (const { x, qd } of plots) {
