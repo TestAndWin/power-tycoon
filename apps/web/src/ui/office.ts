@@ -108,7 +108,10 @@ export function officeScene(): string {
   ) => {
     // vertical position in the cropped office (CSS variables set by the canvas, see `officeCrop`)
     const top = `calc(100% * (${y} - var(${desk ? '--cut' : '--top'}, 0)) / var(--vh, ${OFFICE_H}))`;
-    return `<button class="hot${y < 160 ? ' below' : ''}${cls}" data-act="${act}" data-v="${val}" style="left:${(x / OFFICE_W) * 100}%;top:${top};width:${(w / OFFICE_W) * 100}%;height:calc(100% * ${h} / var(--vh, ${OFFICE_H}))" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
+    // near the side walls the label hangs inwards instead of centred, so it is not cut off
+    const cx = x + w / 2,
+      side = cx < 240 ? ' left' : cx > OFFICE_W - 240 ? ' right' : '';
+    return `<button class="hot${y < 160 ? ' below' : ''}${side}${cls}" data-act="${act}" data-v="${val}" style="left:${(x / OFFICE_W) * 100}%;top:${top};width:${(w / OFFICE_W) * 100}%;height:calc(100% * ${h} / var(--vh, ${OFFICE_H}))" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
   };
   const hots =
     officeHotspots(v.me.hq)
@@ -118,10 +121,10 @@ export function officeScene(): string {
       .join('') +
     // each region on the wall map opens the map at that region (on top of the map hotspot)
     mapRegionHotspots()
-      .map(({ r, rect }) => hot('goRegion', r, 'Landkarte · ' + REGION_TEXT[r].name, rect, false, '', ' zone'))
+      .map(({ r, rect }) => hot('goRegion', r, REGION_TEXT[r].name, rect, false, '', ' zone'))
       .join('') +
-    (v.me.detectives ? hot('tab', 'lobby', 'Detektiv-Hut · Detektei im Einsatz', DETECTIVE_HOTSPOT, true) : '') +
-    hot('lamp', '', 'Schreibtischlampe · an/aus', LAMP_HOTSPOT, true) +
+    (v.me.detectives ? hot('tab', 'lobby', 'Detektei im Einsatz', DETECTIVE_HOTSPOT, true) : '') +
+    hot('lamp', '', 'Licht an/aus', LAMP_HOTSPOT, true) +
     hot('plant', '', 'Zimmerpflanze', PLANT_HOTSPOT) +
     hot('coffee', '', 'Kaffeetasse', MUG_HOTSPOT, true);
   return `<div class="office"><canvas data-office aria-label="Das Büro des Vorstandsvorsitzes" role="img"></canvas>${hots}</div>`;

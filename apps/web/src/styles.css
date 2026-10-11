@@ -2699,6 +2699,19 @@ body.desk .app {
   bottom: 0;
   transform: translate(-50%, 115%);
 }
+.hot.left .tag {
+  left: 0;
+  transform: translate(0, -115%);
+}
+.hot.right .tag {
+  left: auto;
+  right: 0;
+  transform: translate(0, -115%);
+}
+.hot.below.left .tag,
+.hot.below.right .tag {
+  transform: translate(0, 115%);
+}
 .hot:hover .tag,
 .hot:focus-visible .tag {
   opacity: 1;

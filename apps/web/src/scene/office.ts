@@ -93,20 +93,20 @@ export function officeHotspots(
 ): { k: string; label: string; r: [number, number, number, number]; desk?: boolean }[] {
   const w = WINDOW[hq];
   return [
-    { k: 'sites', label: 'Landkarte · Standorte', r: [236, 104, 380, 330] },
-    { k: 'market', label: 'Börsenmonitor · Strommarkt', r: [650, 116, 272, 210] },
-    { k: 'awards', label: 'Pokalregal · Auszeichnungen', r: [646, 326, 288, 106] },
-    { k: 'rivals', label: 'Porträtwand · Konkurrenz', r: [646, 452, 288, 94] },
-    { k: 'lobby', label: 'Hinterzimmer · Lobby & Spionage', r: [26, 116, 178, 540] },
+    { k: 'sites', label: 'Standorte', r: [236, 104, 380, 330] },
+    { k: 'market', label: 'Strommarkt', r: [650, 116, 272, 210] },
+    { k: 'awards', label: 'Auszeichnungen', r: [646, 326, 288, 106] },
+    { k: 'rivals', label: 'Konkurrenz', r: [646, 452, 288, 94] },
+    { k: 'lobby', label: 'Lobby & Spionage', r: [26, 116, 178, 540] },
     {
       k: 'overview',
-      label: 'Fenster · Lagebericht',
+      label: 'Lagebericht',
       r: [w.x, w.y, Math.min(w.w, 1370 - w.x), Math.min(w.h, 520 - w.y)],
     },
-    { k: 'bank', label: 'Laptop · Bank', r: [832, 678, 306, 224], desk: true },
-    { k: 'board', label: 'Namensschild · Vorstand & Firmensitz', r: [572, 740, 256, 60], desk: true },
-    { k: 'news', label: 'Zeitung · Nachrichten', r: [536, 812, 310, 180], desk: true },
-    { k: 'decision', label: 'Handy · Entscheidung', r: [1300, 760, 140, 200], desk: true },
+    { k: 'bank', label: 'Bank', r: [832, 678, 306, 224], desk: true },
+    { k: 'board', label: 'Vorstand & Firmensitz', r: [572, 740, 256, 60], desk: true },
+    { k: 'news', label: 'Nachrichten', r: [536, 812, 310, 180], desk: true },
+    { k: 'decision', label: 'Entscheidung', r: [1300, 760, 140, 200], desk: true },
   ];
 }
 
