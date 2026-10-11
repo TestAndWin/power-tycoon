@@ -425,6 +425,10 @@ h3 {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
+/* minigames are played with the keyboard, so the auto-focused buttons would always show the ring */
+.mcard.mg .btn:focus-visible {
+  outline: none;
+}
 .btn.primary {
   background: linear-gradient(180deg, #ffd370, var(--gold));
   color: var(--ink);
