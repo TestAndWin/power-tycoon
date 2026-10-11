@@ -8,6 +8,7 @@ import { esc } from '../format.js';
 import { readPlayerColors } from '../players.js';
 import {
   LAMP_HOTSPOT,
+  mapRegionHotspots,
   MUG_HOTSPOT,
   officeHotspots,
   PLANT_HOTSPOT,
@@ -25,6 +26,7 @@ import {
   decisionContext,
   DEPT_TEXT,
   execName,
+  REGION_TEXT,
   RIVAL_TEXT,
   siteName,
 } from '../texts.js';
@@ -102,16 +104,21 @@ export function officeScene(): string {
     [x, y, w, h]: [number, number, number, number],
     desk = false,
     badge: string | number = '',
+    cls = '',
   ) => {
     // vertical position in the cropped office (CSS variables set by the canvas, see `officeCrop`)
     const top = `calc(100% * (${y} - var(${desk ? '--cut' : '--top'}, 0)) / var(--vh, ${OFFICE_H}))`;
-    return `<button class="hot${y < 160 ? ' below' : ''}" data-act="${act}" data-v="${val}" style="left:${(x / OFFICE_W) * 100}%;top:${top};width:${(w / OFFICE_W) * 100}%;height:calc(100% * ${h} / var(--vh, ${OFFICE_H}))" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
+    return `<button class="hot${y < 160 ? ' below' : ''}${cls}" data-act="${act}" data-v="${val}" style="left:${(x / OFFICE_W) * 100}%;top:${top};width:${(w / OFFICE_W) * 100}%;height:calc(100% * ${h} / var(--vh, ${OFFICE_H}))" aria-label="${esc(label)}"><span class="tag">${esc(label)}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
   };
   const hots =
     officeHotspots(v.me.hq)
       .map(({ k, label, r, desk }) =>
         hot('tab', k, label, r, desk, k === 'sites' && n ? n : k === 'decision' && v.me.decision ? '!' : ''),
       )
+      .join('') +
+    // each region on the wall map opens the map at that region (on top of the map hotspot)
+    mapRegionHotspots()
+      .map(({ r, rect }) => hot('goRegion', r, 'Landkarte · ' + REGION_TEXT[r].name, rect, false, '', ' zone'))
       .join('') +
     // each portrait on the wall opens the file of that rival (same order as drawn: by rank)
     v.players

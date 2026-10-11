@@ -988,6 +988,13 @@ const ZONES: Record<
   al: { lo: 10.5, la: 46.7, rx: 46, ry: 16, col: '#cfd3c0', label: 'ALPEN', at: [10.5, 44.6], size: 11 },
 };
 
+/** The region zones on the wall map as hotspot rectangles (bounding box of each ellipse). */
+export const mapRegionHotspots = (): { r: RegionKey; rect: [number, number, number, number] }[] =>
+  (Object.keys(ZONES) as RegionKey[]).map((r) => {
+    const z = ZONES[r];
+    return { r, rect: [gx(z.lo) - z.rx, gy(z.la) - z.ry, 2 * z.rx, 2 * z.ry] };
+  });
+
 function map(d: OfficeData): void {
   const c = ctx!;
   shape(rr(236, 104, 380, 330, 8), '#7a4f2e', 3, 7);

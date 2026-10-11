@@ -2675,6 +2675,9 @@ body.desk .app {
   background: rgba(242, 181, 58, 0.14);
   outline: none;
 }
+.hot.zone {
+  border-radius: 50%;
+}
 .hot:disabled {
   cursor: not-allowed;
 }
