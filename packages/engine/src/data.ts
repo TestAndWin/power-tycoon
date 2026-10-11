@@ -98,7 +98,7 @@ export const PLANTS: Record<PlantType, PlantDef> = {
     permit: 1.2e6,
     grid: 8e6,
     opex: 0.7e6,
-    permitQ: [2, 4],
+    permitQ: [1, 3],
     reject: 0.1,
     learn: 0.02,
     cls: 'wind',
