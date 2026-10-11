@@ -39,7 +39,7 @@ export interface OfficeData {
   trophies: { cup: boolean; gold: boolean }[];
   /** Rival portraits (SVG markup), ordered by rank. */
   rivals: { id: number; svg: string }[];
-  /** A spy report is valid (the back room door stands ajar); detectives are hired (light under the door). */
+  /** A spy report is valid (the back room door stands ajar); detectives are hired (light under the door, hat on the desk). */
   spy: boolean;
   detectives: boolean;
   /** A decision card waits: the smartphone vibrates and lights up. */
@@ -124,6 +124,8 @@ export const PHONE_TIME = ['08:15', '09:41', '10:30', '17:05'];
 export const LAMP_HOTSPOT: [number, number, number, number] = [356, 600, 190, 190];
 /** Little things to click that are not areas: the plant rustles, the coffee gets drunk. */
 export const PLANT_HOTSPOT: [number, number, number, number] = [1376, 420, 228, 236];
+/** Hat and magnifier on the desk while detectives are hired: opens the back room. */
+export const DETECTIVE_HOTSPOT: [number, number, number, number] = [1094, 750, 102, 96];
 export const MUG_HOTSPOT: [number, number, number, number] = [1196, 796, 100, 124];
 
 /* ---------- drawing state ---------- */
@@ -1400,6 +1402,45 @@ function nameplate(): void {
   );
   text('VORSTANDSVORSITZ', 700, 773, `700 13px ${DISPLAY}`, '#3d2a08', 'center');
 }
+/** Detectives on duty: a detective's hat with a magnifier in front of it, between laptop and mug. */
+function detectiveHat(): void {
+  const c = ctx!,
+    felt = '#6e5b44';
+  c.save();
+  c.translate(1150, 802);
+  c.scale(1.15, 1.15);
+  shape(ell(0, 0, 44, 11), mix(felt, '#000000', 0.15), 2.5, 3);
+  shape(
+    () => {
+      c.beginPath();
+      c.moveTo(-28, 0);
+      c.lineTo(-24, -32);
+      c.quadraticCurveTo(-12, -42, 0, -34);
+      c.quadraticCurveTo(12, -42, 24, -32);
+      c.lineTo(28, 0);
+      c.closePath();
+    },
+    felt,
+    2.5,
+  );
+  shape(rr(-27, -11, 54, 8, 2), '#2a2018', 2);
+  // the front of the brim over the crown
+  shape(
+    () => {
+      c.beginPath();
+      c.ellipse(0, 0, 44, 11, 0, 0, Math.PI);
+      c.quadraticCurveTo(0, 4, 44, 0);
+    },
+    felt,
+    2.5,
+  );
+  // the magnifier lies on the desk in front of the hat
+  line(12, 24, 36, 32, INK, 8);
+  line(12, 24, 36, 32, '#8a4a22', 4);
+  shape(ell(-4, 20, 16, 10, -0.15), 'rgba(190,222,235,.75)', 4);
+  line(-12, 15, -3, 13, 'rgba(255,255,255,.9)', 2);
+  c.restore();
+}
 function mug(col: string, full: boolean): void {
   const c = ctx!;
   c.save();
@@ -1470,6 +1511,7 @@ function draw(): void {
   nameplate();
   terminal(d);
   phone(d);
+  if (d.detectives) detectiveHat();
   mug(d.colors[0] ?? '#2f5bd3', mugDrunk !== d.turn);
   c.setTransform(scale, 0, 0, scale, 0, 0);
   c.fillStyle = SEASON_LIGHT[d.q]!;

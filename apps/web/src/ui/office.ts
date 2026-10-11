@@ -7,6 +7,7 @@ import { operating, REGION_KEYS, type Department, type RegionKey } from '@power-
 import { esc } from '../format.js';
 import { readPlayerColors } from '../players.js';
 import {
+  DETECTIVE_HOTSPOT,
   LAMP_HOTSPOT,
   mapRegionHotspots,
   MUG_HOTSPOT,
@@ -119,6 +120,7 @@ export function officeScene(): string {
     mapRegionHotspots()
       .map(({ r, rect }) => hot('goRegion', r, 'Landkarte · ' + REGION_TEXT[r].name, rect, false, '', ' zone'))
       .join('') +
+    (v.me.detectives ? hot('tab', 'lobby', 'Detektiv-Hut · Detektei im Einsatz', DETECTIVE_HOTSPOT, true) : '') +
     hot('lamp', '', 'Schreibtischlampe · an/aus', LAMP_HOTSPOT, true) +
     hot('plant', '', 'Zimmerpflanze', PLANT_HOTSPOT) +
     hot('coffee', '', 'Kaffeetasse', MUG_HOTSPOT, true);
