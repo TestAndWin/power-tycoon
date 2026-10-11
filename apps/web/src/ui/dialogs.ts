@@ -51,9 +51,9 @@ export function showReport(rep: QuarterReport, rivals: RivalActionLog[]): void {
     )
     .join('');
   const delta = rep.endCash - rep.startCash;
-  openModal(`<div class="banner"><canvas data-scene="${br}" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Vorstandssitzung</span><h2>${qStr(rep.year, rep.q)}</h2></div><div class="bdelta ${delta < 0 ? 'neg' : ''}"><span class="label">Kasse</span><b data-count="${delta}">${money(delta)}</b></div></div>
+  openModal(`<div class="banner"><canvas data-scene="${br}" data-mini="1" aria-hidden="true"></canvas><div class="bcap"><span class="label">Vorstandssitzung</span><h2>${qStr(rep.year, rep.q)}</h2></div><div class="bdelta ${delta < 0 ? 'neg' : ''}"><span class="label">Kasse</span><b data-count="${rep.endCash}">${money(rep.endCash)}</b><small>${delta < 0 ? '' : '+'}${money(delta)} im Quartal</small></div></div>
     <div class="meeting">${v.me.board.map((e) => execPortrait(e.dept, e.grade, 34)).join('') || assistantPortrait(34)}<span class="muted">${v.me.board.length ? 'Der Vorstand ist versammelt. Die Finanzen:' : 'Nur du und deine Assistenz – die Zahlen des Quartals:'}</span></div>
-    <div class="rep"><span>Erzeugung</span><span class="v" data-count="${rep.gen}" data-fmt="mwh">${mwh(rep.gen)}</span><span>Ø Börsenpreis</span><span class="v">${eur(rep.price)}</span>${lines}
+    <div class="rep"><span>Erzeugung</span><span class="v" data-count="${rep.gen}" data-fmt="mwh">${mwh(rep.gen)}</span><span>Börsenpreis (Quartalsmittel)</span><span class="v">${eur(rep.price)}</span>${lines}
     <span class="sum">Veränderung Kasse</span><span class="v sum ${delta < 0 ? 'down' : 'up'}" data-count="${delta}">${money(delta)}</span></div>
     ${ev ? `<ul class="list">${ev}</ul>` : ''}${compLog(rivals)}<div class="foot"><button class="btn primary" data-act="closeReport">Weiter</button></div>`);
   animateRivals();
@@ -113,7 +113,12 @@ export function showStart(canContinue: boolean, name = 'Deichwatt AG', years = G
     </div>
     <label class="check"><input type="checkbox" id="sAuto"> Minispiele überspringen (Ergebnis wird ausgewürfelt)</label>
     <p class="muted fine">Alle Firmen und Personen im Spiel sind frei erfunden. Ereignisse nach 2026 sind fiktive Szenarien. Dein Spielstand liegt auf dem Server; nur dieser Browser kennt den Zugangsschlüssel.</p>
-    <div class="foot start-foot"><div class="mlegal">${legalLinks()}</div><button class="btn" data-act="rules">So wird gespielt</button>${canContinue ? '<button class="btn" data-act="continue">Weiterspielen</button>' : ''}<button class="btn primary big" data-act="start">Spiel starten</button></div>`,
+    <div class="foot start-foot"><div class="mlegal">${legalLinks()}</div><button class="btn" data-act="rules">So wird gespielt</button>${
+      // with a saved game, continuing is the main action: a new game would replace it
+      canContinue
+        ? '<button class="btn" data-act="start">Neues Spiel starten</button><button class="btn primary big" data-act="continue">Weiterspielen</button>'
+        : '<button class="btn primary big" data-act="start">Spiel starten</button>'
+    }</div>`,
     { wide: true },
   );
 }

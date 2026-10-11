@@ -51,7 +51,7 @@ async function skilledTurn(g: GameState, strategy: OpponentStrategy, seed: numbe
         r = applyAction(g, 0, {
           type: 'minigameResult',
           challengeId: ch.id,
-          outcome: ch.kind === 'layout' ? 1.15 : true,
+          outcome: ch.kind === 'layout' || ch.kind === 'storage' ? 1.15 : true,
         });
       }
     }

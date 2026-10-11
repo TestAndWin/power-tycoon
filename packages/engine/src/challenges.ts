@@ -27,12 +27,15 @@ import type {
   Site,
 } from './types.js';
 
+/** Minigames that rate the plant (efficiency) instead of deciding success or failure. */
+export const ratedKind = (kind: ChallengeKind): boolean => kind === 'layout' || kind === 'storage';
+
 const autoResolves = (g: GameState, pid: PlayerId): boolean => !g.players[pid]!.human || g.settings.autoMinigames;
 
 function autoOutcome(g: GameState, ch: OpenChallenge): number | boolean {
   const r = randomOf(g);
   const M = autoMinigame(g.players[ch.playerId]!.human);
-  if (ch.kind === 'layout') return Math.round(rand(r, M.layout[0], M.layout[1]) * 100) / 100;
+  if (ch.kind === 'layout' || ch.kind === 'storage') return Math.round(rand(r, M.layout[0], M.layout[1]) * 100) / 100;
   // a cable duel against a rival is harder than the solo puzzle; the grid board member helps
   const duel = M.cableDuel + EXEC_EFFECTS.grid.duelChance * execPower(g.players[ch.playerId], 'grid');
   return r() < (ch.rival ? duel : M[ch.kind]);
@@ -68,10 +71,10 @@ export function resolveChallenge(g: GameState, ch: OpenChallenge, outcome: numbe
   const ok = outcome === true;
   switch (ch.step) {
     case 'build':
-      if (ch.kind === 'layout') {
+      if (ratedKind(ch.kind)) {
         x.eff = clamp(Number(outcome), LAYOUT_RANGE[0], LAYOUT_RANGE[1]);
         emit(g, out, { type: 'layoutRated', playerId: pid, siteId: x.id, eff: x.eff });
-        if (PLANTS[x.type!].cls === 'wind') startChallenge(g, pid, 'rotor', x, 'build', out);
+        if (ch.kind === 'layout' && PLANTS[x.type!].cls === 'wind') startChallenge(g, pid, 'rotor', x, 'build', out);
         else finishBuild(g, pid, x, out);
       } else if (ok) finishBuild(g, pid, x, out);
       else {

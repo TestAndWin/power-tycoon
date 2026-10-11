@@ -12,20 +12,50 @@ export function setupCanvas(cv: HTMLCanvasElement, W: number, H: number): Canvas
   return c;
 }
 
-/** Calls `frame(t, dt)` on every animation frame (dt in seconds, at most 0.05) until stopped. */
-export function animate(frame: (t: number, dt: number) => void): { stop: () => void; resetClock: () => void } {
+/**
+ * Calls `frame(t, dt)` on every animation frame (dt in seconds, at most 0.05) until stopped. When the tab goes
+ * to the background the game pauses (dt 0) until the player continues on the pause card.
+ */
+export function animate(frame: (t: number, dt: number) => void): {
+  stop: () => void;
+  resetClock: () => void;
+  paused: () => boolean;
+} {
   let last = performance.now(),
-    raf = 0;
+    raf = 0,
+    paused = false;
   const tick = (t: number) => {
-    const dt = Math.min(0.05, (t - last) / 1000);
+    const dt = paused ? 0 : Math.min(0.05, (t - last) / 1000);
     last = t;
     frame(t, dt);
     raf = requestAnimationFrame(tick);
   };
   raf = requestAnimationFrame(tick);
+  let card: HTMLElement | null = null;
+  const onHide = () => {
+    if (!document.hidden || paused) return;
+    paused = true;
+    card = document.createElement('div');
+    card.className = 'stack mgresult';
+    card.innerHTML =
+      '<div class="row"><span class="chip">Pause</span><h3>Kurz unterbrochen</h3></div><p class="muted" style="margin:0">Das Minispiel wartet, solange das Fenster im Hintergrund ist.</p><div class="foot"><button class="btn primary">Weiter</button></div>';
+    $('#mcard')!.appendChild(card);
+    card.querySelector('button')!.onclick = () => {
+      card?.remove();
+      card = null;
+      last = performance.now();
+      paused = false;
+    };
+  };
+  document.addEventListener('visibilitychange', onHide);
   return {
-    stop: () => cancelAnimationFrame(raf),
+    stop: () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('visibilitychange', onHide);
+      card?.remove();
+    },
     resetClock: () => (last = performance.now()),
+    paused: () => paused,
   };
 }
 

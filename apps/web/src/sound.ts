@@ -144,18 +144,25 @@ export function countUp(root: HTMLElement): void {
   root.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => {
     const v = +el.dataset.count!,
       f = el.dataset.fmt === 'mwh' ? mwh : (x: number) => money(x);
-    if (RMO) {
+    if (RMO || document.hidden) {
       el.textContent = f(v);
       return;
     }
     const t0 = performance.now(),
       D = 700;
+    let done = false;
     const step = (n: number) => {
+      if (done) return;
       const k = Math.min(1, (n - t0) / D),
         e = 1 - Math.pow(1 - k, 3);
       el.textContent = f(v * e);
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+    // a hidden tab pauses animation frames: never leave a value half counted
+    setTimeout(() => {
+      done = true;
+      el.textContent = f(v);
+    }, D + 100);
   });
 }

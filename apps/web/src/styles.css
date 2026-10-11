@@ -1915,6 +1915,16 @@ input[type='checkbox'] {
   gap: 8px;
   flex-wrap: wrap;
 }
+/* a long dialog (rules) keeps its button in view while it scrolls */
+.mcard .foot.sticky {
+  position: sticky;
+  bottom: -24px;
+  margin: 0 -22px -22px;
+  padding: 12px 22px 22px;
+  background: var(--grain), var(--surface);
+  border-top: 1.5px solid var(--line);
+  border-radius: 0 0 20px 20px;
+}
 .banner {
   position: relative;
   margin: -22px -22px 0;
@@ -1980,9 +1990,15 @@ input[type='checkbox'] {
 .bdelta b {
   font-family: var(--display);
   font-size: 18px;
+  color: var(--ink);
+}
+.bdelta small {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
   color: var(--good);
 }
-.bdelta.neg b {
+.bdelta.neg small {
   color: var(--bad);
 }
 .rep {
@@ -2248,6 +2264,11 @@ svg.live .pulse {
   cursor: not-allowed;
   background: #b9b2a3 !important;
 }
+.lc.sub {
+  cursor: not-allowed;
+  background: #d9d2c3 !important;
+  box-shadow: inset 0 0 0 2px #2b3430;
+}
 .lc.wake::after {
   content: '';
   position: absolute;
@@ -2285,6 +2306,10 @@ svg.live .pulse {
 }
 .lg.block {
   background: #b9b2a3;
+}
+.lg.sub {
+  background: #d9d2c3;
+  border: 2px solid #2b3430;
 }
 .lg.wakeL {
   background: repeating-linear-gradient(90deg, rgba(15, 26, 23, 0.35) 0 2px, transparent 2px 5px);
@@ -3700,4 +3725,105 @@ body.zoom #view {
   margin: 0;
   font-size: 14.5px;
   line-height: 1.4;
+}
+
+/* ---------- storage schedule minigame ---------- */
+.sched {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 4px;
+  align-self: center;
+  width: 100%;
+  max-width: 600px;
+  padding: 8px;
+  border: 2px solid var(--edge);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+.slot {
+  appearance: none;
+  border: 1.5px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  padding: 4px 1px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+  min-width: 0;
+}
+.slot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.slot .sp,
+.slot .sh {
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.slot .sh {
+  color: var(--muted);
+}
+.slot .sbar {
+  display: flex;
+  align-items: flex-end;
+  width: 70%;
+  height: 120px;
+}
+.slot .sbar i {
+  display: block;
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, var(--ink) 30%, var(--surface2));
+}
+.slot .sa {
+  font-size: 12px;
+  line-height: 1;
+  min-height: 1em;
+}
+.slot.charge {
+  background: color-mix(in srgb, var(--good) 22%, var(--surface));
+  border-color: var(--good);
+}
+.slot.charge .sbar i {
+  background: var(--good);
+}
+.slot.discharge {
+  background: color-mix(in srgb, var(--sun) 30%, var(--surface));
+  border-color: var(--sun);
+}
+.slot.discharge .sbar i {
+  background: var(--sun);
+}
+.slot.err {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 2px var(--bad);
+}
+.slot .pips {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+.slot .pips i {
+  display: block;
+  width: 14px;
+  height: 5px;
+  border-radius: 2px;
+  border: 1px solid var(--line);
+}
+.slot .pips i.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.lg.chg {
+  background: var(--good);
+}
+.lg.dis {
+  background: var(--sun);
+}
+.lg.soc {
+  background: var(--accent);
 }

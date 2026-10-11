@@ -28,7 +28,7 @@ import {
   TRICK_SUSPECTED,
   TRICKS,
 } from './data.js';
-import { finishBuild, publicChallenge, resolveChallenge, startChallenge } from './challenges.js';
+import { finishBuild, publicChallenge, ratedKind, resolveChallenge, startChallenge } from './challenges.js';
 import { applyDecision, checkDecision, decisionPrice, freeSeats, isGone } from './decisions.js';
 import { emit } from './events.js';
 import { pick, randint, randomOf } from './rng.js';
@@ -43,6 +43,7 @@ import {
   execPower,
   freeGrid,
   hasIntel,
+  isStore,
   plantTypesFor,
   regionOk,
   repowerGridCost,
@@ -152,6 +153,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     execute({ g, p, pid, x }, cost, out) {
       p.cash -= cost;
       x.owner = pid;
+      x.leasePaid = cost;
       emit(g, out, { type: 'siteLeased', playerId: pid, siteId: x.id, amount: cost });
     },
   },
@@ -233,6 +235,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       if (x.fail) return startChallenge(g, pid, 'rotor', x, 'retry', out);
       x.invested = cost;
       if (PLANTS[t].cls === 'wind' || t === 'solar') startChallenge(g, pid, 'layout', x, 'build', out);
+      else if (isStore(t)) startChallenge(g, pid, 'storage', x, 'build', out);
       else {
         x.eff = 1;
         finishBuild(g, pid, x, out);
@@ -505,7 +508,7 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
       const ch = g.challenge;
       if (!ch || ch.playerId !== pid) return 'noChallenge';
       if (ch.id !== a.challengeId) return 'challengeMismatch';
-      if (ch.kind === 'layout')
+      if (ratedKind(ch.kind))
         return typeof a.outcome === 'number' && Number.isFinite(a.outcome) ? null : 'invalidOutcome';
       return typeof a.outcome === 'boolean' ? null : 'invalidOutcome';
     },

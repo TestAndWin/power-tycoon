@@ -197,7 +197,7 @@ describe('build with minigame challenges', () => {
     s = ok(s.state, { type: 'minigameResult', challengeId: s.challenge!.id, outcome: true });
     expect(site(s.state, 'nd0')).toMatchObject({ built: true, fail: false, invested: 20e6 });
   });
-  it('solar only has a layout, batteries build without minigame', () => {
+  it('solar only has a layout, storages have the schedule, hydro builds without minigame', () => {
     const g = newGame();
     setupSite(g, 'ib0', 0, 'approved', 'solar');
     setupSite(g, 'ib1', 0, 'approved', 'batt');
@@ -207,8 +207,17 @@ describe('build with minigame challenges', () => {
     const s2 = ok(s.state, { type: 'minigameResult', challengeId: s.challenge!.id, outcome: 0.5 });
     expect(site(s2.state, 'ib0')).toMatchObject({ built: true, eff: 0.8 });
     const b = ok(s2.state, { type: 'build', siteId: 'ib1' });
-    expect(b.challenge).toBeNull();
-    expect(site(b.state, 'ib1')).toMatchObject({ built: true, eff: 1 });
+    expect(b.challenge!.kind).toBe('storage');
+    fails(b.state, { type: 'minigameResult', challengeId: b.challenge!.id, outcome: true }, 'invalidOutcome');
+    const b2 = ok(b.state, { type: 'minigameResult', challengeId: b.challenge!.id, outcome: 1.2 });
+    expect(b2.state.challenge).toBeNull();
+    expect(site(b2.state, 'ib1')).toMatchObject({ built: true, eff: 1.15 });
+    const h = newGame();
+    const x = setupSite(h, 'al0', 0, 'approved', 'hydro');
+    x.hydro = true;
+    const hb = ok(h, { type: 'build', siteId: 'al0' });
+    expect(hb.challenge).toBeNull();
+    expect(site(hb.state, 'al0')).toMatchObject({ built: true, eff: 1 });
   });
   it('autoMinigames resolves challenges in the engine', () => {
     const g = newGame(42, true);

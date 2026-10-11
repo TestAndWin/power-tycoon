@@ -81,6 +81,7 @@ export function swapKeepingScenes(el: HTMLElement, html: string): void {
 /** Finds all scene canvases on the page (call after every render). */
 export function registerScenes(): void {
   SC.length = 0;
+  const fresh: Scene[] = [];
   document.querySelectorAll<HTMLCanvasElement>('canvas[data-scene]').forEach((cv) => {
     const W = cv.clientWidth,
       H = cv.clientHeight;
@@ -89,18 +90,22 @@ export function registerScenes(): void {
       cw = Math.round(W * d),
       ch = Math.round(H * d);
     // setting the size clears the canvas, so only touch it when it really changed (kept canvases stay drawn)
+    const cleared = cv.width !== cw || cv.height !== ch;
     if (cv.width !== cw) cv.width = cw;
     if (cv.height !== ch) cv.height = ch;
     const ctx = cv.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(d, 0, 0, d, 0, 0);
     SC.push({ cv, ctx, W, H, r: cv.dataset.scene as Frame['r'], mini: !!cv.dataset.mini });
+    if (cleared) fresh.push(SC[SC.length - 1]!);
   });
   readCols();
   if (RMO) {
     SC.forEach((sc) => drawScene(sc, 0));
     return;
   }
+  // a new or resized canvas is blank until the loop draws it, and the loop pauses in a hidden tab
+  for (const sc of fresh) drawScene(sc, (performance.now() - T0) / 1000);
   if (!raf) raf = requestAnimationFrame(loop);
 }
 

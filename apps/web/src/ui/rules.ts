@@ -12,7 +12,7 @@ const RULES: [string, string][] = [
   ],
   [
     'Vom Acker zum Kraftwerk',
-    'Erkunden zeigt Wind, Sonne und Wasser einer Fläche. Dann pachten, eine Genehmigung für Kraftwerkstyp und Größe beantragen (die Behörde kann ablehnen – je voller die Region, desto öfter), bauen und ans Netz anschließen. Erst am Netz verdient ein Kraftwerk Geld. Netzkapazität ist pro Region knapp – wird es eng, kommt es zum Kabelduell mit einem Rivalen.',
+    'Erkunden zeigt Wind, Sonne und Wasser einer Fläche. Die Pacht folgt einer Schätzung des Ertrags – echte Glücksfunde und Nieten zeigt erst das Erkunden. Dann pachten, eine Genehmigung für Kraftwerkstyp und Größe beantragen (die Behörde kann ablehnen – je voller die Region, desto öfter), bauen und ans Netz anschließen. Erst am Netz verdient ein Kraftwerk Geld. Netzkapazität ist pro Region knapp – wird es eng, kommt es zum Kabelduell mit einem Rivalen.',
   ],
   [
     'Geld',
@@ -37,7 +37,7 @@ export function showRules(back: 'closeModal' | 'rulesBack'): void {
   openModal(
     `<article class="paper rules"><div class="mast"><h2>SPIELREGELN</h2></div>
     ${RULES.map(([h, t]) => `<section><h3>${h}</h3><p>${t}</p></section>`).join('')}</article>
-    <div class="foot"><button class="btn primary" data-act="${back}">${back === 'rulesBack' ? '← Zurück' : 'Verstanden'}</button></div>`,
+    <div class="foot sticky"><button class="btn primary" data-act="${back}">${back === 'rulesBack' ? '← Zurück' : 'Verstanden'}</button></div>`,
     { wide: true },
   );
 }

@@ -11,7 +11,7 @@ export type PlantSize = 'std' | 'large';
 export type DetectiveLevel = 'basic' | 'pro';
 export type PermitState = 'pending' | 'approved' | 'rejected' | null;
 export type GameOver = false | 'bankrupt' | 'time' | 'monopoly';
-export type ChallengeKind = 'layout' | 'rotor' | 'cable' | 'frequency';
+export type ChallengeKind = 'layout' | 'storage' | 'rotor' | 'cable' | 'frequency';
 /** Board departments: project development, grid & engineering, trading, legal & communication. */
 export type Department = 'dev' | 'grid' | 'trade' | 'law';
 export type ExecGrade = 'junior' | 'senior';
@@ -45,6 +45,8 @@ export interface Site {
   sun: number | null;
   hydro: boolean;
   lease: number;
+  /** What the owner paid for the lease (the mayor's offer is cheaper); missing in older saves: `lease`. */
+  leasePaid?: number;
   /** Set by a successful lawsuit: the pending permit will be rejected. Hidden from views. */
   killed: boolean;
   /**
@@ -109,6 +111,8 @@ export interface Player {
   hqPaid: number;
   /** Open decision card (dealt at the start of a quarter, decided by the default option at its end). */
   decision: DecisionCard | null;
+  /** Key of the last card dealt: the next card is a different one (missing in older saves). */
+  lastDecision?: DecisionKey;
   /** Discount on build costs from a supplier deal, valid until the end of turn `until`. */
   discount: { pct: number; until: number } | null;
   awards: Award[];
@@ -517,6 +521,8 @@ export interface SiteView {
     alt: { type: PlantType; left: number } | null;
     eff: number;
     invested: number;
+    /** What was paid for the lease. */
+    leasePaid: number;
     age: number;
     value: number;
     sellValue: number;
@@ -569,7 +575,10 @@ export interface DecisionOptionView {
   key: string;
   /** Price now (0 for free options). */
   cost: number;
-  /** Money the option brings for sure or if it works out. */
+  /**
+   * Money the option brings for sure or if it works out; for declining the heat-wave offer, the usual storage
+   * revenue of the quarter (an estimate).
+   */
   gain: number;
   /** Chance that a gamble works out (grant), the risk of a delay (citizens' protest), or null. */
   chance: number | null;

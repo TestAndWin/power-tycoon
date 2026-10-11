@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { createRng } from '@power-tycoon/engine';
 import { createCablePuzzle, E_, isConnected, powered, rotate, W_, type CablePuzzle } from '../src/minigames/cable.js';
 import { FrequencyControl } from '../src/minigames/frequency.js';
-import { LayoutField } from '../src/minigames/layout.js';
+import { CABLE_LOSS, LayoutField } from '../src/minigames/layout.js';
 import { RotorAssembly } from '../src/minigames/rotor.js';
+import { SLOTS, STORE_CAP, StorageSchedule } from '../src/minigames/storage.js';
 
 describe('layout', () => {
   it('is generated from the seed and limits the number of placements', () => {
@@ -19,24 +20,63 @@ describe('layout', () => {
     expect(a.toggle(free[0]!)).toBe(true); // removing is always possible
     expect(a.placed()).toBe(4);
   });
-  it('offshore has no blocked cells', () => {
-    expect(new LayoutField('offshore', createRng(3)).cells.some((c) => c.kind !== 'ok')).toBe(false);
+  it('offshore has no blocked cells, only the substation on the east edge', () => {
+    const f = new LayoutField('offshore', createRng(3));
+    expect(f.cells.filter((c) => c.kind !== 'ok')).toEqual([f.at(f.cols - 1, f.sub.r)]);
+    expect(f.at(f.sub.c, f.sub.r).kind).toBe('sub');
+    expect(f.toggle(f.cells.indexOf(f.at(f.sub.c, f.sub.r)))).toBe(false);
+  });
+  it('the cable to the substation costs yield with the distance', () => {
+    const f = new LayoutField('onshore', createRng(7));
+    const near = f.cells.indexOf(f.at(f.sub.c - 1, f.sub.r));
+    expect(f.yieldOf(near)).toBeCloseTo(f.cells[near]!.v * (1 - CABLE_LOSS));
+    const far = f.cells.indexOf(f.at(0, f.sub.r));
+    expect(f.yieldOf(far)).toBeCloseTo(f.cells[far]!.v * (1 - CABLE_LOSS * (f.cols - 1)));
   });
   it('wake and shading cost yield; the score stays within 0.80 … 1.15', () => {
     const wind = new LayoutField('offshore', createRng(5));
     wind.toggle(wind.cells.indexOf(wind.at(1, 2)));
     const behind = wind.cells.indexOf(wind.at(2, 2));
-    expect(wind.yieldOf(behind)).toBeCloseTo(wind.at(2, 2).v * 0.72);
+    expect(wind.yieldOf(behind)).toBeCloseTo(wind.at(2, 2).v * wind.cable(wind.at(2, 2)) * 0.72);
     expect([...wind.wake()]).toEqual(['2,2', '3,2', '4,2']);
     const sun = new LayoutField('solar', createRng(5));
     const k = sun.cells.findIndex((c) => c.r === 1 && c.kind === 'ok' && sun.at(c.c, 2).kind === 'ok');
     const south = sun.cells.indexOf(sun.at(sun.cells[k]!.c, 2));
     sun.toggle(south);
-    expect(sun.yieldOf(k)).toBeCloseTo(sun.cells[k]!.v * 0.78);
+    expect(sun.yieldOf(k)).toBeCloseTo(sun.cells[k]!.v * sun.cable(sun.cells[k]!) * 0.78);
     for (const field of [wind, sun]) {
       expect(field.score()).toBeGreaterThanOrEqual(0.8);
       expect(field.score()).toBeLessThanOrEqual(1.15);
     }
+  });
+});
+
+describe('storage schedule', () => {
+  it('is generated from the seed; the storage must not run empty or overfull', () => {
+    const a = new StorageSchedule(0.85, 'ib', createRng(1));
+    expect(a.prices).toEqual(new StorageSchedule(0.85, 'ib', createRng(1)).prices);
+    expect(a.prices).toHaveLength(SLOTS);
+    expect(a.cycle(0)).toBe('charge');
+    expect(a.cycle(0)).toBe('discharge');
+    expect(a.firstError()).toBe(0);
+    expect(a.score()).toBe(0.8);
+    expect(a.cycle(0)).toBe('idle');
+    for (let k = 0; k <= STORE_CAP; k++) a.cycle(k);
+    expect(a.firstError()).toBe(STORE_CAP);
+  });
+  it('buying cheap and selling dear pays; the best plan gives 1.15', () => {
+    const m = new StorageSchedule(1, 'nd', createRng(2));
+    const cheap = m.prices.indexOf(Math.min(...m.prices));
+    const dear = m.prices.indexOf(Math.max(...m.prices.slice(cheap + 1)), cheap + 1);
+    m.cycle(cheap);
+    m.cycle(dear);
+    m.cycle(dear);
+    expect(m.profit()).toBe(m.prices[dear]! - m.prices[cheap]!);
+    expect(m.profit()).toBeLessThanOrEqual(m.best);
+    expect(m.score()).toBeGreaterThanOrEqual(0.8);
+    expect(m.score()).toBeLessThan(1.15);
+    // the storage holds more than one charge: a single trade leaves profit on the table
+    expect(m.best).toBeGreaterThan(m.profit());
   });
 });
 

@@ -195,6 +195,8 @@ export function miniCable(x: SiteView, R: Random, ch?: Challenge): Promise<boole
         clearInterval(iv);
         return;
       }
+      // the clock (and the rival) wait while the tab is in the background
+      if (document.hidden) return;
       left -= 0.25;
       $('#pBar')!.style.width = (rival ? 1 - left / T : left / T) * 100 + '%';
       $('#pT')!.textContent = Math.ceil(left) + ' s';

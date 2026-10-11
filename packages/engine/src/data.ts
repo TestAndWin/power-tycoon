@@ -246,8 +246,8 @@ export const SITE_YIELD = {
   /** Chance per resource of a lucky find, and its value as a factor of the range's upper end. */
   lucky: 1 / 12,
   luckyFactor: [1.05, 1.12] as [number, number],
-  /** Max. error of the quality estimate (0–1) the lease is based on. */
-  leaseNoise: 0.3,
+  /** Max. error of the quality estimate (0–1) the lease is based on (play test: 0.3 made the lease meaningless). */
+  leaseNoise: 0.15,
 };
 /**
  * Crowded regions meet more resistance: the rejection chance of a permit grows by this much per 100 MW of

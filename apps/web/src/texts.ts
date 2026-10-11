@@ -283,7 +283,8 @@ export function reportLineText(l: ReportLine): string {
     case 'ppa':
       return 'PPA ' + l.buyer + (l.shortfall > 0 ? ' (Fehlmenge ' + mwh(l.shortfall) + ' zugekauft)' : '');
     case 'spot':
-      return 'Börsenverkauf (' + mwh(l.mwh) + ')';
+      // the realised price: solar sells below the spot price when many parks feed in at noon
+      return 'Börsenverkauf (' + mwh(l.mwh) + (l.mwh > 0 ? ' zu Ø ' + eur(l.amount / l.mwh) : '') + ')';
     case 'storage':
       return l.source === 'own'
         ? 'Speicher: eigenen Strom später verkauft (' + mwh(l.mwh) + ')'
@@ -808,7 +809,7 @@ export function decisionEffect(view: PlayerView, d: DecisionView, o: DecisionVie
     case 'heatwave':
       return o.key === 'join'
         ? `+${money(o.gain)} fest. Deine Speicher verdienen dieses Quartal sonst nichts.`
-        : 'Deine Speicher handeln wie gewohnt am Markt.';
+        : `Deine Speicher handeln wie gewohnt am Markt: voraussichtlich etwa ${money(o.gain)}, je nach Wetter und Spread.`;
     case 'grant':
       if (o.key === 'skip') return 'Kein Aufwand, kein Geld.';
       return `${Math.round((o.chance ?? 0) * 100)} % Chance auf ${money(o.gain)}.`;

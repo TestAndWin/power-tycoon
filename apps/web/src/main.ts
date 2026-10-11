@@ -150,7 +150,12 @@ function react(events: GameEvent[]): void {
         if (UI.folder === 'decision') UI.folder = null;
         if (UI.tab === 'decision') UI.tab = 'overview';
         SND.stamp();
-        toast(decisionResultText(v, e));
+        // a decision with a chance gets its outcome as a dialog, a toast is too easy to miss
+        if (e.success !== undefined)
+          openModal(
+            `<h2>${e.success ? 'Gute Nachricht' : 'Leider nicht'}</h2><p style="margin:0">${decisionResultText(v, e)}</p><div class="foot"><button class="btn primary" data-act="closeModal">OK</button></div>`,
+          );
+        else toast(decisionResultText(v, e));
         break;
       case 'trickFailed':
         openModal(

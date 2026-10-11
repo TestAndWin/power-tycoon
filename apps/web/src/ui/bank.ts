@@ -17,7 +17,7 @@ export function vBank(): string {
     free = Math.max(0, lim - P.loan);
   return `<div class="grid g2e"><section class="panel stack"><h2>Hausbank</h2>
     <dl class="facts"><dt>Kasse</dt><dd class="${P.cash < 0 ? 'down' : ''}">${money(P.cash)}</dd><dt>Kredit</dt><dd>${money(P.loan)}</dd><dt>Kreditrahmen</dt><dd>${money(lim)}</dd><dt>Noch verfügbar</dt><dd>${money(free)}</dd><dt>Zinssatz</dt><dd>${pct(v.me.interest)} / Quartal</dd><dt>Zinslast</dt><dd>${money(P.loan * v.me.interest)} / Quartal</dd></dl>
-    <p class="muted" style="margin:0">Bis ${pct(INTEREST_FREE_SHARE)} des Rahmens zahlst du ${pct(C.interest)}. Nutzt du mehr, wird der ganze Kredit teurer: ${pct(rateFor(lim * 0.75, lim))} bei drei Vierteln, ${pct(C.interest + C.interestRisk)} bei vollem Rahmen.${free > 0 ? ` Schöpfst du den Rahmen aus, zahlst du ${money(lim * rateFor(lim, lim), true)} Zinsen je Quartal.` : ''}</p>
+    <p class="muted" style="margin:0">Du nutzt ${pctOf(lim > 0 ? P.loan / lim : 0, 0)} deines Rahmens. Bis ${pct(INTEREST_FREE_SHARE)} zahlst du ${pct(C.interest)}. Darüber steigt der Zins stufenlos für den ganzen Kredit, je voller der Rahmen, desto steiler: ${pct(rateFor(lim * 0.75, lim))} bei drei Vierteln, ${pct(C.interest + C.interestRisk)} bei vollem Rahmen. Der Rahmen wird jedes Quartal neu berechnet, dein Zinssatz ändert sich also mit ihm.${free > 0 ? ` Schöpfst du den Rahmen aus, zahlst du ${money(lim * rateFor(lim, lim), true)} Zinsen je Quartal.` : ''}</p>
     <div class="row">${borrowButtons(free)}</div>
     <div class="row">${repayButtons(P.loan)}</div>
   </section><section class="panel stack"><h3 style="margin-bottom:0">So setzt sich dein Rahmen zusammen</h3>

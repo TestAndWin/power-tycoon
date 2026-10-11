@@ -365,7 +365,7 @@ export function miniRotor(x: SiteView, R: Random): Promise<boolean> {
     const ctx = setupCanvas($<HTMLCanvasElement>('#mg')!, W, H);
     const m = new RotorAssembly(off, R);
     const act = () => {
-      if (m.release()) SND.whoosh();
+      if (!loop.paused() && m.release()) SND.whoosh();
     };
     $<HTMLButtonElement>('#bSet')!.onclick = act;
     const unlisten = listenKeys({

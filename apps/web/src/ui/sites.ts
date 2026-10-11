@@ -169,7 +169,9 @@ function detail(): string {
   const band = own
     ? `<div class="oband" style="--oc:${playerColor(x.owner)}">${crest(x.owner, 34)}<span><span class="label">${mine ? 'Deine Fläche' : 'Gepachtet von'}</span><b>${esc(o!.name)}</b></span></div>`
     : `<div class="oband free"><i class="mb"></i><span><span class="label">Freie Fläche</span><b>Noch nicht verpachtet</b></span></div>`;
-  let f = `<dt>Region</dt><dd>${REGION_TEXT[x.r].name}</dd><dt>Pacht</dt><dd>${money(x.lease)}</dd>`;
+  // an own site shows what was paid (the mayor's offer is cheaper than the list price)
+  const paid = mine && x.own ? x.own.leasePaid : x.lease;
+  let f = `<dt>Region</dt><dd>${REGION_TEXT[x.r].name}</dd><dt>Pacht</dt><dd>${money(paid)}${paid !== x.lease ? ` <small class="muted">(Vorzugspreis, Liste ${money(x.lease, true)})</small>` : ''}</dd>`;
   if (x.known) {
     if (x.wind != null) f += `<dt>Windgeschwindigkeit</dt><dd>${x.wind.toLocaleString('de-DE')} m/s</dd>`;
     if (x.sun != null) f += `<dt>Globalstrahlung</dt><dd>${x.sun} kWh/kWp</dd>`;

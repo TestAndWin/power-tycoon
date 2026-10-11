@@ -5,7 +5,7 @@ import { SND } from '../sound.js';
 import { $ } from '../state.js';
 import { siteName } from '../texts.js';
 import { resultBox } from './common.js';
-import { HOUSE, PANEL, TREES, TURBINE } from './icons.js';
+import { HOUSE, PANEL, SUBSTATION, TREES, TURBINE } from './icons.js';
 
 export type LayoutKind = 'solar' | 'onshore' | 'offshore';
 
@@ -14,13 +14,19 @@ export interface LayoutCell {
   r: number;
   /** Relative yield (wind or sun) of the cell. */
   v: number;
-  kind: 'ok' | 'block' | 'shade';
+  kind: 'ok' | 'block' | 'shade' | 'sub';
   on: boolean;
 }
 
+/** Yield lost in the cable per field of distance to the substation. */
+export const CABLE_LOSS = 0.02;
+/** Share of the best possible yield that still counts as the worst layout (0.80); the best one gives 1.15. */
+const SCORE_FLOOR = 0.7;
+
 /**
  * The playing field and its rules: solar fields shade the field north of them, turbines slow down the
- * three fields east of them (wake) and a little the fields above and below.
+ * three fields east of them (wake) and a little the fields above and below. Every unit loses yield in the
+ * cable to the substation on the east edge, the more the farther away it stands.
  */
 export class LayoutField {
   readonly cols = 8;
@@ -28,7 +34,9 @@ export class LayoutField {
   /** Number of turbines or fields to place. */
   readonly need: number;
   readonly cells: LayoutCell[] = [];
-  /** Sum of the best values (upper bound for the score). */
+  /** The substation (east edge): it collects the power, nothing can be placed there. */
+  readonly sub: { c: number; r: number };
+  /** Sum of the best values after cable losses, without wake or shade (upper bound for the score). */
   private readonly ideal: number;
 
   constructor(
@@ -54,9 +62,11 @@ export class LayoutField {
         }
         this.cells.push({ c, r, v: clamp(v, 0.4, 1.12), kind, on: false });
       }
+    this.sub = { c: this.cols - 1, r: Math.floor(R() * this.rows) };
+    this.at(this.sub.c, this.sub.r).kind = 'sub';
     this.ideal = this.cells
-      .filter((t) => t.kind !== 'block')
-      .map((t) => t.v)
+      .filter((t) => t.kind !== 'block' && t.kind !== 'sub')
+      .map((t) => t.v * this.cable(t))
       .sort((a, b) => b - a)
       .slice(0, this.need)
       .reduce((a, b) => a + b, 0);
@@ -73,16 +83,21 @@ export class LayoutField {
   /** Places or removes at cell `k`; false if that is not possible (blocked, or all placed). */
   toggle(k: number): boolean {
     const t = this.cells[k]!;
-    if (t.kind === 'block') return false;
+    if (t.kind === 'block' || t.kind === 'sub') return false;
     if (!t.on && this.placed() >= this.need) return false;
     t.on = !t.on;
     return true;
   }
 
-  /** Yield of cell `k` including shading or wake losses. */
+  /** Share of the yield of cell `t` that arrives at the substation. */
+  cable(t: Pick<LayoutCell, 'c' | 'r'>): number {
+    return 1 - CABLE_LOSS * (Math.abs(t.c - this.sub.c) + Math.abs(t.r - this.sub.r));
+  }
+
+  /** Yield of cell `k` including shading or wake losses and the cable to the substation. */
   yieldOf(k: number): number {
     const t = this.cells[k]!;
-    let y = t.v;
+    let y = t.v * this.cable(t);
     if (this.kind === 'solar') {
       const s = t.r + 1 < this.rows && this.at(t.c, t.r + 1).on;
       if (s) y *= 0.78;
@@ -99,7 +114,7 @@ export class LayoutField {
   /** Efficiency of the plant (0.80 … 1.15). */
   score(): number {
     const on = this.cells.map((t, k) => (t.on ? this.yieldOf(k) : 0)).reduce((a, b) => a + b, 0);
-    return clamp(0.8 + (0.35 * on) / this.ideal, 0.8, 1.15);
+    return 0.8 + 0.35 * clamp((on / this.ideal - SCORE_FLOOR) / (1 - SCORE_FLOOR), 0, 1);
   }
 
   /** Cells in the wake of a placed turbine ("c,r"). */
@@ -129,23 +144,35 @@ export function miniLayout(x: SiteView, R: Random): Promise<number> {
     };
     openModal(
       `<h2>Standortsuche · ${siteName(x)}</h2>
-      <p class="muted" style="margin:0">${solar ? `Platziere ${N} Modulfelder. Kräftigere Farben bekommen mehr Sonne. Grüne Felder mit Bäumen liegen im Schatten, graue sind Schutzgebiet. Ein Modulfeld direkt südlich (unterhalb) eines anderen verschattet dieses.` : `Platziere ${N} Windräder. Dunkleres Grün bedeutet mehr Wind. Der Wind kommt von Westen (links): Hinter jeder Anlage entsteht ein Nachlauf, der die nächsten drei Felder rechts davon bremst.${off ? '' : ' Auf Siedlungen darf nicht gebaut werden.'}`}</p>
+      <p class="muted" style="margin:0">${solar ? `Platziere ${N} Modulfelder. Kräftigere Farben bekommen mehr Sonne. Grüne Felder mit Bäumen liegen im Schatten, graue sind Schutzgebiet. Ein Modulfeld direkt südlich (unterhalb) eines anderen verschattet dieses.` : `Platziere ${N} Windräder. Dunkleres Grün bedeutet mehr Wind. Der Wind kommt von Westen (links): Hinter jeder Anlage entsteht ein Nachlauf, der die nächsten drei Felder rechts davon bremst.${off ? '' : ' Auf Siedlungen darf nicht gebaut werden.'}`} Jedes Feld Abstand zum Umspannwerk kostet ${Math.round(CABLE_LOSS * 100)} % Kabelverlust.</p>
       <div class="hud"><span>${solar ? 'Süden ↓' : 'Wind → von Westen'}</span><span id="lScore">Wirkungsgrad –</span><span id="lCnt">0/${N}</span></div>
       <div class="laywrap ${solar ? 'sunny' : 'windy'}"><div class="lay" id="lay" style="grid-template-columns:repeat(${C},minmax(0,1fr))"></div></div>
-      <div class="legend"><span><i class="lg" style="background:${col(0.75)}"></i>${solar ? 'wenig Sonne' : 'schwacher Wind'}</span><span><i class="lg" style="background:${col(1.1)}"></i>${solar ? 'viel Sonne' : 'starker Wind'}</span>${solar ? '<span><i class="lg" style="background:#7f9a7c"></i>Schatten</span>' : ''}${off ? '' : `<span><i class="lg block"></i>${solar ? 'Schutzgebiet' : 'Siedlung'}</span>`}${solar ? '' : '<span><i class="lg wakeL"></i>Nachlauf</span>'}</div>
+      <div class="legend"><span><i class="lg" style="background:${col(0.75)}"></i>${solar ? 'wenig Sonne' : 'schwacher Wind'}</span><span><i class="lg" style="background:${col(1.1)}"></i>${solar ? 'viel Sonne' : 'starker Wind'}</span>${solar ? '<span><i class="lg" style="background:#7f9a7c"></i>Schatten</span>' : ''}${off ? '' : `<span><i class="lg block"></i>${solar ? 'Schutzgebiet' : 'Siedlung'}</span>`}${solar ? '' : '<span><i class="lg wakeL"></i>Nachlauf</span>'}<span><i class="lg sub"></i>Umspannwerk</span></div>
       <div class="foot"><button class="btn primary big" id="lOk" disabled>Layout übernehmen</button></div>`,
       { locked: true, minigame: true },
     );
     const lay = $('#lay')!;
     const icon = (t: LayoutCell) =>
-      t.on ? (solar ? PANEL : TURBINE) : t.kind === 'block' ? (solar ? TREES : HOUSE) : t.kind === 'shade' ? TREES : '';
+      t.on
+        ? solar
+          ? PANEL
+          : TURBINE
+        : t.kind === 'sub'
+          ? SUBSTATION
+          : t.kind === 'block'
+            ? solar
+              ? TREES
+              : HOUSE
+            : t.kind === 'shade'
+              ? TREES
+              : '';
     function draw(): void {
       const n = field.placed();
       const wake = field.wake();
       lay.innerHTML = cells
         .map(
           (t, k) =>
-            `<button class="lc ${t.kind === 'block' ? 'block' : ''} ${t.kind === 'shade' ? 'shade' : ''} ${off ? 'sea' : ''} ${wake.has(t.c + ',' + t.r) && !t.on ? 'wake' : ''} ${t.on ? 'on' : ''}" data-k="${k}" style="--bg:${t.kind === 'shade' ? '#7f9a7c' : col(t.v)}" aria-label="Feld ${t.c + 1},${t.r + 1}${t.on ? ' belegt' : ''}${t.kind === 'block' ? ' gesperrt' : ''}" ${t.kind === 'block' ? 'disabled' : ''}>${icon(t)}</button>`,
+            `<button class="lc ${t.kind === 'block' ? 'block' : ''} ${t.kind === 'sub' ? 'sub' : ''} ${t.kind === 'shade' ? 'shade' : ''} ${off ? 'sea' : ''} ${wake.has(t.c + ',' + t.r) && !t.on ? 'wake' : ''} ${t.on ? 'on' : ''}" data-k="${k}" style="--bg:${t.kind === 'shade' ? '#7f9a7c' : col(t.v)}" aria-label="Feld ${t.c + 1},${t.r + 1}${t.on ? ' belegt' : ''}${t.kind === 'block' ? ' gesperrt' : ''}${t.kind === 'sub' ? ' Umspannwerk' : ''}" title="${t.kind === 'sub' ? 'Umspannwerk' : `Kabelverlust ${Math.round((1 - field.cable(t)) * 100)} %`}" ${t.kind === 'block' || t.kind === 'sub' ? 'disabled' : ''}>${icon(t)}</button>`,
         )
         .join('');
       $('#lCnt')!.textContent = n + '/' + N;

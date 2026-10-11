@@ -111,6 +111,7 @@ export function miniFreq(x: SiteView, R: Random): Promise<boolean> {
     const ctx = setupCanvas($<HTMLCanvasElement>('#mg')!, W, H);
     const m = new FrequencyControl(R);
     const start = () => {
+      if (loop.paused()) return;
       m.run = true;
       const b = $<HTMLButtonElement>('#fGo')!;
       b.disabled = true;

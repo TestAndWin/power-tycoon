@@ -167,6 +167,26 @@ describe('detectives', () => {
   });
 });
 
+describe('quarter report order', () => {
+  it('a rival lawsuit comes before the permit decision it caused', async () => {
+    const sue: OpponentStrategy = { decide: async () => [{ type: 'lobby', trick: 'klage', siteId: 'nd0' }] };
+    let found = false;
+    for (let seed = 1; seed <= 300 && !found; seed++) {
+      const g = giveIntel(newGame(seed), 1, 0);
+      const x = setupSite(g, 'nd0', 0, 'approved', 'wind');
+      x.permit = 'pending';
+      x.permitLeft = 1;
+      const { report } = await endQuarter(g, [sue]);
+      const trick = report.events.findIndex((e) => e.type === 'trickSucceeded');
+      const decided = report.events.findIndex((e) => e.type === 'permitDecided' && e.siteId === 'nd0');
+      if (trick < 0 || decided < 0) continue;
+      found = true;
+      expect(trick).toBeLessThan(decided);
+    }
+    expect(found).toBe(true);
+  });
+});
+
 describe('detectives – review fixes', () => {
   it('rivals hiring at the end of the quarter get four quarters against the human as well', async () => {
     // the rival hires in its turn at the end of quarter 0, after the human has acted

@@ -366,6 +366,7 @@ export function resetSite(x: Site): void {
     offline: 0,
     rejectMod: 0,
     suedTurn: undefined,
+    leasePaid: undefined,
   });
 }
 

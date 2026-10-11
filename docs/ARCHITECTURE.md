@@ -206,19 +206,20 @@ Build and grid connection depend on skill minigames that run in the browser
 They become two-step actions:
 
 1. The player sends e.g. `build`. The engine charges the cost and returns a **challenge**
-   `{ id, kind: 'layout' | 'rotor' | 'cable' | 'frequency', siteId, seed }`. The challenge is stored in the state.
+   `{ id, kind: 'layout' | 'storage' | 'rotor' | 'cable' | 'frequency', siteId, seed }`. The challenge is stored in the state.
 2. The client plays the minigame (field generated from `seed`) and sends
    `minigameResult { challengeId, outcome }`. The engine clamps the outcome
-   (`layout`: efficiency 0.80–1.15, others: boolean) and continues the flow
-   (wind build: layout → rotor; failed rotor ⇒ `fail = true`, etc.).
+   (`layout` and `storage`: efficiency 0.80–1.15, others: boolean) and continues the flow
+   (wind build: layout → rotor; failed rotor ⇒ `fail = true`; storage build: the charging schedule `storage`,
+   not in the legacy game; run-of-river hydro has no minigame).
 
 Rules:
 - While a challenge is open, only `minigameResult` is accepted; `end-quarter` is rejected.
 - After a reload the client gets the open challenge in the view and restarts the minigame.
 - With `autoMinigames: true` (and always for rivals) the engine resolves challenges itself with the
-  legacy probabilities (layout `rand(.9, 1.08)`, wind assembly 80 %, grid 85 %, frequency 62 %); the view shows
+  legacy probabilities (layout and storage `rand(.9, 1.08)`, wind assembly 80 %, grid 85 %, frequency 62 %); the view shows
   these odds to such a player (`PlayerView.autoOdds`), so the web app can put them next to the buttons.
-  Rivals play like a practised human (`AUTO_MINIGAME_HARD`: layout `rand(1, 1.15)`, assembly and
+  Rivals play like a practised human (`AUTO_MINIGAME_HARD`: layout and storage `rand(1, 1.15)`, assembly and
   grid 95 %, frequency 85 %). A human who wins every minigame earns about 16 % more per plant, which
   compounds to roughly +50 % net worth over the game.
 - Minigame results are **trusted** from the client (clamped only). Acceptable, because a player can only

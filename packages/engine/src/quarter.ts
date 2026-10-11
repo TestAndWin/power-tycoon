@@ -390,6 +390,8 @@ export async function endQuarter(
   const reportQ = g.q;
 
   applyWorldEvents(g, events);
+  // the rivals act after the world events and before permits are decided: their tricks go in between
+  const worldEvents = events.length;
   updateSpread(g);
   const price = g.price * g.fx!.price;
   expireReservations(g);
@@ -422,7 +424,9 @@ export async function endQuarter(
     q: reportQ,
     lines,
     events: eventsForViewer(
-      [...events, ...confrontations].filter((e) => concerns(e, human)),
+      [...events.slice(0, worldEvents), ...confrontations, ...events.slice(worldEvents)].filter((e) =>
+        concerns(e, human),
+      ),
       human,
     ),
     gen: P.genLast,

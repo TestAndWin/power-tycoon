@@ -178,6 +178,7 @@ export function playerView(g: GameState, pid: PlayerId): PlayerView {
         alt: x.alt ?? null,
         eff: x.eff,
         invested: x.invested,
+        leasePaid: x.leasePaid ?? x.lease,
         age: x.age,
         value: Math.round(siteValue(x)),
         sellValue: sellValue(x),

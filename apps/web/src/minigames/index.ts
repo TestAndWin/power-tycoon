@@ -7,9 +7,11 @@ import { miniCable } from './cable.js';
 import { miniFreq } from './frequency.js';
 import { miniLayout } from './layout.js';
 import { miniRotor } from './rotor.js';
+import { miniStorage } from './storage.js';
 
 const GAMES: Record<ChallengeKind, (x: SiteView, R: Random, ch: Challenge) => Promise<number | boolean>> = {
   layout: miniLayout,
+  storage: miniStorage,
   rotor: miniRotor,
   cable: miniCable,
   frequency: miniFreq,

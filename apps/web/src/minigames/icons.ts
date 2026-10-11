@@ -7,3 +7,5 @@ export const TREES =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="13" cy="21" rx="8" ry="1.6" fill="rgba(0,0,0,.25)"/><rect x="7.3" y="14" width="1.4" height="6" fill="#5b4632"/><circle cx="8" cy="11" r="5" fill="#2f6b34"/><rect x="15.3" y="15" width="1.4" height="5" fill="#5b4632"/><circle cx="16" cy="12" r="4" fill="#3d7d3a"/></svg>';
 export const PANEL =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h18l-3 10H0z" transform="translate(1.5 0)" fill="#1d3a8a" stroke="#fff" stroke-width="1.2"/><path d="M8 8 6 18M14 8l-2 10M5 13h15" stroke="#9fb5ea" stroke-width=".9"/></svg>';
+export const SUBSTATION =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="22" rx="8" ry="1.4" fill="rgba(0,0,0,.25)"/><path d="M6 21V8l6-4 6 4v13z" fill="#8b949e" stroke="#2b3430" stroke-width=".8"/><path d="M11 9l3 4h-2.5l2.5 5" stroke="#E3A008" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>';

@@ -6,7 +6,7 @@
 import { DECISION_CHANCE, DECISION_DATA, DECISIONS, HQ_LEVELS, type DecisionOptionDef } from './data.js';
 import { emit } from './events.js';
 import { pick, randomOf } from './rng.js';
-import { execSalary, isStore, producing, siteById, storeCapacity } from './rules.js';
+import { execSalary, genEstimate, isStore, producing, siteById, storeCapacity, storeIncome } from './rules.js';
 import type {
   DecisionCard,
   DecisionKey,
@@ -41,6 +41,14 @@ export const heatwavePay = (g: GameState, p: Player): number =>
     (ownStores(g, p).reduce((s, x) => s + storeCapacity(x) * g.spread, 0) * DECISION_DATA.heatwave.pay) / 1e4,
   ) * 1e4;
 
+/** What the own storages of `p` would earn this quarter at the market (estimate from the usual generation). */
+export function heatwaveUsual(g: GameState, p: Player): number {
+  const gen = new Map<string, number>();
+  for (const x of ownSites(g, p)) if (producing(x) && x.type && !isStore(x.type)) gen.set(x.id, genEstimate(g, x));
+  const inc = storeIncome(g, gen, ownStores(g, p));
+  return Math.round([...inc.values()].reduce((s, i) => s + i.own + i.market, 0) / 1e4) * 1e4;
+}
+
 /** The card `key` for player `p` if its condition holds now (with the site or board member it is about). */
 function cardFor(g: GameState, p: Player, key: DecisionKey): DecisionCard | null {
   const r = randomOf(g);
@@ -71,7 +79,9 @@ export function dealDecisions(g: GameState, out: GameEvent[]): void {
     if (p.out || p.decision) continue;
     const r = randomOf(g);
     if (r() >= DECISION_CHANCE) continue;
+    // never the same card twice in a row
     const cards = (Object.keys(DECISIONS) as DecisionKey[])
+      .filter((k) => k !== p.lastDecision)
       .map((k) => cardFor(g, p, k))
       .filter((c): c is DecisionCard => c !== null);
     const total = cards.reduce((s, c) => s + DECISIONS[c.key].weight, 0);
@@ -79,6 +89,7 @@ export function dealDecisions(g: GameState, out: GameEvent[]): void {
     const card = cards.find((c) => (n -= DECISIONS[c.key].weight) <= 0);
     if (!card) continue;
     p.decision = card;
+    p.lastDecision = card.key;
     emit(g, out, {
       type: 'decisionOffered',
       playerId: p.id,
@@ -113,7 +124,7 @@ function optionNumbers(
       if (o.key === 'frame') return { ...none, cost: D.supplier.frame.cost };
       return none;
     case 'heatwave':
-      return o.key === 'join' ? { ...none, gain: heatwavePay(g, p) } : none;
+      return { ...none, gain: o.key === 'join' ? heatwavePay(g, p) : heatwaveUsual(g, p) };
     case 'grant':
       if (o.key === 'apply') return { cost: D.grant.apply.cost, gain: D.grant.amount, chance: D.grant.apply.chance };
       if (o.key === 'lobbyist')
@@ -238,6 +249,7 @@ export function applyDecision(
     case 'mayor':
       if (key === 'lease' && x && x.owner < 0) {
         x.owner = p.id;
+        x.leasePaid = cost;
         emit(g, out, { type: 'siteLeased', playerId: p.id, siteId: x.id, amount: cost });
       }
       break;

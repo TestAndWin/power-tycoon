@@ -341,8 +341,10 @@ function drawSparks(fr: Frame, sp: Spot): void {
 
 /** Two onshore turbines or one offshore turbine on its foundation. */
 function drawWind(fr: Frame, sp: Spot): void {
-  const { x, st, u, bx, by, spin } = sp;
-  const h = u * (st === 'off' ? 0.9 : 0.68);
+  const { x, st, u, bx, by, spin, qd } = sp;
+  // on the site map the turbines stay short enough not to seem to stand on the plot behind
+  const depth = (qd.y1 - qd.y0) * (st === 'off' ? 1.3 : 1.15);
+  const h = Math.min(u * (st === 'off' ? 0.9 : 0.68), fr.mini ? Infinity : depth);
   const large = x.size === 'large';
   if (st === 'wind') {
     // a large park has a third turbine in the back
