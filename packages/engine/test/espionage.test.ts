@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyAction, DETECTIVES, endQuarter, playerView, SPY_COST, TRICK_CAUGHT, TRICKS } from '../src/index.js';
+import type { OpponentStrategy } from '../src/index.js';
 import { fails, giveIntel, newGame, ok, setupSite, site } from './helpers.js';
 
 describe('spy reports', () => {
@@ -143,6 +144,24 @@ describe('detectives', () => {
       expect(playerView(r.state, 0).news.find((n) => n.event.type === 'trickSucceeded')!.event).toMatchObject({
         actorId: 1,
       });
+    }
+    expect(found).toBe(true);
+  });
+  it('the quarter report books the damages a rival caught tricking the player pays', async () => {
+    const hacker: OpponentStrategy = { decide: async () => [{ type: 'lobby', trick: 'hack', siteId: 'nd0' }] };
+    let found = false;
+    for (let seed = 1; seed <= 200 && !found; seed++) {
+      const g = giveIntel(newGame(seed), 1, 0);
+      setupSite(g, 'nd0', 0, 'operating', 'wind');
+      g.players[0]!.detectives = { level: 'pro', until: 3 };
+      const { report } = await endQuarter(g, [hacker]);
+      const e = report.events.find((e) => e.type === 'trickSucceeded' || e.type === 'trickFailed');
+      if (!e || !e.caught) {
+        expect(report.lines.some((l) => l.kind === 'damages')).toBe(false);
+        continue;
+      }
+      found = true;
+      expect(report.lines).toContainEqual({ kind: 'damages', amount: TRICKS.hack.damages });
     }
     expect(found).toBe(true);
   });

@@ -298,6 +298,8 @@ export function reportLineText(l: ReportLine): string {
       return 'Unterhalt Firmensitz';
     case 'interest':
       return l.rate ? `Kreditzinsen (${pct(l.rate, 2)} im Quartal)` : 'Kreditzinsen';
+    case 'damages':
+      return 'Schadensersatz (Gericht)';
   }
 }
 

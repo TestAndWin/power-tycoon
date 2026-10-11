@@ -412,6 +412,11 @@ export async function endQuarter(
 
   // confrontations by rivals concern their target as well
   const confrontations = rivals.events.filter(isConfrontation);
+  let damages = 0;
+  for (const e of confrontations)
+    if ((e.type === 'trickSucceeded' || e.type === 'trickFailed') && e.targetId === human && e.caught)
+      damages += e.damages ?? 0;
+  if (damages > 0) lines.push({ kind: 'damages', amount: damages });
   const report: QuarterReport = {
     year: reportYear,
     q: reportQ,

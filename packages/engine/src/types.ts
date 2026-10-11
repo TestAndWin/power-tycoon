@@ -427,7 +427,9 @@ export type ReportLine =
   | { kind: 'board'; amount: number }
   | { kind: 'hq'; amount: number }
   /** `rate`: interest rate of the quarter (missing in reports of older games). */
-  | { kind: 'interest'; amount: number; rate?: number };
+  | { kind: 'interest'; amount: number; rate?: number }
+  /** Damages a court awarded the player against rivals caught tricking them this quarter. */
+  | { kind: 'damages'; amount: number };
 
 export interface QuarterReport {
   /** The quarter this report covers. */
