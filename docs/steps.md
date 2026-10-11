@@ -302,6 +302,18 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
       380.1 → 392.9 M€, `smart --skilled` 403.1 → 409.3 M€ (seat 0 498.3 M€, 55 % → 522.9 M€, 62 %);
       5-year games unchanged. The quarter report lists the damages a caught rival pays as a line of its own
 
+- [x] Play-test (Claude in Chrome, 10 years): "Weiterspielen" is the main button of the start screen; the rules
+      keep their button in view; the report banner shows the cash balance, the spot line the realised price
+      (solar sells below the quarter's mean), rival lawsuits come before the permit decision they caused; the
+      bank explains the stepless interest; no decision card twice in a row, a grant's outcome as a dialog, the
+      heat-wave offer shows the usual storage revenue; the site file shows the lease paid. The lease follows
+      the yield estimate closer (±0.15, duds and lucky finds stay a guess). New storage minigame (charging
+      schedule against the day's prices, 0.80–1.15 like the layout); the layout got a substation with 2 %
+      cable loss per field (near-optimal play 1.13, picking the windiest fields about 1.00–1.09). Animated
+      minigames pause in a hidden tab. Offshore return per € is in line with onshore and solar (~21 %/year),
+      left as is. `pnpm simulate --seat0 smart --skilled`, 150 games, 10 years, before → after: seat 0
+      522.9 M€ (62 %) → 485.6 M€ (63 %), rivals 409.3 → 379.7 M€.
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)
