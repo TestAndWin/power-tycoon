@@ -813,7 +813,9 @@ export function decisionEffect(view: PlayerView, d: DecisionView, o: DecisionVie
     case 'poach': {
       const e = view.me.board.find((b) => b.dept === d.dept);
       if (o.key === 'release')
-        return e ? `${execName(e.dept, e.grade)} verlässt den Vorstand.` : 'Der Platz wird frei.';
+        return e
+          ? `${execName(e.dept, e.grade)} verlässt den Vorstand zum Quartalsende.`
+          : 'Der Platz wird zum Quartalsende frei.';
       return 'Das Vorstandsmitglied bleibt an Bord.';
     }
     case 'mayor': {

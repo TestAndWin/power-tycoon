@@ -468,7 +468,11 @@ const HANDLERS: { [K in ActionType]: Handler<ActionOf<K>> } = {
     },
   },
   fireExecutive: {
-    validate: ({ p, a }) => (boardMember(p, a.dept) ? null : 'invalidTarget'),
+    validate({ p, a }) {
+      const e = boardMember(p, a.dept);
+      // a poached member is leaving anyway: firing must not keep them available for a rehire
+      return !e ? 'invalidTarget' : e.leaving ? 'invalidState' : null;
+    },
     price: ({ g, p, a }) => execCost(g, boardMember(p, a.dept)!.grade).salary * EXEC_SEVERANCE,
     execute({ g, p, pid, a }, cost, out) {
       const e = boardMember(p, a.dept)!;

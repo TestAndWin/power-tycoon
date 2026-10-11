@@ -1263,6 +1263,7 @@ class Planner {
     const board = this.me.board;
     if (this.p.boardReview)
       for (const e of board) {
+        if (e.leaving) continue;
         const keep = this.execNet(e.dept, e.grade, false);
         const sev = this.v.execCosts[e.grade].salary;
         if (keep + sev < 0 && this.cash > sev + this.buffer()) {

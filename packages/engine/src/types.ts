@@ -119,6 +119,8 @@ export interface Executive {
   grade: ExecGrade;
   /** Turn of hiring. */
   since: number;
+  /** Accepted a rival's offer (poach card): leaves at the end of the quarter. */
+  leaving?: true;
 }
 
 export interface DecisionCard {

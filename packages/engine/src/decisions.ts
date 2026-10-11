@@ -230,11 +230,8 @@ export function applyDecision(
     case 'poach':
       if (key === 'release') {
         const e = p.board.find((b) => b.dept === card.dept);
-        if (e) {
-          p.board = p.board.filter((b) => b !== e);
-          (p.gone ??= []).push({ dept: e.dept, grade: e.grade });
-          out.push({ type: 'executiveLeft', playerId: p.id, dept: e.dept, grade: e.grade, cost: 0, poached: true });
-        }
+        // as the card says: the seat is empty at the end of the quarter (closeDecisions)
+        if (e) e.leaving = true;
       }
       break;
     case 'mayor':
@@ -247,12 +244,19 @@ export function applyDecision(
   out.push(ev);
 }
 
-/** End of the quarter: open cards get their default option (free). */
+/** End of the quarter: open cards get their default option (free); poached board members leave. */
 export function closeDecisions(g: GameState, out: GameEvent[]): void {
   for (const p of g.players) {
-    if (p.out || !p.decision) continue;
-    const def = DECISIONS[p.decision.key].options.find((o) => o.default)!;
-    applyDecision(g, p, def.key, 0, true, out);
+    if (p.out) continue;
+    if (p.decision) {
+      const def = DECISIONS[p.decision.key].options.find((o) => o.default)!;
+      applyDecision(g, p, def.key, 0, true, out);
+    }
+    for (const e of p.board.filter((b) => b.leaving)) {
+      p.board = p.board.filter((b) => b !== e);
+      (p.gone ??= []).push({ dept: e.dept, grade: e.grade });
+      out.push({ type: 'executiveLeft', playerId: p.id, dept: e.dept, grade: e.grade, cost: 0, poached: true });
+    }
   }
 }
 

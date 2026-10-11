@@ -193,7 +193,7 @@ describe('decision cards', () => {
     expect(site(s, 'ib0').offline).toBe(1);
   });
 
-  it('poach: the board member leaves unless the player pays', () => {
+  it('poach: the board member leaves at the end of the quarter unless the player pays', async () => {
     let g = ok(newGame(), { type: 'hireExecutive', dept: 'dev', grade: 'junior' }).state;
     card(g, { key: 'poach', dept: 'dev' });
     const cost = playerView(g, 0).me.decision!.options.find((o) => o.key === 'raise')!.cost;
@@ -201,13 +201,27 @@ describe('decision cards', () => {
     const kept = ok(g, { type: 'decide', option: 'raise' }).state;
     expect(kept.players[0]!.board).toHaveLength(1);
     const r = ok(g, { type: 'decide', option: 'release' });
-    expect(r.state.players[0]!.board).toHaveLength(0);
-    expect(r.events[0]).toMatchObject({ type: 'executiveLeft', poached: true });
+    // as the card says: the member stays until the end of the quarter and cannot be fired any more
+    expect(r.state.players[0]!.board).toEqual([{ dept: 'dev', grade: 'junior', since: 0, leaving: true }]);
+    expect(r.events.some((e) => e.type === 'executiveLeft')).toBe(false);
+    fails(r.state, { type: 'fireExecutive', dept: 'dev' }, 'invalidState');
+    const q = await endQuarter(r.state, []);
+    g = q.state;
+    expect(g.players[0]!.board).toHaveLength(0);
+    expect(q.report.events).toContainEqual(expect.objectContaining({ type: 'executiveLeft', poached: true }));
     // the poached member works for a rival now; the other candidate of the department is still there
-    expect(r.state.players[0]!.gone).toEqual([{ dept: 'dev', grade: 'junior' }]);
-    expect(playerView(r.state, 0).me.gone).toEqual([{ dept: 'dev', grade: 'junior' }]);
-    fails(r.state, { type: 'hireExecutive', dept: 'dev', grade: 'junior' }, 'executiveGone');
-    ok(r.state, { type: 'hireExecutive', dept: 'dev', grade: 'senior' });
+    expect(g.players[0]!.gone).toEqual([{ dept: 'dev', grade: 'junior' }]);
+    expect(playerView(g, 0).me.gone).toEqual([{ dept: 'dev', grade: 'junior' }]);
+    fails(g, { type: 'hireExecutive', dept: 'dev', grade: 'junior' }, 'executiveGone');
+    ok(g, { type: 'hireExecutive', dept: 'dev', grade: 'senior' });
+  });
+
+  it('poach: without a decision the board member leaves at the end of the quarter', async () => {
+    const g = ok(newGame(), { type: 'hireExecutive', dept: 'dev', grade: 'junior' }).state;
+    card(g, { key: 'poach', dept: 'dev' });
+    const s = (await endQuarter(g, [])).state;
+    expect(s.players[0]!.board).toHaveLength(0);
+    expect(s.players[0]!.gone).toEqual([{ dept: 'dev', grade: 'junior' }]);
   });
 
   it('a fired board member can be hired again', () => {
