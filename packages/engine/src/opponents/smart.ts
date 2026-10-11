@@ -785,20 +785,19 @@ class Planner {
     }
   }
 
+  /** Connects a built plant if the grid has room; it earns from this quarter on (worth a thinner cash buffer). */
+  private connect(x: SiteView): void {
+    const c = costsFor(this.v, x.size)[x.type!].grid;
+    if (this.free[x.r] < x.mw || !this.afford(c, Math.min(this.buffer(), this.runningCostsPerQuarter()))) return;
+    this.spend({ type: 'connectGrid', siteId: x.id }, c);
+    this.free[x.r] -= x.mw;
+    this.connectedNow.add(x.id);
+  }
+
   private advanceProjects(): void {
     const mine = this.mine();
-    // most valuable first: connect, then build, then permits
-    for (const x of mine) {
-      if (!x.type || !x.built || x.grid) continue;
-      const mw = x.mw;
-      const c = costsFor(this.v, x.size)[x.type].grid;
-      // a connected plant earns from this quarter on: worth a thinner cash buffer
-      if (this.free[x.r] >= mw && this.afford(c, Math.min(this.buffer(), this.runningCostsPerQuarter()))) {
-        this.spend({ type: 'connectGrid', siteId: x.id }, c);
-        this.free[x.r] -= mw;
-        this.connectedNow.add(x.id);
-      }
-    }
+    // most valuable first: connect, then build (and connect in the same quarter), then permits
+    for (const x of mine) if (x.type && x.built && !x.grid) this.connect(x);
     const approved = mine
       .filter((x) => x.type && x.permit === 'approved' && !x.built)
       .sort((a, b) => this.revenueAt(b, b.type!, b.size, 1, 1) - this.revenueAt(a, a.type!, a.size, 1, 1));
@@ -810,6 +809,8 @@ class Planner {
       if (this.afford(c + plantDef(t, x.size).grid + this.gridToPay())) {
         this.spend({ type: 'build', siteId: x.id }, c);
         this.builtNow.add(x.id);
+        // skipped by the engine if the assembly fails
+        this.connect(x);
       }
     }
     for (const x of mine) {

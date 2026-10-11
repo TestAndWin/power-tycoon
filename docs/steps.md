@@ -290,6 +290,13 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
       `pnpm simulate`, 150 games, 10 years, seeds 1000–1149, rivals before → after: `idle` 367.2 → 392.4 M€,
       `solar` 303.9 → 315.4 M€, `smart --skilled` 288.4 → 318.2 M€ (seat 0 373.8 M€, 56 % → 383.7 M€, 53 %)
 
+- [x] Play-test: rivals' plants seemed to wait long for the grid. Not the minigame (rivals fail the cable
+      puzzle 5 % of the time, 1.7 failed connections per game): the planner decided on the connections
+      before building, so 9 of 10 rival plants only went on the grid the quarter after they were built.
+      They are now connected in the quarter they are built. Waiting plants per game 31 → 2.3.
+      `pnpm simulate`, 150 games, 10 years, rivals before → after: `idle` 390.5 → 467.1 M€, `solar`
+      315.9 → 380.1 M€, `smart --skilled` 317.5 → 403.1 M€ (seat 0 383.0 M€, 53 % → 498.3 M€, 55 %)
+
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)

@@ -300,8 +300,8 @@ interface OpponentStrategy {
     financing room left by its projects under way covers, puts its own approved and pending projects ahead
     of a new one in the region's grid queue, sells dead projects,
     spreads over regions and raises its project limits with uncommitted financing room,
-  - finances with debt up to the credit limit, accepts PPA contracts covered by its own generation, values
-    storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity
+  - connects a plant in the quarter it builds it (if the grid has room), finances with debt up to the credit
+    limit, accepts PPA contracts covered by its own generation, values storage by the spread and how much of it its own plants in the region can fill, reserves grid capacity
     (only for plants it will build, never in the last quarter),
   - goes for big projects (offshore) as soon as they can be financed (`bigProjects`): counts the operating
     cash flow until the plant is built and does not prefer small projects while its financing room covers

@@ -66,7 +66,7 @@ describe('bot-vs-bot smoke games 2026–2035', () => {
   }, 30_000);
 
   it('rival net worth after 10 years is plausible', async () => {
-    // rivals with an idle player end at about 200–250 M€
+    // rivals with an idle player end at about 400–500 M€
     const sums = [0, 0, 0];
     const N = 10;
     for (let seed = 100; seed < 100 + N; seed++) {
@@ -76,7 +76,7 @@ describe('bot-vs-bot smoke games 2026–2035', () => {
     for (const s of sums) {
       const avg = s / N;
       expect(avg).toBeGreaterThan(100e6);
-      expect(avg).toBeLessThan(500e6);
+      expect(avg).toBeLessThan(650e6);
     }
   }, 30_000);
 });

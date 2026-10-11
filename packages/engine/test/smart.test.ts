@@ -131,6 +131,15 @@ describe('SmartOpponent', () => {
     expect(types.indexOf('spied')).toBeLessThan(types.findIndex((t) => t.startsWith('trick')));
   });
 
+  it('connects a plant in the quarter it is built', async () => {
+    const g = newGame(12, true);
+    g.players[1]!.cash = 60e6;
+    const x = setupSite(g, 'ib4', 1, 'approved', 'solar');
+    x.sun = 1800;
+    const { state } = await playTurn(g, 1, new SmartOpponent());
+    expect(state.sites.find((s) => s.id === 'ib4')).toMatchObject({ built: true, grid: true });
+  });
+
   it('takes a caught spy as a sign of detectives: no new report for a small target', async () => {
     const g = newGame(8, true);
     g.players[1]!.cash = 120e6;
@@ -153,7 +162,8 @@ describe('SmartOpponent', () => {
 
   it('reserves no grid in the last quarter or for a plant it will not build', async () => {
     const g = newGame(11, true);
-    g.players[1]!.cash = 150e6;
+    // not enough money to build the park this quarter
+    g.players[1]!.cash = 12e6;
     g.grid.ns = 900;
     // the others' plants waiting for the grid would take nearly all that is left
     for (const id of ['ns0', 'ns1', 'ns3', 'ns4', 'ns5', 'ns6', 'ns7', 'ns8', 'ns9']) setupSite(g, id, 2, 'operating');
