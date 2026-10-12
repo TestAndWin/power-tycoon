@@ -1427,8 +1427,13 @@ function businessCard(name: string): void {
   );
   shape(circ(0, 0, 3.5), '#8a2a1e', 0);
   c.restore();
-  text(kind.toUpperCase(), -16, -14, `700 ${kind.length > 9 ? 5.5 : 7}px ${SANS}`, '#7a6a52');
-  text(brand, -16, -3, `700 ${brand.length > 8 ? 10 : 12}px ${DISPLAY}`, '#8a2a1e');
+  // both lines run from x = -16 to the card's right edge less a margin; long names get a smaller font
+  const fit = (s: string, weight: number, size: number, family: string): string => {
+    c.font = `${weight} ${size}px ${family}`;
+    return `${weight} ${Math.min(size, (size * 58) / Math.max(1, c.measureText(s).width))}px ${family}`;
+  };
+  text(kind.toUpperCase(), -16, -14, fit(kind.toUpperCase(), 700, 7, SANS), '#7a6a52');
+  text(brand, -16, -3, fit(brand, 700, 12, DISPLAY), '#8a2a1e');
   line(-38, 9, 38, 9, '#c9b896', 1);
   text('Diskret · Tag und Nacht', 0, 18, `600 7px ${SANS}`, '#5a4a36', 'center');
   c.restore();
