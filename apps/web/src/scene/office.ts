@@ -1343,6 +1343,22 @@ function newspaper(d: OfficeData): void {
   for (let i = 0; i < 5; i++) c.fillRect(-136, 32 + i * 11, i === 4 ? 110 : 170, 4);
   c.restore();
 }
+/**
+ * The caller's name on the phone screen: shrinks from 12 to 10 px until every word fits; a word that is
+ * still too wide breaks at its soft hyphen (U+00AD) and shows a hyphen there. Two lines at most.
+ */
+function callerLines(s: string, width: number): { lines: string[]; font: string } {
+  const c = ctx!,
+    plain = s.replaceAll('\u00ad', '');
+  for (const px of [12, 11, 10]) {
+    const font = `700 ${px}px ${SANS}`;
+    c.font = font;
+    if (plain.split(' ').every((w) => c.measureText(w).width <= width))
+      return { lines: wrap(plain, width, font, 2), font };
+  }
+  const font = `700 12px ${SANS}`;
+  return { lines: wrap(s.replaceAll('\u00ad', '- '), width, font, 2).map((l) => l.replaceAll('- ', '')), font };
+}
 function phone(d: OfficeData): void {
   const c = ctx!;
   const ring = d.ringing,
@@ -1367,9 +1383,8 @@ function phone(d: OfficeData): void {
     text('Eingehender Anruf', 0, -74, `600 10px ${SANS}`, '#bcd2e6', 'center');
     shape(circ(0, -36, 20), '#e3c182', 2);
     text(d.caller.slice(0, 1).toUpperCase(), 0, -35, `700 18px ${DISPLAY}`, INK, 'center');
-    wrap(d.caller, 96, `700 12px ${SANS}`, 2).forEach((l, i) =>
-      text(l, 0, -2 + i * 16, `700 12px ${SANS}`, '#ffffff', 'center'),
-    );
+    const name = callerLines(d.caller, 96);
+    name.lines.forEach((l, i) => text(l, 0, -2 + i * 16, name.font, '#ffffff', 'center'));
     shape(circ(-26, 62, 14), '#d64b3c', 2);
     shape(circ(26, 62, 14), '#3fae5a', 2);
   } else {

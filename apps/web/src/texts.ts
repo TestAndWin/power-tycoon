@@ -758,7 +758,7 @@ export const DECISION_TEXT: Record<DecisionKey, DecisionText> = {
     options: { join: 'Speicher bereitstellen', decline: 'Selbst vermarkten' },
   },
   grant: {
-    kicker: 'Post vom Wirtschaftsministerium',
+    kicker: 'Post vom Wirtschafts\u00administerium',
     title: () => 'Förderprogramm Energiewende',
     body: () => 'Das Land fördert Vorzeigeprojekte. Der Antrag ist aufwendig, die Jury wählerisch.',
     options: { apply: 'Antrag selbst stellen', skip: 'Verzichten', lobbyist: 'Fördermittelberater beauftragen' },
