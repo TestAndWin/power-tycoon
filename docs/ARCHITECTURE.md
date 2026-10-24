@@ -220,7 +220,7 @@ Rules:
   legacy probabilities (layout and storage `rand(.9, 1.08)`, wind assembly 80 %, grid 85 %, frequency 62 %); the view shows
   these odds to such a player (`PlayerView.autoOdds`), so the web app can put them next to the buttons.
   Rivals play like a practised human (`AUTO_MINIGAME_HARD`: layout and storage `rand(1, 1.15)`, assembly and
-  grid 95 %, frequency 85 %). A human who wins every minigame earns about 16 % more per plant, which
+  grid 95 %, frequency 90 %). A human who wins every minigame earns about 16 % more per plant, which
   compounds to roughly +50 % net worth over the game.
 - Minigame results are **trusted** from the client (clamped only). Acceptable, because a player can only
   help themselves against the AI. Revisit if a public high-score list is ever added.
@@ -283,12 +283,16 @@ sound on/off) may also be kept there. "Neues Spiel" creates a new game and repla
 interface OpponentStrategy {
   explore?(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
   decide(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
+  repair?(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
 }
 ```
 
 - The engine applies the returned actions one by one via `applyAction`; invalid actions are skipped and logged.
 - `explore` (optional) runs first and gathers information (surveys, spy reports); `decide` then gets a fresh
   view with the results – a rival can survey and lease in the same quarter, like the human.
+- `repair` (optional) runs right after the quarter (production done, next quarter begun): the rival repairs
+  the plants that failed in it, so they are not shown broken during the human's turn. Its events go into the
+  rival's action log of that quarter.
 - `SmartOpponent` (phase 6; the legacy rival AI was removed, and since the October 2026 play-test there is only
   one level – the former `hard`): values every project by its expected contribution to net worth at game end
   along its timeline (permit → build → connect, only finished parts count at the end), with a forecast of
