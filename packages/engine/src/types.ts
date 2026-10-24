@@ -480,6 +480,11 @@ export interface OpponentStrategy {
    */
   explore?(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
   decide(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
+  /**
+   * Optional step right after the quarter (production done, next quarter begun): repairs of the plants that
+   * failed in it, so they are not shown broken during the human's turn.
+   */
+  repair?(view: PlayerView, legal: Action[], ctx: OpponentContext): Promise<Action[]>;
 }
 
 /* ---------------- Player view ---------------- */
