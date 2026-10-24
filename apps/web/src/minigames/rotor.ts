@@ -59,7 +59,8 @@ export class RotorAssembly {
   /** Advances by `dt` seconds; returns whether a blade arrived and fits ('hit') or not ('miss'). */
   update(dt: number): 'hit' | 'miss' | null {
     let arrived: 'hit' | 'miss' | null = null;
-    if (this.state === 'swing') this.t += dt;
+    // the hook hangs still once the assembly is over
+    if (this.state === 'swing' && !this.done) this.t += dt;
     if (this.state === 'drop') {
       this.drop += dt * 2.4;
       if (this.drop >= 1) {
@@ -70,8 +71,8 @@ export class RotorAssembly {
         else this.miss++;
         arrived = ok ? 'hit' : 'miss';
         this.state = 'swing';
-        this.t += rand(this.R, 0, 3);
         if (this.blades >= BLADES || this.miss >= MISSES) this.done = true;
+        else this.t += rand(this.R, 0, 3);
       }
     }
     this.flash = Math.max(0, this.flash - dt);

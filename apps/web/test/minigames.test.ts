@@ -149,6 +149,10 @@ describe('rotor', () => {
     expect(hits).toBe(3);
     expect(m.success).toBe(true);
     expect(m.release()).toBe(false);
+    // the hook hangs still where the last blade left it
+    const x = m.hookX();
+    m.update(0.5);
+    expect(m.hookX()).toBe(x);
   });
   it('three misses end it without success', () => {
     const m = new RotorAssembly(true, createRng(2));
