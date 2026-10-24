@@ -102,7 +102,11 @@ export class StorageSchedule {
   }
 }
 
-const PLAN_TEXT: Record<SlotPlan, string> = { idle: 'Pause', charge: 'Laden', discharge: 'Entladen' };
+const PLAN_TEXT: Record<SlotPlan, string> = {
+  idle: 'Pause',
+  charge: 'Kaufen (laden)',
+  discharge: 'Verkaufen (entladen)',
+};
 /** Short marks on the narrow slots (the legend and the label name them). */
 const PLAN_MARK: Record<SlotPlan, string> = { idle: '·', charge: '▲', discharge: '▼' };
 
@@ -113,10 +117,10 @@ export function miniStorage(x: SiteView, R: Random): Promise<number> {
     const top = Math.max(...m.prices);
     openModal(
       `<h2>Fahrplan · ${siteName(x)}</h2>
-      <p class="muted" style="margin:0">Stell die Steuerung deines ${x.type === 'pump' ? 'Pumpspeichers' : 'Batteriespeichers'} ein. Klick auf einen Zeitblock: Laden, Entladen, Pause. Der Speicher fasst ${STORE_CAP} Ladungen und startet leer. Lade, wenn Strom billig ist, und entlade, wenn er teuer ist. Beim Entladen kommen nur ${Math.round(eta * 100)} % zurück.</p>
+      <p class="muted" style="margin:0">Stell die Steuerung deines ${x.type === 'pump' ? 'Pumpspeichers' : 'Batteriespeichers'} ein. Klick auf einen Zeitblock: Kaufen, Verkaufen, Pause. Beim Kaufen lädt der Speicher Strom aus dem Netz, beim Verkaufen speist er ihn wieder ein. Er fasst ${STORE_CAP} Ladungen und startet leer. Kauf, wenn Strom billig ist, und verkauf, wenn er teuer ist. Beim Verkaufen kommen nur ${Math.round(eta * 100)} % zurück.</p>
       <div class="hud"><span id="sProfit">Gewinn 0 €/MWh</span><span id="sScore">Wirkungsgrad –</span></div>
       <div class="sched" id="sched"></div>
-      <div class="legend"><span><i class="lg chg"></i>▲ Laden</span><span><i class="lg dis"></i>▼ Entladen</span><span><i class="lg soc"></i>Füllstand</span><span>Zahlen: Preis in €/MWh, Uhrzeit</span></div>
+      <div class="legend"><span><i class="lg chg"></i>▲ Kaufen (laden)</span><span><i class="lg dis"></i>▼ Verkaufen (entladen)</span><span><i class="lg soc"></i>Füllstand</span><span>Zahlen: Preis in €/MWh, Uhrzeit</span></div>
       <div class="foot"><button class="btn primary big" id="sOk" disabled>Fahrplan übernehmen</button></div>`,
       { locked: true, minigame: true },
     );
