@@ -447,34 +447,170 @@ function drawBattery(fr: Frame, sp: Spot): void {
   }
 }
 
-/** Dam with running water. */
-function drawHydro(fr: Frame, sp: Spot): void {
-  const { ctx, t, d } = fr;
-  const { u, bx, by, op } = sp;
-  const w = u * 0.7,
-    x0 = bx - w / 2,
-    dh = u * 0.2;
-  ctx.fillStyle = mix('#0b2033', '#4a90c2', d);
-  ctx.fillRect(x0, by - dh - u * 0.12, w, u * 0.12);
-  ctx.fillStyle = mix('#44494c', '#b9bdb9', d);
+/** Point at share `f` of the plot width and height `y`: follows the perspective of the plot. */
+function at(fr: Frame, qd: Quad, f: number, y: number): [number, number] {
+  return [fr.g.X(qd.u0 + (qd.u1 - qd.u0) * f, y), y];
+}
+function poly(ctx: Ctx, pts: [number, number][], fill: string): void {
+  ctx.fillStyle = fill;
   ctx.beginPath();
-  ctx.moveTo(x0 - 4, by);
-  ctx.lineTo(x0 + w + 4, by);
-  ctx.lineTo(x0 + w, by - dh);
-  ctx.lineTo(x0, by - dh);
+  pts.forEach(([x, y], k) => (k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
   ctx.fill();
-  if (op) {
-    ctx.strokeStyle = 'rgba(235,245,255,.85)';
-    ctx.lineWidth = 1.2;
-    for (let k = 0; k < 5; k++) {
-      const xx = x0 + w * (0.2 + k * 0.15),
-        o = (t * 30 + k * 7) % 10;
+}
+/**
+ * The river between the shares `f0` and `f1` of the plot width: it comes from the mountains (back of the
+ * plot), is held up to the line `top` and runs on towards the viewer below the base line, there widened to
+ * `tail` on the left (the outflow of the powerhouse).
+ */
+function river(fr: Frame, sp: Spot, f0: number, f1: number, top: number, tail: number): void {
+  const { ctx, t, d, still } = fr;
+  const { qd, by, op, u } = sp;
+  const h = qd.y1 - qd.y0,
+    y0 = qd.y0 + h * 0.1,
+    y1 = qd.y1 - h * 0.02;
+  poly(
+    ctx,
+    [at(fr, qd, f0, y0), at(fr, qd, f1, y0), at(fr, qd, f1 + 0.02, top), at(fr, qd, f0 - 0.02, top)],
+    mix('#0e2638', '#5ea3d1', d),
+  );
+  poly(
+    ctx,
+    [at(fr, qd, tail, by), at(fr, qd, f1 + 0.02, by), at(fr, qd, f1 + 0.05, y1), at(fr, qd, tail - 0.03, y1)],
+    mix('#0b2033', '#4a90c2', d),
+  );
+  // ripples drift with the current
+  ctx.strokeStyle = `rgba(235,245,255,${0.35 + d * 0.3})`;
+  ctx.lineWidth = Math.max(1, u * 0.008);
+  for (let k = 0; k < 6; k++) {
+    const ph = ((still ? 0 : t * 0.25) + k / 6) % 1,
+      yy = y0 + (top - y0) * ph,
+      [xa] = at(fr, qd, f0 + (f1 - f0) * (0.12 + 0.13 * k), yy);
+    ctx.beginPath();
+    ctx.moveTo(xa, yy);
+    ctx.lineTo(xa + u * 0.05, yy);
+    ctx.stroke();
+  }
+  if (op)
+    for (let k = 0; k < 6; k++) {
+      const ph = ((still ? 0 : t * 0.5) + k / 6) % 1,
+        yy = by + (y1 - by) * ph,
+        [xa] = at(fr, qd, tail + (f1 - tail) * (0.08 + 0.15 * k), yy);
       ctx.beginPath();
-      ctx.moveTo(xx, by - dh + o);
-      ctx.lineTo(xx, by - dh + o + 5);
+      ctx.moveTo(xa, yy);
+      ctx.lineTo(xa + u * 0.04, yy);
       ctx.stroke();
     }
+}
+/** White water churning at the foot of the weir and at the outflow of the powerhouse. */
+function foam(fr: Frame, x0: number, x1: number, y: number, u: number): void {
+  const { ctx, t, still, d } = fr;
+  ctx.fillStyle = `rgba(240,248,255,${0.7 + d * 0.25})`;
+  const n = Math.max(3, Math.round((x1 - x0) / (u * 0.04)));
+  for (let k = 0; k < n; k++) {
+    const x = x0 + ((k + 0.5) / n) * (x1 - x0),
+      j = still ? 0.5 : (Math.sin(t * 7 + k * 2.3) + 1) / 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y + u * 0.01, u * (0.018 + j * 0.01), u * (0.01 + j * 0.006), 0, 0, 7);
+    ctx.fill();
   }
+}
+
+/**
+ * Run-of-river plant: a weir with steel gates holds up the river, the powerhouse with a roof in the owner's
+ * colour stands on the left bank (the owner flag takes the front right corner). Large plants get a fourth
+ * gate field.
+ */
+function drawHydro(fr: Frame, sp: Spot): void {
+  const { ctx, t, d, colors, still } = fr;
+  const { x, qd, u, by, op } = sp;
+  const large = x.size === 'large',
+    n = large ? 4 : 3,
+    f0 = large ? 0.36 : 0.4,
+    f1 = large ? 0.9 : 0.86,
+    wt = by - u * 0.15,
+    h0 = f0 - 0.3,
+    h1 = f0 - 0.06;
+  river(fr, sp, f0, f1, wt, h0 + 0.02);
+  const [xl] = at(fr, qd, f0 - 0.02, by),
+    [xr] = at(fr, qd, f1 + 0.02, by),
+    ww = xr - xl,
+    pw = ww * 0.06,
+    gw = (ww - pw * (n + 1)) / n;
+  // weir wall and gate fields
+  ctx.fillStyle = mix('#3d4246', '#b9bcb6', d);
+  ctx.fillRect(xl, wt + u * 0.03, ww, by - wt - u * 0.03);
+  for (let k = 0; k < n; k++) {
+    const gx = xl + pw + k * (gw + pw);
+    // opening under the raised gate, water pouring through
+    ctx.fillStyle = mix('#0b1a26', '#2d5d80', d);
+    ctx.fillRect(gx, by - u * 0.06, gw, u * 0.06);
+    if (op) {
+      ctx.fillStyle = 'rgba(225,240,255,.85)';
+      for (let j = 0; j < 2; j++) {
+        const o = still ? 0.3 : (t * 1.6 + j / 2 + k * 0.17) % 1;
+        ctx.fillRect(gx + gw * 0.08, by - u * 0.06 + o * u * 0.05, gw * 0.84, u * 0.008);
+      }
+    }
+    // steel gate with stiffeners
+    ctx.fillStyle = mix('#1f2a33', '#5f7f96', d);
+    ctx.fillRect(gx, wt + u * 0.01, gw, by - wt - u * 0.075);
+    ctx.fillStyle = mix('#18222a', '#4b677c', d);
+    for (let j = 1; j < 3; j++) ctx.fillRect(gx, wt + u * 0.01 + ((by - wt - u * 0.075) * j) / 3, gw, u * 0.006);
+  }
+  // piers with caps and the service bridge over them
+  for (let k = 0; k <= n; k++) {
+    const px = xl + k * (gw + pw);
+    ctx.fillStyle = mix('#474c50', '#d4d6d0', d);
+    ctx.fillRect(px, wt - u * 0.05, pw, by - wt + u * 0.05);
+    ctx.fillStyle = mix('#2e3236', '#9fa39d', d);
+    ctx.fillRect(px - pw * 0.2, wt - u * 0.065, pw * 1.4, u * 0.02);
+  }
+  ctx.fillStyle = mix('#2e3236', '#8e928c', d);
+  ctx.fillRect(xl, wt - u * 0.035, ww, u * 0.012);
+  if (op) foam(fr, xl, xr, by, u);
+  // powerhouse on the left bank
+  const [hx0] = at(fr, qd, h0, by),
+    [hx1] = at(fr, qd, h1, by),
+    hw = hx1 - hx0,
+    hh = u * 0.16,
+    hy = by - hh,
+    dep = u * 0.05,
+    col = colors[x.owner]!;
+  // side wall towards the back
+  poly(
+    ctx,
+    [
+      [hx1, by],
+      [hx1, hy],
+      [hx1 + dep * 0.6, hy - dep],
+      [hx1 + dep * 0.6, by - dep],
+    ],
+    mix('#3b4045', '#c5c0b4', d),
+  );
+  ctx.fillStyle = mix('#4d555c', '#ece6d8', d);
+  ctx.fillRect(hx0, hy, hw, hh);
+  // roof in the owner's colour
+  poly(
+    ctx,
+    [
+      [hx0 - hw * 0.06, hy],
+      [hx1 + hw * 0.06, hy],
+      [hx1 + dep * 0.6, hy - dep],
+      [hx0 + dep * 0.6, hy - dep],
+    ],
+    mix('#111', col, 0.35 + d * 0.65),
+  );
+  ctx.fillStyle = mix('#000', col, 0.25 + d * 0.45);
+  ctx.fillRect(hx0 - hw * 0.06, hy, hw * 1.12, u * 0.012);
+  // tall windows, lit at night, and the outlet arch
+  ctx.fillStyle = mix('#ffcf6b', '#5d7385', clamp(d * 1.4, 0, 1));
+  for (let k = 0; k < 3; k++) ctx.fillRect(hx0 + hw * (0.14 + k * 0.27), hy + hh * 0.18, hw * 0.16, hh * 0.42);
+  ctx.fillStyle = mix('#0b1a26', '#2d5d80', d);
+  ctx.beginPath();
+  ctx.ellipse(hx0 + hw * 0.5, by, hw * 0.2, hh * 0.18, 0, Math.PI, 0);
+  ctx.fill();
+  if (op) foam(fr, hx0 + hw * 0.3, hx0 + hw * 0.7, by, u);
 }
 
 /** Upper basin, penstock and powerhouse with flowing water. */

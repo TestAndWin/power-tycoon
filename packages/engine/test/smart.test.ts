@@ -131,24 +131,6 @@ describe('SmartOpponent', () => {
     expect(types.indexOf('spied')).toBeLessThan(types.findIndex((t) => t.startsWith('trick')));
   });
 
-  it('repairs a failed plant right after the quarter, so it is not shown broken in the human turn', async () => {
-    const g = newGame(12, true);
-    setupSite(g, 'ib4', 1, 'operating', 'solar').fault = true;
-    const acts = await new SmartOpponent().repair(playerView(g, 1), legalActions(g, 1), ctx());
-    // the 90 % minigame beats the service team, a failure still has its last try in the turn
-    expect(acts).toEqual([{ type: 'repairSelf', siteId: 'ib4' }]);
-    let state = newGame(7, true);
-    const opp = opponentsFor();
-    for (let k = 0; k < 20; k++) {
-      const { state: next, rivalActions } = await endQuarter(state, opp);
-      state = next;
-      const failed = new Set(
-        rivalActions.flatMap((l) => l.events.flatMap((e) => (e.type === 'repairFailed' ? [e.siteId] : []))),
-      );
-      for (const x of state.sites) if (x.owner > 0 && x.fault) expect(failed).toContain(x.id);
-    }
-  });
-
   it('connects a plant in the quarter it is built', async () => {
     const g = newGame(12, true);
     g.players[1]!.cash = 60e6;

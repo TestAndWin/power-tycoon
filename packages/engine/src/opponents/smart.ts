@@ -206,9 +206,6 @@ export class SmartOpponent implements OpponentStrategy {
   async decide(view: PlayerView, _legal: Action[], ctx: OpponentContext): Promise<Action[]> {
     return new Planner(view, ctx, this.params).plan();
   }
-  async repair(view: PlayerView, _legal: Action[], ctx: OpponentContext): Promise<Action[]> {
-    return new Planner(view, ctx, this.params).repairNow();
-  }
 }
 
 class Planner {
@@ -732,17 +729,11 @@ class Planner {
     return this.acts;
   }
 
-  /** Right after the quarter: repairs the plants that failed in it (a failed self repair has a try left). */
-  repairNow(): Action[] {
-    this.repairs(true);
-    return this.acts;
-  }
-
   plan(): Action[] {
     this.decision();
     this.board();
     if (this.p.sellStuck) this.sellDead();
-    this.repairs(false);
+    this.repairs();
     this.advanceProjects();
     this.repowers();
     this.newSites();
@@ -780,23 +771,17 @@ class Planner {
     this.optimisticGrid = false;
   }
 
-  /**
-   * Repairs each faulty plant with one method: the service team (always works) or the cheap frequency
-   * minigame (`mg.frequency`), whichever is cheaper including the expected loss of a failure. With `retry`
-   * a failed self repair still gets a last try in the turn before production.
-   */
-  private repairs(retry: boolean): void {
-    const self = this.v.constants.selfRepairCost;
-    const fail = 1 - this.mg.frequency;
+  private repairs(): void {
     for (const x of this.mine()) {
       if (!x.fault || !x.type || !x.grid) continue;
       const loss = this.revenueAt(x, x.type, x.size, 0, x.own?.eff ?? 1);
-      if (loss <= self) continue;
+      if (loss < this.v.constants.selfRepairCost * 2) continue;
+      // cheap self repair first; if it fails the service team is still sent (rejected if fixed)
+      if (this.cash > this.v.constants.selfRepairCost + 1e6)
+        this.spend({ type: 'repairSelf', siteId: x.id }, this.v.constants.selfRepairCost);
       const svc = costsFor(this.v, x.size)[x.type].service;
-      const last = Math.min(svc, self + fail * loss);
-      const selfCost = self + fail * (retry ? last : loss);
-      if (svc < selfCost && this.cash > svc + this.buffer()) this.spend({ type: 'repairService', siteId: x.id }, svc);
-      else if (this.cash > self) this.spend({ type: 'repairSelf', siteId: x.id }, self);
+      // only paid if still broken; planned as spent to stay on the safe side
+      if (loss * 0.8 > svc && this.cash > svc + this.buffer()) this.spend({ type: 'repairService', siteId: x.id }, svc);
     }
   }
 

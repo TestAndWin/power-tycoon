@@ -314,16 +314,6 @@ keeps the edge through the lower rejection risk (11–20 % vs. 25 % for wind) an
       left as is. `pnpm simulate --seat0 smart --skilled`, 150 games, 10 years, before → after: seat 0
       522.9 M€ (62 %) → 485.6 M€ (63 %), rivals 409.3 → 379.7 M€.
 
-- [x] Play-test: rivals repaired their plants late. They repaired in their turn of the next quarter (before
-      production, so no output was lost), but their plants showed as broken during the human's whole turn;
-      small faults were left alone and a failed self repair only got the service team if it paid off. Now a
-      rival repairs right after the quarter in which the plant failed (`OpponentStrategy.repair`), with one
-      method: the service team or the frequency minigame (rivals now 90 %, was 85 %), whichever costs less
-      including the expected loss of a failure. A failed self repair gets its last try in the turn, so the
-      minigame always wins. Rival plants shown broken in the human's turn, 5 games: 77 → 7.
-      `pnpm simulate --seat0 smart --skilled`, 150 games, 10 years, before → after: seat 0 485.6 M€ (63 %)
-      → 479.0 M€ (57 %), rivals 379.7 → 388.9 M€.
-
 ## Step 2 – LLM rivals (separate planning later)
 
 - [ ] `LlmOpponent` implementing `OpponentStrategy`, Claude API with tool use (legal actions as tools)

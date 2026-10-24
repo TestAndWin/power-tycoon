@@ -79,19 +79,12 @@ export function rivalProfile(pid: PlayerId): RivalProfile {
  * if it has one, then `decide` on a fresh view),
  * applies the returned actions one by one. Invalid actions are skipped and logged as `actionRejected`.
  */
-export async function runTurnInPlace(
-  g: GameState,
-  pid: PlayerId,
-  strategy: OpponentStrategy,
-  // information first (if the strategy explores), then the decision on a view with its results
-  steps: (OpponentStrategy['repair'] | undefined)[] = [
-    strategy.explore?.bind(strategy),
-    strategy.decide.bind(strategy),
-  ],
-): Promise<GameEvent[]> {
+export async function runTurnInPlace(g: GameState, pid: PlayerId, strategy: OpponentStrategy): Promise<GameEvent[]> {
   const events: GameEvent[] = [];
   const ctx = { playerId: pid, profile: rivalProfile(pid), random: createRng(nextUint(g)) };
   let budget = MAX_ACTIONS_PER_TURN;
+  // information first (if the strategy explores), then the decision on a view with its results
+  const steps = [strategy.explore?.bind(strategy), strategy.decide.bind(strategy)];
   for (const step of steps) {
     if (!step) continue;
     let actions: unknown;
@@ -192,25 +185,6 @@ async function rivalTurns(
     log.push({ playerId: p.id, events: visible });
   }
   return { events, log };
-}
-
-/** Right after the quarter the rivals repair the plants that failed in it; the events go into their log. */
-async function rivalRepairs(
-  g: GameState,
-  opponents: (OpponentStrategy | undefined)[],
-  viewer: PlayerId,
-  log: RivalActionLog[],
-) {
-  for (const p of g.players) {
-    const strategy = opponents[p.id - 1];
-    if (p.human || p.out || !strategy?.repair || !g.sites.some((x) => x.owner === p.id && x.fault)) continue;
-    const ev = await runTurnInPlace(g, p.id, strategy, [strategy.repair.bind(strategy)]);
-    if (ev.length === 0) continue;
-    p.hist[p.hist.length - 1] = worth(g, p);
-    const entry = log.find((l) => l.playerId === p.id);
-    if (entry) entry.events.push(...eventsForViewer(ev, viewer));
-    else log.push({ playerId: p.id, events: eventsForViewer(ev, viewer) });
-  }
 }
 
 interface Output {
@@ -437,7 +411,6 @@ export async function endQuarter(
   movePrice(g);
   checkSolvency(g, events);
   nextQuarter(g, events);
-  if (!g.over) await rivalRepairs(g, opponents, human, rivals.log);
 
   // confrontations by rivals concern their target as well
   const confrontations = rivals.events.filter(isConfrontation);

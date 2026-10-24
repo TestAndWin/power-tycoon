@@ -342,7 +342,7 @@ export const AUTO_MINIGAME_HARD: AutoMinigameDef = {
   rotor: 0.95,
   cable: 0.95,
   cableDuel: 0.7,
-  frequency: 0.9,
+  frequency: 0.85,
 };
 
 /**
